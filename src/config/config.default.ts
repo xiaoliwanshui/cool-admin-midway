@@ -6,11 +6,11 @@ import { pCachePath, pUploadPath } from '../comm/path';
 import { availablePort } from '../comm/port';
 
 // redis缓存
-// import { redisStore } from 'cache-manager-ioredis-yet';
+import { redisStore } from 'cache-manager-ioredis-yet';
 
 export default {
   // 确保每个项目唯一，项目首次启动会自动生成
-  keys: 'cool-admin-keys-xxxxxx',
+  keys: '5581defa-0fa7-4cbe-b7b0-89f01b4fcf88',
   koa: {
     port: availablePort(8001),
   },
@@ -38,31 +38,31 @@ export default {
     whitelist: null,
   },
   // 缓存 可切换成其他缓存如：redis http://www.midwayjs.org/docs/extensions/caching
-  cacheManager: {
-    clients: {
-      default: {
-        store: CoolCacheStore,
-        options: {
-          path: pCachePath(),
-          ttl: 0,
-        },
-      },
-    },
-  },
   // cacheManager: {
   //   clients: {
   //     default: {
-  //       store: redisStore,
+  //       store: CoolCacheStore,
   //       options: {
-  //         port: 6379,
-  //         host: '127.0.0.1',
-  //         password: '',
+  //         path: pCachePath(),
   //         ttl: 0,
-  //         db: 0,
   //       },
   //     },
   //   },
   // },
+  cacheManager: {
+    clients: {
+      default: {
+        store: redisStore,
+        options: {
+          port: 6379,
+          host: '127.0.0.1',
+          password: '',
+          ttl: 0,
+          db: 0,
+        },
+      },
+    },
+  },
   cool: {
     // 已经插件化，本地文件上传查看 plugin/config.ts，其他云存储查看对应插件的使用
     file: {},

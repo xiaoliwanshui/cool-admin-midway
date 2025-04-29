@@ -33,6 +33,7 @@ export const transformerJson = {
     return value;
   },
 };
+
 /**
  * 实体基类
  */
@@ -62,4 +63,10 @@ export abstract class BaseEntity extends CoolBaseEntity {
   @Index()
   @Column({ comment: '租户ID', nullable: true })
   tenantId: number;
+
+  @Column({ comment: '创建用户ID', nullable: true })
+  createUserId: number;
+
+  @Column({ comment: '更新用户ID', nullable: true })
+  updateUserId: number;
 }
