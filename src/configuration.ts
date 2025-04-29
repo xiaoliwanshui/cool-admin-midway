@@ -1,10 +1,10 @@
 import * as orm from '@midwayjs/typeorm';
 import {
-  Configuration,
   App,
+  Configuration,
+  ILogger,
   IMidwayApplication,
   Inject,
-  ILogger,
   MidwayWebRouterService,
 } from '@midwayjs/core';
 import * as koa from '@midwayjs/koa';
