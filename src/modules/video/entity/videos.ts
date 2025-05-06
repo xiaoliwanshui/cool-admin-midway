@@ -1,17 +1,16 @@
-import { Column, Entity } from 'typeorm';
+import { Column, Entity, Unique } from 'typeorm';
 import { BaseEntity } from '../../base/entity/base';
 
 /**
  * 订单信息c
  */
 @Entity('video')
+@Unique(['title'])
 export class VideoEntity extends BaseEntity {
   @Column({ comment: '影片标题', length: 191, nullable: true })
   title: string;
-  @Column({ comment: '分类一级id', type: 'bigint', nullable: true })
-  category_pid: number;
-  @Column({ comment: '分类二级id', type: 'bigint', nullable: true })
-  category_child_id: number;
+  @Column({ comment: '分类', nullable: true })
+  category_id: number;
   @Column({ comment: '影片封面图', type: 'text', nullable: true })
   surface_plot: string;
   @Column({ comment: '是否推荐 1是 2否', type: 'bigint', nullable: true })
@@ -128,18 +127,6 @@ export class VideoEntity extends BaseEntity {
   })
   status: number;
   @Column({
-    comment: '创建时间',
-    type: 'bigint',
-    nullable: true,
-  })
-  create_at: number;
-  @Column({
-    comment: '创建时间',
-    type: 'bigint',
-    nullable: true,
-  })
-  update_at: number;
-  @Column({
     comment: '时长(单位s)',
     nullable: true,
     type: 'bigint',
@@ -147,16 +134,14 @@ export class VideoEntity extends BaseEntity {
   duration: number;
   @Column({
     comment: '自定义地区',
-    length: 256,
     nullable: true,
   })
-  region: string;
+  region: number;
   @Column({
     comment: '自定义语言',
-    length: 256,
     nullable: true,
   })
-  language: string;
+  language: number;
   @Column({
     comment: '自定义标签',
     length: 256,
@@ -251,12 +236,6 @@ export class VideoEntity extends BaseEntity {
   })
   watch: number;
   @Column({
-    comment: 'collection_id',
-    type: 'bigint',
-    nullable: true,
-  })
-  collection_id: number;
-  @Column({
     comment: 'use_local_image',
     type: 'tinyint',
     nullable: true,
@@ -274,23 +253,6 @@ export class VideoEntity extends BaseEntity {
     nullable: true,
   })
   trailer_time: number;
-  @Column({
-    comment: '站点id',
-    nullable: true,
-    type: 'int',
-  })
-  site_id: number;
-  @Column({
-    comment: '顶级分类状态',
-    nullable: true,
-    type: 'int',
-  })
-  category_pid_status: number;
-  @Column({
-    comment: '子级分类状态',
-    nullable: true,
-    type: 'int',
-  })
   category_child_id_status: number;
   @Column({
     comment: '采集的源地址',
@@ -304,11 +266,4 @@ export class VideoEntity extends BaseEntity {
     type: 'int',
   })
   play_url_put_in: number;
-
-  @Column({
-    comment: '源资源Id',
-    nullable: true,
-    type: 'int',
-  })
-  olderId: number;
 }

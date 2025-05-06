@@ -97,4 +97,9 @@ export interface SourceVideo {
 export interface Line {
   name: string;
   file: string;
+  sub_title: string;
+  video_id: number;
+  tag: string;
+  sort: number;
+  video_line_id: number;
 }

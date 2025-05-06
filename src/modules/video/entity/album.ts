@@ -48,14 +48,5 @@ export class AlbumEntity extends BaseEntity {
   sort: number;
 
   @Column({ comment: '专题关联类型', nullable: true, default: 0 })
-  type: number;
-
-  @Column({ comment: 'create_at', nullable: true, type: 'bigint' })
-  create_at: number;
-
-  @Column({ comment: 'update_at', nullable: true, type: 'bigint' })
-  update_at: number;
-
-  @Column({ comment: 'update_at', nullable: true, type: 'int' })
-  site_id: number;
+  category_id: number;
 }

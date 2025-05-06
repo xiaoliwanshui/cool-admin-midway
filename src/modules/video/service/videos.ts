@@ -6,9 +6,10 @@ import { AlbumEntity } from '../entity/album';
 import { VideoAlbum } from '../entity/album_video';
 import { VideoWeekEntity } from '../entity/week_video';
 import { WeekEntity } from '../entity/week';
-import { VideoLineEntity } from '../entity/video_line';
 import { ILogger, Inject, Provide } from '@midwayjs/core';
-import { VideoBean } from '../bean/VideoBean';
+import { CollectionEntity } from '../entity/collection';
+import { VideoLineService } from './videoLine';
+import { PlayLineService } from './play_line';
 
 const TAG = 'VideosService';
 
@@ -29,8 +30,11 @@ export class VideosService extends BaseService {
   @InjectEntityModel(VideoWeekEntity)
   videoWeekEntity: Repository<VideoWeekEntity>;
 
-  @InjectEntityModel(VideoLineEntity)
-  videoLineEntity: Repository<VideoLineEntity>;
+  @Inject()
+  VideoLineService: VideoLineService;
+
+  @Inject()
+  playLineService: PlayLineService;
 
   @Inject()
   logger: ILogger;
@@ -61,8 +65,8 @@ export class VideosService extends BaseService {
    */
   async videoAlbumEntityPage(query: any): Promise<any> {
     const find = this.albumEntity.createQueryBuilder();
-    if (query.type) {
-      find.where('type= :type', query).orderBy('sort', 'ASC');
+    if (query.category_id) {
+      find.where('category_id= :category_id', query).orderBy('sort', 'ASC');
     } else {
       find.orderBy('sort', 'ASC');
     }
@@ -118,30 +122,35 @@ export class VideosService extends BaseService {
   }
 
   //批量插入
-  async insertList(data: Array<VideoEntity>): Promise<void> {
-    this.logger.info(TAG, '插入数据', JSON.stringify(data));
-    await this.videoEntity.save(data);
-  }
-
-  //过滤视频如果没有就返回原视频如果有就不返回
-  async filterVideo(data: VideoBean): Promise<Object | null> {
+  async insert(
+    videoEntity: VideoEntity,
+    collectionEntity: CollectionEntity
+  ): Promise<VideoEntity> {
     try {
-      this.logger.info(TAG, `准备插入 ${data.getTitle()}`);
-      const has = await this.videoEntity.findOneBy({
-        title: data.getTitle(),
-        collection_id: data.getCollectionId(),
+      // 插入数据
+      await this.videoEntity.insert(videoEntity);
+      const result = await this.videoEntity.findOneBy({
+        title: videoEntity.title,
       });
-      if (has) {
-        this.logger.info(TAG, '过滤视频', data.getTitle());
-        return null;
-      } else {
-        //将data转成object
-        this.logger.info(TAG, '没有过滤视频', data.getTitle());
-        return Object.assign({}, data);
-      }
+      this.logger.info(TAG, `insert ${videoEntity.title} success`);
+      // 显式释放对象引用
+      await this.VideoLineService.insert(result, collectionEntity);
+      collectionEntity = null;
+      videoEntity = null;
+      return result;
     } catch (error) {
-      this.logger.error(TAG, '报错了', error);
-      return null;
+      // 更新数据
+      await this.videoEntity.update({ title: videoEntity.title }, videoEntity);
+      const result = await this.videoEntity.findOneBy({
+        title: videoEntity.title,
+      });
+      // 显式释放对象引用;
+      this.logger.info(TAG, `update ${videoEntity.title} success`);
+      // 显式释放对象引用
+      await this.VideoLineService.insert(result, collectionEntity);
+      collectionEntity = null;
+      videoEntity = null;
+      return result;
     }
   }
 }

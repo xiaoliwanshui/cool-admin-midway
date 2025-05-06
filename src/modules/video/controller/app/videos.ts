@@ -25,14 +25,7 @@ import { Body, Inject, Post } from '@midwayjs/core';
   },
   pageQueryOp: {
     keyWordLikeFields: ['title'],
-    fieldEq: [
-      'category_pid',
-      'category_child_id',
-      'cycle',
-      'year',
-      'language',
-      'region',
-    ],
+    fieldEq: ['category_id', 'cycle', 'year', 'language', 'region'],
     addOrderBy: {
       updateTime: 'desc',
     },

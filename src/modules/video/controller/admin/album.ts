@@ -14,7 +14,7 @@ import { AlbumEntity } from '../../entity/album';
     };
   },
   pageQueryOp: {
-    fieldEq: ['type', 'status'],
+    fieldEq: ['category_id', 'status'],
   },
 })
 export class AdminAlbumController extends BaseController {}

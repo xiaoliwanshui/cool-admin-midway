@@ -1,10 +1,11 @@
-import { Column, Entity } from 'typeorm';
+import { Column, Entity, Unique } from 'typeorm';
 import { BaseEntity } from '../../base/entity/base';
 
 /**
  * 文章信息
  */
 @Entity('video_play_line')
+@Unique(['file'])
 export class PlayLineEntity extends BaseEntity {
   @Column({ comment: '影视ID', nullable: true, type: 'bigint' })
   video_id: number;
@@ -15,7 +16,7 @@ export class PlayLineEntity extends BaseEntity {
   @Column({ comment: '名称', length: 256 })
   name: string;
 
-  @Column({ comment: '文件地址', nullable: true, type: 'text' })
+  @Column({ comment: '文件地址', nullable: true, length: 520 })
   file: string;
 
   @Column({
@@ -53,15 +54,6 @@ export class PlayLineEntity extends BaseEntity {
 
   @Column({ comment: '排序', nullable: true, default: 0 })
   sort: number;
-
-  @Column({ comment: 'create_at', nullable: true, type: 'bigint' })
-  create_at: number;
-
-  @Column({ comment: 'update_at', nullable: true, type: 'bigint' })
-  update_at: number;
-
-  @Column({ comment: '站点id', nullable: true, type: 'int' })
-  site_id: number;
 
   @Column({ comment: '标识', nullable: true, length: 191 })
   tag: string;

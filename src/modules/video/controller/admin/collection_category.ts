@@ -1,5 +1,12 @@
-import { BaseController, CoolController } from '@cool-midway/core';
+import {
+  BaseController,
+  CoolController,
+  CoolTag,
+  TagTypes,
+} from '@cool-midway/core';
 import { CollectionCategoryEntity } from '../../entity/collection_category';
+import { Body, Inject, Post } from '@midwayjs/core';
+import { CategoryService } from '../../service/categoryService';
 
 @CoolController({
   api: ['add', 'delete', 'update', 'info', 'list', 'page'],
@@ -14,4 +21,17 @@ import { CollectionCategoryEntity } from '../../entity/collection_category';
     fieldEq: ['resource_id'],
   },
 })
-export class AdminCollectionCategoryController extends BaseController {}
+export class AdminCollectionCategoryController extends BaseController {
+  @Inject()
+  categoryService: CategoryService;
+
+  @CoolTag(TagTypes.IGNORE_TOKEN)
+  @Post('/sync_category')
+  async sort(@Body() body): Promise<unknown> {
+    try {
+      return this.ok(await this.categoryService.syncCategory(body));
+    } catch (error) {
+      return this.fail(error);
+    }
+  }
+}

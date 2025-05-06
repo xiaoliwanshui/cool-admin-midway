@@ -41,10 +41,4 @@ export class PlayerEntity extends BaseEntity {
 
   @Column({ nullable: true, comment: 'json服务器' })
   json_server: string;
-  // 如果需要自动创建和更新时间戳，可以使用以下装饰器
-  @Column({ comment: 'create_at', nullable: true, type: 'bigint' })
-  create_at: number;
-
-  @Column({ comment: 'update_at', nullable: true, type: 'bigint' })
-  update_at: number;
 }
