@@ -1,7 +1,6 @@
 interface VIDEOBEAN {
   title?: string;
-  category_pid?: number;
-  category_child_id?: number;
+  category_id?: number;
   surface_plot?: string;
   recommend?: number;
   cycle?: number;
@@ -41,13 +40,10 @@ interface VIDEOBEAN {
   end?: number;
   unit?: string;
   watch?: number;
-  collection_id?: number;
   use_local_image?: number;
   titles_time?: number;
   trailer_time?: number;
   site_id?: number;
-  category_pid_status?: number;
-  category_child_id_status?: number;
   play_url?: string;
   play_url_put_in?: number;
   createTime?: string;
@@ -61,9 +57,9 @@ interface VIDEOBEAN {
 }
 
 export class VideoBean {
+  type_id: number;
   private title?: string;
-  private category_pid?: number;
-  private category_child_id?: number;
+  private category_id?: number;
   private surface_plot?: string;
   private recommend?: number;
   private cycle?: number;
@@ -86,8 +82,8 @@ export class VideoBean {
   private create_at?: number;
   private update_at?: number;
   private duration?: number;
-  private region?: string;
-  private language?: string;
+  private region?: number;
+  private language?: number;
   private label?: string;
   private number?: number;
   private total?: number;
@@ -103,7 +99,6 @@ export class VideoBean {
   private end?: number;
   private unit?: string;
   private watch?: number;
-  private collection_id?: number;
   private use_local_image?: number;
   private titles_time?: number;
   private trailer_time?: number;
@@ -118,7 +113,6 @@ export class VideoBean {
   private douban_score_id?: null | number;
   private album_id?: null | number;
   private douban_score?: number;
-  private olderId?: number;
 
   getTitle(): string {
     return this.title;
@@ -130,23 +124,13 @@ export class VideoBean {
     }
   }
 
-  getCategoryPid(): number {
-    return this.category_pid;
+  getCategoryId(): number {
+    return this.category_id;
   }
 
-  setCategoryPid(value: number): void {
+  setCategoryId(value: number): void {
     if (typeof value === 'number' && value >= 0) {
-      this.category_pid = value;
-    }
-  }
-
-  getCategoryChildId(): number {
-    return this.category_child_id;
-  }
-
-  setCategoryChildId(value: number): void {
-    if (typeof value === 'number' && value >= 0) {
-      this.category_child_id = value;
+      this.category_id = value;
     }
   }
 
@@ -370,22 +354,22 @@ export class VideoBean {
     }
   }
 
-  getRegion(): string {
+  getRegion(): number {
     return this.region;
   }
 
-  setRegion(value: string): void {
-    if (typeof value === 'string' && value.trim() !== '') {
+  setRegion(value: number): void {
+    if (typeof value === 'number') {
       this.region = value;
     }
   }
 
-  getLanguage(): string {
+  getLanguage(): number {
     return this.language;
   }
 
-  setLanguage(value: string): void {
-    if (typeof value === 'string' && value.trim() !== '') {
+  setLanguage(value: number): void {
+    if (typeof value === 'number') {
       this.language = value;
     }
   }
@@ -540,16 +524,6 @@ export class VideoBean {
     }
   }
 
-  getCollectionId(): number {
-    return this.collection_id;
-  }
-
-  setCollectionId(value: number): void {
-    if (typeof value === 'number' && value >= 0) {
-      this.collection_id = value;
-    }
-  }
-
   getUseLocalImage(): number {
     return this.use_local_image;
   }
@@ -687,16 +661,6 @@ export class VideoBean {
   setDoubanScore(value: number): void {
     if (typeof value === 'number' && value >= 0) {
       this.douban_score = value;
-    }
-  }
-
-  getOlderId(): number {
-    return this.olderId;
-  }
-
-  setOlderId(value: number): void {
-    if (typeof value === 'number' && value >= 0) {
-      this.olderId = value;
     }
   }
 

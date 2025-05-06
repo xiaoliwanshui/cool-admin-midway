@@ -17,10 +17,10 @@ export class VideoParams {
   private total = 0;
   private srid = 0;
   private ac = 'videolist';
-  private h = 24;
+  private h = undefined;
   private ids = '';
   private limit = 0;
-  private op = 'day';
+  private op = 'all';
   private page = 1;
   private pagesize = 0;
   private pg = 1;

@@ -1,18 +1,34 @@
 import { Body, Get, Inject, Post, Provide } from '@midwayjs/core';
 import {
-  CoolController,
   BaseController,
+  CoolController,
+  CoolTag,
   CoolUrlTag,
   TagTypes,
-  CoolTag,
 } from '@cool-midway/core';
 import { DictInfoService } from '../../service/info';
+import { DictInfoEntity } from '../../entity/info';
 
 /**
  * 字典信息
  */
 @Provide()
-@CoolController()
+@CoolController({
+  api: ['info', 'list', 'page'],
+  entity: DictInfoEntity,
+  service: DictInfoService,
+  listQueryOp: {
+    fieldEq: ['typeId'],
+    keyWordLikeFields: ['name'],
+    addOrderBy: {
+      createTime: 'ASC',
+    },
+  },
+})
+@CoolUrlTag({
+  key: TagTypes.IGNORE_TOKEN,
+  value: ['page', 'info', 'list'],
+})
 @CoolUrlTag()
 export class AppDictInfoController extends BaseController {
   @Inject()

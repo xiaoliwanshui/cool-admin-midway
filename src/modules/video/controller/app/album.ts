@@ -19,7 +19,7 @@ import { AlbumEntity } from '../../entity/album';
     };
   },
   pageQueryOp: {
-    fieldEq: ['type'],
+    fieldEq: ['category_id'],
   },
 })
 @CoolUrlTag({

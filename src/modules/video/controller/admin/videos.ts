@@ -5,7 +5,6 @@ import {
   TagTypes,
 } from '@cool-midway/core';
 import { VideoEntity } from '../../entity/videos';
-import { CategoryEntity } from '../../entity/category';
 import { VideosService } from '../../service/videos';
 import { Body, Inject, Post } from '@midwayjs/core';
 
@@ -23,31 +22,10 @@ import { Body, Inject, Post } from '@midwayjs/core';
   },
   pageQueryOp: {
     keyWordLikeFields: ['title'],
-    fieldEq: [
-      'category_pid',
-      'category_child_id',
-      'year',
-      'language',
-      'region',
-    ],
-    select: ['a.*', 'b.name AS category_name', 'c.name AS category_child_name'],
+    fieldEq: ['category_id', 'year', 'language', 'region'],
     addOrderBy: {
       updateTime: 'desc',
     },
-    join: [
-      {
-        entity: CategoryEntity,
-        alias: 'b',
-        condition: 'a.category_pid = b.id',
-        type: 'innerJoin',
-      },
-      {
-        entity: CategoryEntity,
-        alias: 'c',
-        condition: 'a.category_child_id = c.id',
-        type: 'innerJoin',
-      },
-    ],
   },
 })
 export class AdminVideoController extends BaseController {

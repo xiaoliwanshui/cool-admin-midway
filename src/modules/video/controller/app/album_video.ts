@@ -28,8 +28,7 @@ import { VideoEntity } from '../../entity/videos';
     select: [
       'a.*',
       ' b.title',
-      'b.category_pid',
-      'b.category_child_id',
+      'b.category_id',
       ' b.surface_plot',
       ' b.recommend',
       'b.cycle',

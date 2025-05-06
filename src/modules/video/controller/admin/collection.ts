@@ -23,16 +23,6 @@ export class AdminCollectionController extends BaseController {
   collectionService: CollectionService;
 
   @CoolTag(TagTypes.IGNORE_TOKEN)
-  @Post('/sync_category')
-  async sort(@Body() body): Promise<unknown> {
-    try {
-      return this.ok(await this.collectionService.syncCategory(body));
-    } catch (error) {
-      return this.fail(error);
-    }
-  }
-
-  @CoolTag(TagTypes.IGNORE_TOKEN)
   @Post('/collection_day')
   async collection(@Body() body): Promise<unknown> {
     try {
