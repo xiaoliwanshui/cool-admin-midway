@@ -3,6 +3,7 @@ import { InjectEntityModel } from '@midwayjs/typeorm';
 import { Repository } from 'typeorm';
 import { ILogger, Inject, Provide } from '@midwayjs/core';
 import { PlayLineEntity } from '../entity/play_line';
+import { Line } from '../bean/SourceVideo';
 
 const TAG = 'PlayLineService';
 
@@ -14,17 +15,23 @@ export class PlayLineService extends BaseService {
   @Inject()
   logger: ILogger;
 
-  async insert(data: any): Promise<void> {
+  async insert(data: Line): Promise<void> {
     try {
       // 插入或更新数据
       await this.playLineEntity.insert(data);
-      this.logger.info(TAG, `insert ${data.title} success`);
+      this.logger.info(
+        TAG,
+        `insert ${data.collection_name} ${data.video_name} ${data.name} success`
+      );
       // 显式释放对象引用
       data = null;
     } catch (error) {
       // 更新数据
       await this.playLineEntity.update({ file: data.file }, data);
-      this.logger.info(TAG, `update ${data.title} success`);
+      this.logger.info(
+        TAG,
+        `update ${data.collection_name} ${data.video_name} ${data.name} success`
+      );
       // 显式释放对象引用
       data = null;
     }

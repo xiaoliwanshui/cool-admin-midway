@@ -1,4 +1,4 @@
-import { Config, Inject, Provide } from '@midwayjs/core';
+import { Config, ILogger, Inject, Provide } from '@midwayjs/core';
 import { BaseService, CoolCommException } from '@cool-midway/core';
 import { InjectEntityModel } from '@midwayjs/typeorm';
 import { Equal, Repository } from 'typeorm';
@@ -11,6 +11,8 @@ import { UserSmsService } from './sms';
 import { v1 as uuid } from 'uuid';
 import * as md5 from 'md5';
 import { PluginService } from '../../plugin/service/info';
+
+const TAG = 'UserLoginService';
 
 /**
  * 登录
@@ -37,6 +39,9 @@ export class UserLoginService extends BaseService {
 
   @Inject()
   userSmsService: UserSmsService;
+
+  @Inject()
+  logger: ILogger;
 
   /**
    * 发送手机验证码
@@ -304,6 +309,36 @@ export class UserLoginService extends BaseService {
     };
     return jwt.sign(tokenInfo, secret, {
       expiresIn: isRefresh ? refreshExpire : expire,
+    });
+  }
+
+  /**
+   * 注册
+   * @param phone
+   * @param captchaId
+   * @param password
+   * @param code
+   */
+  async register(
+    phone: string,
+    captchaId: string,
+    password: string,
+    code: string
+  ) {
+    this.logger.info(TAG, 'register', phone, captchaId, password, code);
+    // 1、检查图片验证码  2、发送短信验证码
+    const check = await this.baseSysLoginService.captchaCheck(captchaId, code);
+    if (!check) {
+      throw new CoolCommException('图片验证码错误');
+    }
+    const user = await this.userInfoEntity.findOneBy({ phone });
+    if (user) {
+      throw new CoolCommException('该手机号已注册');
+    }
+    await this.userInfoEntity.insert({
+      phone,
+      password: md5(password),
+      loginType: 2,
     });
   }
 }

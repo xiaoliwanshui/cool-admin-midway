@@ -15,7 +15,7 @@ import { DownloadEntity } from '../../entity/download';
   insertParam: ctx => {
     return {
       // 获得当前登录的后台用户ID，需要请求头传Authorization参数
-      createUserId: ctx.user.userId,
+      createUserId: ctx.user.id,
     };
   },
   pageQueryOp: {

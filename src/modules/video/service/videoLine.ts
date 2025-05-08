@@ -60,9 +60,12 @@ export class VideoLineService extends BaseService {
             file: trimmedUrl,
             sub_title: trimmedTitle,
             video_id: videoEntity.id,
+            video_name: videoEntity.title,
             tag: collectionEntity.param,
             sort: index,
             video_line_id: videoLineEntity.id,
+            collection_id: collectionEntity.id,
+            collection_name: collectionEntity.name,
           });
         }
       });
@@ -80,14 +83,15 @@ export class VideoLineService extends BaseService {
     try {
       // 插入或更新数据
       await this.videoLineEntity.insert({
-        name: collectionEntity.name,
+        collection_name: collectionEntity.name,
         tag: collectionEntity.param,
         video_id: videoEntity.id,
+        video_name: videoEntity.title,
+        collection_id: collectionEntity.id,
       });
       let result = await this.videoLineEntity.findOneBy({
-        name: collectionEntity.name,
-        tag: collectionEntity.param,
         video_id: videoEntity.id,
+        collection_id: collectionEntity.id,
       });
       let parseVideoList = this.parseVideoList(
         videoEntity,
@@ -105,17 +109,21 @@ export class VideoLineService extends BaseService {
     } catch (error) {
       // 更新数据
       await this.videoLineEntity.update(
-        { name: videoEntity.title, video_id: videoEntity.id },
         {
-          name: collectionEntity.name,
+          video_id: videoEntity.id,
+          collection_id: collectionEntity.id,
+        },
+        {
+          collection_name: collectionEntity.name,
           tag: collectionEntity.param,
           video_id: videoEntity.id,
+          video_name: videoEntity.title,
+          collection_id: collectionEntity.id,
         }
       );
       let result = await this.videoLineEntity.findOneBy({
-        name: collectionEntity.name,
-        tag: collectionEntity.param,
         video_id: videoEntity.id,
+        collection_id: collectionEntity.id,
       });
       let parseVideoList = this.parseVideoList(
         videoEntity,

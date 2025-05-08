@@ -102,4 +102,7 @@ export interface Line {
   tag: string;
   sort: number;
   video_line_id: number;
+  video_name: string;
+  collection_id: number;
+  collection_name: string;
 }

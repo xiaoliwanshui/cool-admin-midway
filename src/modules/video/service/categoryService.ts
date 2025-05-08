@@ -3,6 +3,8 @@ import { InjectEntityModel } from '@midwayjs/typeorm';
 import { Repository } from 'typeorm';
 import { CollectionCategoryEntity } from '../entity/collection_category';
 import axios from 'axios';
+import { DictInfoService } from '../../dict/service/info';
+import { DictInfoEntity } from '../../dict/entity/info';
 
 const TAG = 'CategoryService';
 
@@ -13,6 +15,9 @@ export class CategoryService {
 
   @Inject()
   logger: ILogger;
+
+  @Inject()
+  dictInfoService: DictInfoService;
 
   /**
    * 同步分类
@@ -27,13 +32,14 @@ export class CategoryService {
             parentId: item.type_pid,
             class_id: item.type_id,
             class_name: item.type_name,
-            resource_id: query.id,
+            collection_id: query.id,
+            collection_name: query.name,
           });
         });
 
         await Promise.all(savePromises);
         let data = await this.collectionCategoryEntity.findBy({
-          resource_id: query.id,
+          collection_id: query.id,
         });
         list = this.updateParentId(data);
       } else {
@@ -68,15 +74,38 @@ export class CategoryService {
 
   async saveCategory(category: any) {
     try {
+      this.logger.info(TAG, category);
       const res = await this.collectionCategoryEntity.insert({
         class_id: category.class_id || category.type_id,
         class_name: category.class_name || category.type_name,
         class_pid: category.parentId,
-        resource_id: category.resource_id,
+        collection_id: category.collection_id,
+        collection_name: category.collection_name,
       });
       return res;
     } catch (error) {
       this.logger.error(TAG, 'insert error data is has');
+    }
+  }
+
+  //实现一个快速匹配分类的函数
+  async matchCategory() {
+    //先过滤出所有sys_category_id为空的数据
+    const data = await this.collectionCategoryEntity.findBy({
+      sys_category_id: null,
+    });
+    let videoCategoryEntityList: DictInfoEntity[] = (
+      await this.dictInfoService.data(['video_category'])
+    )['video_category'];
+    //遍历data并判断data中的class_name是否和videoCategoryEntityList中的name相同，如果相同则更新sys_category_id为videoCategoryEntityList中的id
+    for (let i = 0; i < data.length; i++) {
+      for (let j = 0; j < videoCategoryEntityList.length; j++) {
+        if (data[i].class_name == videoCategoryEntityList[j].name) {
+          await this.collectionCategoryEntity.update(data[i].id, {
+            sys_category_id: videoCategoryEntityList[j].id,
+          });
+        }
+      }
     }
   }
 }

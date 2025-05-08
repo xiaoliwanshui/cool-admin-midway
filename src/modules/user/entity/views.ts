@@ -1,10 +1,11 @@
-import { Column, Entity } from 'typeorm';
+import { Column, Entity, Unique } from 'typeorm';
 import { BaseEntity } from '../../base/entity/base';
 
 /**
  * 文章信息
  */
 @Entity('user_views')
+@Unique(['type', 'associationId', 'createUserId'])
 export class ViewsEntity extends BaseEntity {
   @Column({ comment: '标题', nullable: true })
   title: string;

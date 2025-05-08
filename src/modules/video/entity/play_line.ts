@@ -10,11 +10,20 @@ export class PlayLineEntity extends BaseEntity {
   @Column({ comment: '影视ID', nullable: true, type: 'bigint' })
   video_id: number;
 
+  @Column({ comment: '影视名称', nullable: true })
+  video_name: string;
+
   @Column({ comment: '资源ID', nullable: true, type: 'bigint' })
   video_line_id: number;
 
   @Column({ comment: '名称', length: 256 })
   name: string;
+
+  @Column({ comment: '资源id', nullable: true })
+  collection_id: number;
+
+  @Column({ comment: '资源名称', nullable: true })
+  collection_name: string;
 
   @Column({ comment: '文件地址', nullable: true, length: 520 })
   file: string;
