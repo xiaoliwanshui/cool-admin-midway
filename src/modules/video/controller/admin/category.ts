@@ -1,5 +1,7 @@
 import { BaseController, CoolController } from '@cool-midway/core';
 import { CategoryEntity } from '../../entity/category';
+import { Inject, Post } from '@midwayjs/core';
+import { CategoryService } from '../../service/categoryService';
 
 @CoolController({
   api: ['add', 'delete', 'update', 'info', 'list', 'page'],
@@ -18,4 +20,16 @@ import { CategoryEntity } from '../../entity/category';
     },
   },
 })
-export class AdminCategoryEntityController extends BaseController {}
+export class AdminCategoryEntityController extends BaseController {
+  @Inject()
+  categoryService: CategoryService;
+
+  @Post('/match_category')
+  async matchCategory(): Promise<unknown> {
+    try {
+      return this.ok(await this.categoryService.matchCategory());
+    } catch (error) {
+      return this.fail(error);
+    }
+  }
+}

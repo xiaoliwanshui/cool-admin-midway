@@ -15,11 +15,8 @@ export class VideoSwiperEntity extends BaseEntity {
   @Column({ comment: '关联ID', nullable: true })
   relatedId: number;
 
-  @Column({ comment: 'appid', nullable: true })
-  appid: number;
-
-  @Column({ comment: '类型', nullable: true })
-  type: number;
+  @Column({ comment: 'category', nullable: true })
+  category: number;
 
   @Column({ comment: '排序', nullable: true, default: 0 })
   sort: number;

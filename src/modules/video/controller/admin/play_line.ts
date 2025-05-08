@@ -14,26 +14,8 @@ import { PlayLineEntity } from '../../entity/play_line';
     };
   },
   pageQueryOp: {
-    // select: ['a.*', ' b.title', 'a.name as line_name'],
-    fieldEq: [
-      { column: 'a.video_id', requestParam: 'video_id' },
-      { column: 'a.name', requestParam: 'name' },
-    ],
+    fieldEq: ['video_line_id', 'video_id', 'collection_id'],
     keyWordLikeFields: ['name'],
-    // join: [
-    //   {
-    //     entity: VideoEntity,
-    //     alias: 'b',
-    //     condition: 'a.video_id = b.id',
-    //     type: 'innerJoin',
-    //   },
-    //   {
-    //     entity: CollectionEntity,
-    //     alias: 'c',
-    //     condition: 'a.tag = c.tags',
-    //     type: 'innerJoin',
-    //   },
-    // ],
     addOrderBy: {
       sort: 'desc',
     },

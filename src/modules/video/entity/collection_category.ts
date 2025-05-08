@@ -5,10 +5,13 @@ import { BaseEntity } from '../../base/entity/base';
  * 分类映射表
  */
 @Entity('video_collection_category')
-@Unique(['class_id', 'resource_id'])
+@Unique(['class_id', 'collection_id'])
 export class CollectionCategoryEntity extends BaseEntity {
   @Column({ comment: '资源id', nullable: true })
-  resource_id: number;
+  collection_id: number;
+
+  @Column({ comment: '资源名称', nullable: true })
+  collection_name: string;
   @Column({ comment: '采集资源分类id', nullable: true })
   class_id: number;
   @Column({ comment: '采集资源分类名称', nullable: true })

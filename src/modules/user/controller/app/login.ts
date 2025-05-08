@@ -1,9 +1,9 @@
 import {
-  CoolController,
   BaseController,
+  CoolController,
+  CoolTag,
   CoolUrlTag,
   TagTypes,
-  CoolTag,
 } from '@cool-midway/core';
 import { Body, Get, Inject, Post, Query } from '@midwayjs/core';
 import { UserLoginService } from '../../service/login';
@@ -72,10 +72,11 @@ export class AppUserLoginController extends BaseController {
   async captcha(
     @Query('width') width: number,
     @Query('height') height: number,
-    @Query('color') color: string
+    @Query('color') color: string,
+    @Query('type') type: number
   ) {
     return this.ok(
-      await this.baseSysLoginService.captcha(width, height, color)
+      await this.baseSysLoginService.captcha(width, height, color, type)
     );
   }
 
@@ -102,5 +103,18 @@ export class AppUserLoginController extends BaseController {
     @Body('password') password: string
   ) {
     return this.ok(await this.userLoginService.password(phone, password));
+  }
+
+  @CoolTag(TagTypes.IGNORE_TOKEN)
+  @Post('/register', { summary: '验证码' })
+  async register(
+    @Body('phone') phone: string,
+    @Body('captchaId') captchaId: string,
+    @Body('password') password: string,
+    @Body('code') code: string
+  ) {
+    return this.ok(
+      await this.userLoginService.register(phone, captchaId, password, code)
+    );
   }
 }

@@ -34,4 +34,13 @@ export class AdminCollectionCategoryController extends BaseController {
       return this.fail(error);
     }
   }
+
+  @Post('/match_category')
+  async matchCategory(): Promise<unknown> {
+    try {
+      return this.ok(await this.categoryService.matchCategory());
+    } catch (error) {
+      return this.fail(error);
+    }
+  }
 }

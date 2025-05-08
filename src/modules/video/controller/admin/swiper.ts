@@ -15,7 +15,7 @@ import { VideoSwiperEntity } from '../../entity/swiper';
   },
   pageQueryOp: {
     keyWordLikeFields: ['title'],
-    fieldEq: ['status', 'type', 'appid'],
+    fieldEq: ['status', 'category'],
     addOrderBy: {
       createTime: 'desc',
     },

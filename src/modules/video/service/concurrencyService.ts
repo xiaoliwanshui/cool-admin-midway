@@ -47,7 +47,7 @@ export class ConcurrencyService {
     try {
       let collectionCategoryEntityList =
         await this.collectionCategoryEntity.findBy({
-          resource_id: collectionEntity.id,
+          collection_id: collectionEntity.id,
         });
       let areaEntityList: DictInfoEntity[] = (
         await this.dictInfoService.data(['area'])
@@ -182,7 +182,6 @@ export class ConcurrencyService {
   //实现一个提取字符串中数字的函数
   extractNumber(inputString: string): number {
     //判断inputString是不是一个number 如果是number类型就直接返回
-    this.logger.info(TAG, 'inputString', inputString);
     if (!isNaN(Number(inputString))) {
       return Number(inputString);
     }

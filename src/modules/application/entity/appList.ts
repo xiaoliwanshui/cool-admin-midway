@@ -4,7 +4,7 @@ import { BaseEntity } from '../../base/entity/base';
 /**
  * 文章信息
  */
-@Entity('app_info', { database: 'app' })
+@Entity('app_info')
 export class AppListEntity extends BaseEntity {
   @Column({ comment: '程序名' })
   name: string;
