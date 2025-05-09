@@ -1,5 +1,5 @@
 import { BaseEntity } from '../../base/entity/base';
-import { Column, Entity, Index } from 'typeorm';
+import { Column, Entity } from 'typeorm';
 
 /**
  * 通知信息
@@ -18,6 +18,10 @@ export class NoticeInfoEntity extends BaseEntity {
     default: 0,
   })
   type: number;
+
+  //摘要字段
+  @Column({ comment: '摘要', type: 'longtext' })
+  summary: string;
 
   @Column({ comment: '状态', dict: ['未发布', '已发布'], default: 0 })
   status: number;
