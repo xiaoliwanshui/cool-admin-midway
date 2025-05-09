@@ -1,6 +1,12 @@
-import { ALL, Config, Middleware } from '@midwayjs/core';
-import { NextFunction, Context } from '@midwayjs/koa';
-import { IMiddleware, Init, Inject } from '@midwayjs/core';
+import {
+  ALL,
+  Config,
+  IMiddleware,
+  Init,
+  Inject,
+  Middleware,
+} from '@midwayjs/core';
+import { Context, NextFunction } from '@midwayjs/koa';
 import * as jwt from 'jsonwebtoken';
 import * as _ from 'lodash';
 import { CoolCommException, CoolUrlTagData, TagTypes } from '@cool-midway/core';
@@ -56,7 +62,7 @@ export class UserMiddleware implements IMiddleware<Context, NextFunction> {
         } else {
           if (!ctx.user) {
             ctx.status = 401;
-            throw new CoolCommException('登录失效~');
+            throw new CoolCommException('登录失效~', 401);
           }
         }
       }
