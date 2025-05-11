@@ -24,10 +24,13 @@ export class AdminCollectionController extends BaseController {
 
   @CoolTag(TagTypes.IGNORE_TOKEN)
   @Post('/collection_day')
-  async collection(@Body() body): Promise<unknown> {
+  async collection(
+    @Body('params') params: any,
+    @Body('collection') collection: any
+  ): Promise<unknown> {
     try {
       return this.ok({
-        data: await this.collectionService.syncVideo(body),
+        data: await this.collectionService.syncVideo(collection, params),
       });
     } catch (error) {
       return this.fail(error);

@@ -5,9 +5,10 @@ import { ILogger, Inject, Provide } from '@midwayjs/core';
 import axios from 'axios';
 import { CollectionEntity } from '../entity/collection';
 import { CollectionCategoryEntity } from '../entity/collection_category';
-import { VideoParams } from '../bean/VideoParams';
+import { VIDEOPARAMS, VideoParams } from '../bean/VideoParams';
 import { ConcurrencyService } from '../service/concurrencyService';
 import { CategoryService } from '../service/categoryService';
+import { CollectionTaskTaskEntity } from '../entity/collection_task';
 
 const TAG = 'CollectionService';
 
@@ -24,8 +25,14 @@ export class CollectionService extends BaseService {
   @Inject()
   categoryService: CategoryService;
 
+  @InjectEntityModel(CollectionTaskTaskEntity)
+  collectionTaskTaskEntity: Repository<CollectionTaskTaskEntity>;
+
   //采集资源
-  async syncVideo(collectionEntity: CollectionEntity): Promise<any> {
+  async syncVideo(
+    collectionEntity: CollectionEntity,
+    params: VIDEOPARAMS
+  ): Promise<any> {
     try {
       let defaultParams = new VideoParams();
       let result = await axios.get(
@@ -38,12 +45,16 @@ export class CollectionService extends BaseService {
       const limit: number = result.data.limit;
       const total: number = result.data.total;
       result = null; // 显式释放引用
+      let page = 0;
+      if (params && params.page) {
+        page = params.page;
+      }
 
       if (collectionEntity.data_method == 1) {
-        for (let i = 1; i <= pagecount; i++) {
+        for (page; page <= pagecount; page++) {
           let videoParams: VideoParams = new VideoParams();
-          videoParams.setPg(i);
-          videoParams.setPage(i);
+          videoParams.setPg(page);
+          videoParams.setPage(page);
           videoParams.setPs(limit);
           videoParams.setPagesize(limit);
           videoParams.setPagecount(pagecount);

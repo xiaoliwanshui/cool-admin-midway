@@ -146,8 +146,10 @@ export class VideosService extends BaseService {
       });
       // 显式释放对象引用;
       this.logger.info(TAG, `update ${videoEntity.title} success`);
-      // 显式释放对象引用
-      await this.VideoLineService.insert(result, collectionEntity);
+      if (result) {
+        // 显式释放对象引用
+        await this.VideoLineService.insert(result, collectionEntity);
+      }
       collectionEntity = null;
       videoEntity = null;
       return result;

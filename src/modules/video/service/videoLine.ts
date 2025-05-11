@@ -125,19 +125,21 @@ export class VideoLineService extends BaseService {
         video_id: videoEntity.id,
         collection_id: collectionEntity.id,
       });
-      let parseVideoList = this.parseVideoList(
-        videoEntity,
-        collectionEntity,
-        result
-      );
-      parseVideoList.forEach(item => {
-        this.playLineService.insert(item);
-      });
-      this.logger.info(TAG, `update ${videoEntity.title} success`);
-      // 显式释放对象引用
-      videoEntity = null;
-      parseVideoList = null;
-      result = null;
+      if (result) {
+        let parseVideoList = this.parseVideoList(
+          videoEntity,
+          collectionEntity,
+          result
+        );
+        parseVideoList.forEach(item => {
+          this.playLineService.insert(item);
+        });
+        this.logger.info(TAG, `update ${videoEntity.title} success`);
+        // 显式释放对象引用
+        videoEntity = null;
+        parseVideoList = null;
+        result = null;
+      }
     }
   }
 }
