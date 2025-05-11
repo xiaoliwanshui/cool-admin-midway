@@ -12,6 +12,8 @@ import { VideosService } from './videos';
 import { CoolCommException } from '@cool-midway/core';
 import { DictInfoService } from '../../dict/service/info';
 import { DictInfoEntity } from '../../dict/entity/info';
+import { CollectionTaskTaskEntity } from '../entity/collection_task';
+import * as moment from 'moment';
 
 const promiseLimit = require('promise-limit');
 
@@ -27,6 +29,9 @@ export class ConcurrencyService {
   @InjectEntityModel(VideoEntity)
   videoEntity: Repository<VideoEntity>;
 
+  @InjectEntityModel(CollectionTaskTaskEntity)
+  collectionTaskTaskEntity: Repository<CollectionTaskTaskEntity>;
+
   @Inject()
   videosService: VideosService;
 
@@ -34,6 +39,8 @@ export class ConcurrencyService {
   dictInfoService: DictInfoService;
 
   private promiseLimit = promiseLimit(15);
+
+  private collectionTaskTaskEntityId = 0;
 
   //同步结束后的任务
   async syncVideoPageListEnd() {
@@ -45,6 +52,18 @@ export class ConcurrencyService {
     videoParamsArray: VideoParams[][]
   ): Promise<any> {
     try {
+      this.collectionTaskTaskEntityId = (
+        await this.collectionTaskTaskEntity.insert({
+          taskName: collectionEntity.name as string,
+          taskType: 1,
+          taskStatus: 1,
+          collectionSource: JSON.stringify(collectionEntity),
+          //获取 当前时间
+          startDate: moment().format('YYYY-MM-DD HH:mm:ss'),
+          endDate: moment().format('YYYY-MM-DD HH:mm:ss'),
+          remark: '采集任务开始',
+        })
+      )['identifiers'][0].id;
       let collectionCategoryEntityList =
         await this.collectionCategoryEntity.findBy({
           collection_id: collectionEntity.id,
@@ -64,14 +83,32 @@ export class ConcurrencyService {
             return this.promiseLimit(() =>
               this.syncVideoPage(collectionEntity, item)
             )
-              .then(result => ({ success: true, data: result }))
-              .catch(error => ({ success: false, error }));
+              .then(result => {
+                //删除一条item的数据
+                items.splice(videoParamsArray.indexOf(item as any), 1);
+                return { success: true, data: result };
+              })
+              .catch(error => {
+                this.logger.error(
+                  TAG,
+                  ` 采集失败 Promise.all syncVideoPageList error: ${error.message}`
+                );
+                //删除一条item的数据
+                items.splice(videoParamsArray.indexOf(item as any), 1);
+                return { success: false, error };
+              });
           })
         ).then(results => {
+          //删除一条items的数据
+          videoParamsArray.splice(videoParamsArray.indexOf(items), 1);
           if (results.length > 0) {
             let videoList: VideoBean[] = [];
             results.forEach(result => {
               if (result.success && result.data) {
+                if (!result.data.list) {
+                  this.logger.error(TAG, 'result.data.list 是null 采集失败');
+                  return;
+                }
                 result.data.list.forEach(item => {
                   let video: VideoBean = new VideoBean();
                   const category = this.filterCategory(
@@ -90,7 +127,10 @@ export class ConcurrencyService {
                     this.logger.error(
                       `分类不存在：${item.type_name} ${item.type_id}`
                     );
-                    //跳过该次
+                    result.data.list.splice(
+                      result.data.list.indexOf(item as any),
+                      1
+                    );
                     return;
                   }
                   video.setCategoryId(category.sys_category_id);
@@ -163,16 +203,25 @@ export class ConcurrencyService {
                   video.setPlayUrlPutIn(0);
                   videoList.push(video);
                   video = null; // 显式释放引用
+                  result.data.list.splice(
+                    result.data.list.indexOf(item as any),
+                    1
+                  );
                 });
                 this.saveVideo(videoList, collectionEntity);
-                videoList = []; // 显式释放引用
+                result = null;
+                videoList.length = 0; // 显式释放引用
               } else {
+                result = null;
                 // Handle error case
               }
+              results.splice(videoParamsArray.indexOf(result as any), 1);
             });
+            results.length = 0;
           }
         });
       });
+      videoParamsArray.length = 0;
     } catch (error) {
       this.logger.error(TAG, error);
       return error;
@@ -239,11 +288,32 @@ export class ConcurrencyService {
         collectionEntity.address + '?' + params.getQueryString()
       );
       if (params.getPagecount() === params.getPage()) {
+        await this.collectionTaskTaskEntity.update(
+          this.collectionTaskTaskEntityId,
+          {
+            taskStatus: 2,
+            execResult: JSON.stringify(result.data),
+            execParams: JSON.stringify(params.getObject()),
+            endDate: moment().format('YYYY-MM-DD HH:mm:ss'),
+          }
+        );
         this.logger.info(TAG, 'request page task finished');
-      } else {
       }
+
       return result.data;
     } catch (error) {
+      this.logger.info(TAG, `request error ${JSON.stringify(error)}`);
+      await this.collectionTaskTaskEntity.update(
+        this.collectionTaskTaskEntityId,
+        {
+          taskStatus: 3,
+          execResult: JSON.stringify(error),
+          //将params转成JSON对象
+          execParams: JSON.stringify(params.getObject()),
+          endDate: moment().format('YYYY-MM-DD HH:mm:ss'),
+          errorMessage: JSON.stringify(error),
+        }
+      );
       return {};
     }
   }

@@ -1,4 +1,4 @@
-interface VIDEOPARAMS {
+export interface VIDEOPARAMS {
   srid?: number;
   ac?: string;
   h?: number;
@@ -139,6 +139,23 @@ export class VideoParams {
 
   getPagecount(): number {
     return this.pagecount;
+  }
+
+  getObject(): VIDEOPARAMS {
+    return {
+      srid: this.srid,
+      ac: this.ac,
+      h: this.h,
+      ids: this.ids,
+      limit: this.limit,
+      op: this.op,
+      page: this.page,
+      pagesize: this.pagesize,
+      pg: this.pg,
+      ps: this.ps,
+      t: this.t,
+      wd: this.wd,
+    };
   }
 
   /**
