@@ -46,8 +46,16 @@ export class CollectionService extends BaseService {
       const total: number = result.data.total;
       result = null; // 显式释放引用
       let page = 0;
-      if (params && params.page) {
-        page = params.page;
+      let op = 'all';
+      let h = 0;
+      if (params) {
+        if (params.page) {
+          page = params.page;
+        }
+        if (params.op) {
+          op = params.op;
+          h = params.h;
+        }
       }
 
       if (collectionEntity.data_method == 1) {
@@ -59,6 +67,10 @@ export class CollectionService extends BaseService {
           videoParams.setPagesize(limit);
           videoParams.setPagecount(pagecount);
           videoParams.setAc('detail');
+          videoParams.setOp(op);
+          if (h) {
+            videoParams.setH(h);
+          }
           videoParams.setTotal(total);
           videoParamsList.push(videoParams);
           videoParams = null; // 显式释放引用

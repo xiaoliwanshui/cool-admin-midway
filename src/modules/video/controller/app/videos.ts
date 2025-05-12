@@ -26,6 +26,17 @@ import { Body, Inject, Post } from '@midwayjs/core';
   pageQueryOp: {
     keyWordLikeFields: ['title'],
     fieldEq: ['category_id', 'cycle', 'year', 'language', 'region'],
+    where: ctx => {
+      const { directors, actors } = ctx.request.body;
+      return [
+        [
+          'directors like :directors',
+          { directors: `%${directors}%` },
+          directors,
+        ],
+        ['actors like :actors', { actors: `%${actors}%` }, actors],
+      ];
+    },
     addOrderBy: {
       updateTime: 'desc',
     },
