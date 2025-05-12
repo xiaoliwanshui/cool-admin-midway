@@ -20,6 +20,7 @@ import * as cool from '@cool-midway/core';
 import * as upload from '@midwayjs/upload';
 // import * as task from '@cool-midway/task';
 // import * as rpc from '@cool-midway/rpc';
+import * as prometheus from '@midwayjs/prometheus'; // 导入模块
 
 @Configuration({
   imports: [
@@ -47,6 +48,7 @@ import * as upload from '@midwayjs/upload';
       component: info,
       enabledEnvironment: ['local', 'prod'],
     },
+    prometheus,
   ],
   importConfigs: [
     {
