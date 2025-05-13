@@ -16,6 +16,12 @@ export class ViewsEntity extends BaseEntity {
   @Column({ comment: '关联id' })
   associationId: number;
 
+  @Column({ comment: '视频时长' })
+  duration: number;
+
+  @Column({ comment: '观看时长' })
+  viewingDuration: number;
+
   @Column({ comment: '封面', nullable: true, type: 'text' })
   cover: string;
 }
