@@ -9,6 +9,7 @@ import { BaseEntity } from '../../base/entity/base';
 export class VideoEntity extends BaseEntity {
   @Column({ comment: '影片标题', length: 191, nullable: true })
   title: string;
+  //添加索引
   @Column({ comment: '分类', nullable: true })
   category_id: number;
   @Column({ comment: '影片封面图', type: 'text', nullable: true })

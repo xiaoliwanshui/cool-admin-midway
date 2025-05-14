@@ -72,11 +72,10 @@ export class AppUserLoginController extends BaseController {
   async captcha(
     @Query('width') width: number,
     @Query('height') height: number,
-    @Query('color') color: string,
-    @Query('type') type: number
+    @Query('color') color: string
   ) {
     return this.ok(
-      await this.baseSysLoginService.captcha(width, height, color, type)
+      await this.baseSysLoginService.captcha(width, height, color)
     );
   }
 
@@ -106,15 +105,11 @@ export class AppUserLoginController extends BaseController {
   }
 
   @CoolTag(TagTypes.IGNORE_TOKEN)
-  @Post('/register', { summary: '验证码' })
-  async register(
+  @Post('/app_login', { summary: '验证码' })
+  async AppLogin(
     @Body('phone') phone: string,
-    @Body('captchaId') captchaId: string,
-    @Body('password') password: string,
-    @Body('code') code: string
+    @Body('password') password: string
   ) {
-    return this.ok(
-      await this.userLoginService.register(phone, captchaId, password, code)
-    );
+    return this.ok(await this.userLoginService.appLogin(phone, password));
   }
 }

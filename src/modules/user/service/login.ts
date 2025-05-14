@@ -319,26 +319,19 @@ export class UserLoginService extends BaseService {
    * @param password
    * @param code
    */
-  async register(
-    phone: string,
-    captchaId: string,
-    password: string,
-    code: string
-  ) {
-    this.logger.info(TAG, 'register', phone, captchaId, password, code);
-    // 1、检查图片验证码  2、发送短信验证码
-    const check = await this.baseSysLoginService.captchaCheck(captchaId, code);
-    if (!check) {
-      throw new CoolCommException('图片验证码错误');
-    }
+  async appLogin(phone: string, password: string) {
     const user = await this.userInfoEntity.findOneBy({ phone });
     if (user) {
-      throw new CoolCommException('该手机号已注册');
+      return this.password(phone, password);
+    } else {
+      await this.userInfoEntity.insert({
+        phone,
+        password: md5(password),
+        nickName: phone,
+        loginType: 2,
+        unionid: phone,
+      });
+      return this.password(phone, password);
     }
-    await this.userInfoEntity.insert({
-      phone,
-      password: md5(password),
-      loginType: 2,
-    });
   }
 }
