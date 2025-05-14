@@ -22,6 +22,9 @@ export class ViewsEntity extends BaseEntity {
   @Column({ comment: '观看时长' })
   viewingDuration: number;
 
+  @Column({ comment: '当前观看索引' })
+  videoIndex: number;
+
   @Column({ comment: '封面', nullable: true, type: 'text' })
   cover: string;
 }

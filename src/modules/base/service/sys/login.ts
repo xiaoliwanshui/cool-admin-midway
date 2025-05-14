@@ -109,7 +109,7 @@ export class BaseSysLoginService extends BaseService {
    * @param width 宽
    * @param height 高
    */
-  async captcha(width = 150, height = 50, color = '#fff', type = 0) {
+  async captcha(width = 150, height = 50, color = '#fff') {
     const svg = svgCaptcha.create({
       // ignoreChars: 'qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM',
       width,
@@ -135,9 +135,6 @@ export class BaseSysLoginService extends BaseService {
     rpList.forEach(rp => {
       result.data = result.data['replaceAll'](rp, color);
     });
-    if (type) {
-      return result;
-    }
     // Convert SVG to base64
     const base64Data = Buffer.from(result.data).toString('base64');
     result.data = `data:image/svg+xml;base64,${base64Data}`;

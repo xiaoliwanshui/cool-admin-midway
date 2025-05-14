@@ -26,7 +26,11 @@ export class UserInfoEntity extends BaseEntity {
   @Column({ comment: '状态', dict: ['禁用', '正常', '已注销'], default: 1 })
   status: number;
 
-  @Column({ comment: '登录方式', dict: ['小程序', '公众号', 'H5'], default: 0 })
+  @Column({
+    comment: '登录方式',
+    dict: ['小程序', '公众号', 'H5', 'APP'],
+    default: 0,
+  })
   loginType: number;
 
   @Column({ comment: '密码', nullable: true })
