@@ -10,6 +10,7 @@ import { ILogger, Inject, Provide } from '@midwayjs/core';
 import { CollectionEntity } from '../entity/collection';
 import { VideoLineService } from './videoLine';
 import { PlayLineService } from './play_line';
+import { PlayLineEntity } from '../entity/play_line';
 
 const TAG = 'VideosService';
 
@@ -23,6 +24,9 @@ export class VideosService extends BaseService {
 
   @InjectEntityModel(VideoAlbum)
   videoAlbum: Repository<VideoAlbum>;
+
+  @InjectEntityModel(PlayLineEntity)
+  playLineEntity: Repository<PlayLineEntity>;
 
   @InjectEntityModel(WeekEntity)
   weekEntity: Repository<WeekEntity>;

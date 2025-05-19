@@ -5,6 +5,8 @@ import {
   TagTypes,
 } from '@cool-midway/core';
 import { ViewsEntity } from '../../entity/views';
+import { ViewsService } from '../../service/views';
+import { Inject } from '@midwayjs/core';
 
 /**
  * 商品
@@ -13,8 +15,8 @@ import { ViewsEntity } from '../../entity/views';
 @CoolController({
   api: ['info', 'list', 'page', 'add', 'delete'],
   entity: ViewsEntity,
+  service: ViewsService,
   insertParam: ctx => {
-    console.log(ctx.user);
     return {
       // 获得当前登录的后台用户ID，需要请求头传Authorization参数
       createUserId: ctx.user.id,
@@ -30,6 +32,8 @@ import { ViewsEntity } from '../../entity/views';
   value: ['page', 'info'],
 })
 export class AppViewsController extends BaseController {
+  @Inject()
+  viewsService: ViewsService;
   /**
    * 其他接口
    */

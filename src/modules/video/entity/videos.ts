@@ -111,7 +111,7 @@ export class VideoEntity extends BaseEntity {
   })
   note: string;
   @Column({
-    comment: '连载状态',
+    comment: '年份',
     length: 256,
     nullable: true,
   })
@@ -169,6 +169,12 @@ export class VideoEntity extends BaseEntity {
     type: 'text',
   })
   horizontal_poster: string;
+  @Column({
+    comment: '备注',
+    nullable: true,
+    type: 'text',
+  })
+  remarks: string;
   @Column({
     comment: '竖屏海报',
     nullable: true,
@@ -254,7 +260,6 @@ export class VideoEntity extends BaseEntity {
     nullable: true,
   })
   trailer_time: number;
-  category_child_id_status: number;
   @Column({
     comment: '采集的源地址',
     nullable: true,
@@ -262,9 +267,16 @@ export class VideoEntity extends BaseEntity {
   })
   play_url: string;
   @Column({
-    comment: '播放地址是否入库1-已经入库',
+    comment: '播放地址是否入库1-1已经入库 0未入库',
     nullable: true,
+    default: 0, // 默认值是0，
     type: 'int',
   })
   play_url_put_in: number;
+
+  @Column({ comment: '资源id', nullable: true })
+  collection_id: number;
+
+  @Column({ comment: '资源名称', nullable: true, length: 256 })
+  collection_name: string;
 }

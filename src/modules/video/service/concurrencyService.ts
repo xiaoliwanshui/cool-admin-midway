@@ -110,7 +110,6 @@ export class ConcurrencyService {
                   return;
                 }
                 result.data.list.forEach(item => {
-                  let video: VideoBean = new VideoBean();
                   const category = this.filterCategory(
                     item.type_id,
                     collectionCategoryEntityList
@@ -133,74 +132,10 @@ export class ConcurrencyService {
                     );
                     return;
                   }
-                  video.setCategoryId(category.sys_category_id);
-                  video.setTitle(item.vod_name || item.name);
-                  video.setAlias(item.vod_alias || item.alias);
-                  video.setSurfacePlot(
-                    item.vod_surface_plot ||
-                      item.surface_plot ||
-                      item.pic ||
-                      item.vod_pic
-                  );
-                  video.setDirectors(item.vod_directors || item.director);
-                  video.setActors(item.vod_actors || item.actors);
-                  video.setStatus(item.vod_status || item.status);
-                  video.setEnd(item.vod_isEnd || item.isEnd);
-                  video.setIntroduce(
-                    item.vod_introduce ||
-                      item.introduce ||
-                      item.des ||
-                      item.vod_content
-                  );
-                  video.setNumber(item.vod_number || item.number);
-                  video.setTrailerTime(
-                    item.vod_release_time || item.release_time
-                  );
-                  video.setShelfAt(item.vod_shelf_time || item.shelf_time);
-                  video.setDuration(item.vod_duration || item.duration);
-                  video.setImdbScore(item.vod_imdb_score || item.imdb_score);
-                  video.setDoubanScore(
-                    item.vod_douban_score || item.douban_score
-                  );
-                  video.setUnit(item.vod_unit || item.unit);
-                  video.setLanguage(language.id);
-                  video.setRegion(area.id);
-                  video.setYear(item.vod_year || item.year);
-                  video.setDoubanScoreId(item.vod_douban_id);
-                  video.setDoubanScore(item.vod_douban_score);
-                  video.setActors(item.vod_actor);
-                  video.setDirectors(item.vod_director);
-                  video.setPlayUrl(item.vod_play_url || item.play_url);
-                  video.setPopularityDay(
-                    item.vod_popularity_day ||
-                      item.popularity_day ||
-                      item.vod_hits_day
-                  );
-                  video.setPopularityWeek(
-                    item.vod_popularity_week ||
-                      item.popularity_week ||
-                      item.vod_hits_week
-                  );
-                  video.setPopularityMonth(
-                    item.vod_popularity_month ||
-                      item.popularity_month ||
-                      item.vod_hits_month
-                  );
-                  video.setHorizontalPoster(
-                    item.vod_pic_thumb || item.pic || item.vod_pic
-                  );
-                  video.setVerticalPoster(
-                    item.vod_vertical_poster || item.vertical_poster || item.pic
-                  );
-                  video.setNote(item.vod_note || item.note);
-                  video.setCycle(item.vod_cycle || item.cycle);
-                  video.setTitlesTime(0);
-                  video.setTotal(
-                    this.extractNumber(
-                      item.vod_total || item.total || item.note || '0'
-                    )
-                  );
-                  video.setPlayUrlPutIn(0);
+                  item.categoryId = category.sys_category_id;
+                  item.languageId = language.id;
+                  item.region = area.id;
+                  let video: VideoBean = new VideoBean(item);
                   videoList.push(video);
                   video = null; // 显式释放引用
                   result.data.list.splice(

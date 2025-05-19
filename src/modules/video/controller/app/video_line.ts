@@ -24,7 +24,15 @@ import { VideoLineEntity } from '../../entity/video_line';
     console.log(data);
   },
   pageQueryOp: {
-    fieldEq: ['video_id', 'tag', 'site_id', 'player_id'],
+    fieldEq: [
+      'video_id',
+      'tag',
+      'site_id',
+      'player_id',
+      'video_name',
+      'collection_name',
+      'collection_id',
+    ],
     addOrderBy: {
       sort: 'desc',
     },

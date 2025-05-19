@@ -9,6 +9,8 @@ import { VIDEOPARAMS, VideoParams } from '../bean/VideoParams';
 import { ConcurrencyService } from '../service/concurrencyService';
 import { CategoryService } from '../service/categoryService';
 import { CollectionTaskTaskEntity } from '../entity/collection_task';
+import { VideoEntity } from '../entity/videos';
+import { VideoLineService } from './videoLine';
 
 const TAG = 'CollectionService';
 
@@ -24,9 +26,42 @@ export class CollectionService extends BaseService {
   concurrencyService: ConcurrencyService;
   @Inject()
   categoryService: CategoryService;
+  @InjectEntityModel(VideoEntity)
+  videoEntity: Repository<VideoEntity>;
+  @Inject()
+  VideoLineService: VideoLineService;
 
   @InjectEntityModel(CollectionTaskTaskEntity)
   collectionTaskTaskEntity: Repository<CollectionTaskTaskEntity>;
+
+  async day(id: number) {
+    const collectionEntity = await this.collectionEntity.findOneBy({ id });
+    await this.syncVideo(collectionEntity, {
+      op: 'day',
+      h: 24,
+    });
+  }
+
+  async week(id: number) {
+    const collectionEntity = await this.collectionEntity.findOneBy({ id });
+    await this.syncVideo(collectionEntity, {
+      op: 'week',
+      h: 24 * 7,
+    });
+  }
+
+  async checkVideoLine() {
+    const find = this.videoEntity.createQueryBuilder();
+    find.where('play_url_put_in = :play_url_put_in', { play_url_put_in: 0 });
+    const data = await this.entityRenderPage(find, { page: 1, size: 10 });
+    for (const videoEntity of data.list) {
+      let collectionEntity = await this.collectionEntity.findOneBy({
+        id: videoEntity.collection_id,
+      });
+      await this.VideoLineService.insert(videoEntity, collectionEntity);
+    }
+    //循环videoEntityList 根据
+  }
 
   //采集资源
   async syncVideo(

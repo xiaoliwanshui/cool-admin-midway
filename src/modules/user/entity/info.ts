@@ -10,7 +10,7 @@ export class UserInfoEntity extends BaseEntity {
   @Column({ comment: '登录唯一ID', nullable: true })
   unionid: string;
 
-  @Column({ comment: '头像', nullable: true })
+  @Column({ comment: '头像', nullable: true, type: 'longtext' })
   avatarUrl: string;
 
   @Column({ comment: '昵称', nullable: true })

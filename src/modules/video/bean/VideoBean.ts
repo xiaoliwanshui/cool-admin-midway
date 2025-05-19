@@ -54,6 +54,7 @@ interface VIDEOBEAN {
   douban_score_id?: null | number;
   album_id?: null | number;
   douban_score?: number;
+  remarks?: string;
 }
 
 export class VideoBean {
@@ -113,6 +114,82 @@ export class VideoBean {
   private douban_score_id?: null | number;
   private album_id?: null | number;
   private douban_score?: number;
+  private collection_id?: number;
+  private collection_name?: string;
+  private remarks?: string;
+
+  constructor(resources?: any) {
+    this.setCategoryId(resources.category_id);
+    this.setTitle(resources.vod_name || resources.name);
+    this.setAlias(resources.vod_alias || resources.alias);
+    this.setRemarks(resources.vod_remarks || resources.remarks);
+    this.setSurfacePlot(
+      resources.vod_surface_plot ||
+        resources.surface_plot ||
+        resources.pic ||
+        resources.vod_pic
+    );
+    this.setDirectors(resources.vod_directors || resources.director);
+    this.setActors(resources.vod_actors || resources.actors);
+    this.setStatus(resources.vod_status || resources.status);
+    this.setEnd(resources.vod_isEnd || resources.isEnd);
+    this.setCollectionName(resources.collectionName);
+    this.setCollectionId(resources.id);
+    this.setIntroduce(
+      resources.vod_introduce ||
+        resources.introduce ||
+        resources.des ||
+        resources.vod_content
+    );
+    this.setNumber(resources.vod_number || resources.number);
+    this.setTrailerTime(resources.vod_release_time || resources.release_time);
+    this.setShelfAt(resources.vod_shelf_time || resources.shelf_time);
+    this.setDuration(resources.vod_duration || resources.duration);
+    this.setImdbScore(resources.vod_imdb_score || resources.imdb_score);
+    this.setDoubanScore(resources.vod_douban_score || resources.douban_score);
+    this.setUnit(resources.vod_unit || resources.unit);
+
+    this.setLanguage(resources.language);
+    this.setRegion(resources.area);
+    this.setYear(resources.vod_year || resources.year);
+    this.setDoubanScoreId(resources.vod_douban_id);
+    this.setDoubanScore(resources.vod_douban_score);
+    this.setActors(resources.vod_actor);
+    this.setDirectors(resources.vod_director);
+    this.setPlayUrl(resources.vod_play_url || resources.play_url);
+    this.setPopularityDay(
+      resources.vod_popularity_day ||
+        resources.popularity_day ||
+        resources.vod_hits_day
+    );
+    this.setPopularityWeek(
+      resources.vod_popularity_week ||
+        resources.popularity_week ||
+        resources.vod_hits_week
+    );
+    this.setPopularityMonth(
+      resources.vod_popularity_month ||
+        resources.popularity_month ||
+        resources.vod_hits_month
+    );
+    this.setHorizontalPoster(
+      resources.vod_pic_thumb || resources.pic || resources.vod_pic
+    );
+    this.setVerticalPoster(
+      resources.vod_vertical_poster ||
+        resources.vertical_poster ||
+        resources.pic
+    );
+    this.setNote(resources.vod_note || resources.note);
+    this.setCycle(resources.vod_cycle || resources.cycle);
+    this.setTitlesTime(0);
+    this.setTotal(
+      this.extractNumber(
+        resources.vod_total || resources.total || resources.note || '0'
+      )
+    );
+    this.setPlayUrlPutIn(0);
+  }
 
   getTitle(): string {
     return this.title;
@@ -131,6 +208,17 @@ export class VideoBean {
   setCategoryId(value: number): void {
     if (typeof value === 'number' && value >= 0) {
       this.category_id = value;
+    }
+  }
+
+  //remarks
+  getRemarks(): string {
+    return this.remarks;
+  }
+
+  setRemarks(value: string): void {
+    if (typeof value === 'string' && value.trim() !== '') {
+      this.remarks = value;
     }
   }
 
@@ -251,6 +339,17 @@ export class VideoBean {
   setIntroduce(value: string): void {
     if (typeof value === 'string' && value.trim() !== '') {
       this.introduce = value;
+    }
+  }
+
+  //collection_name
+  getCollectionName(): string {
+    return this.collection_name;
+  }
+
+  setCollectionName(value: string): void {
+    if (typeof value === 'string' && value.trim() !== '') {
+      this.collection_name = value;
     }
   }
 
@@ -514,6 +613,17 @@ export class VideoBean {
     }
   }
 
+  //collection_id
+  getCollectionId(): number {
+    return this.collection_id;
+  }
+
+  setCollectionId(value: number): void {
+    if (typeof value === 'number' && value >= 0) {
+      this.collection_id = value;
+    }
+  }
+
   getWatch(): number {
     return this.watch;
   }
@@ -662,6 +772,25 @@ export class VideoBean {
     if (typeof value === 'number' && value >= 0) {
       this.douban_score = value;
     }
+  }
+
+  //实现一个提取字符串中数字的函数
+  extractNumber(inputString: string): number {
+    //判断inputString是不是一个number 如果是number类型就直接返回
+    if (!isNaN(Number(inputString))) {
+      return Number(inputString);
+    }
+    // 使用正则表达式匹配数字
+    const regex = /\d+/g;
+    const matches = inputString.match(regex);
+
+    // 如果匹配到数字，返回第一个匹配的数字
+    if (matches && matches.length > 0) {
+      return parseInt(matches[0]);
+    }
+
+    // 如果没有匹配到数字，返回 NaN
+    return NaN;
   }
 
   /**
