@@ -19,9 +19,15 @@ import { PlayLineEntity } from '../../entity/play_line';
     };
   },
   pageQueryOp: {
-    fieldEq: ['video_line_id', 'video_id', 'collection_id'],
+    fieldEq: [
+      'video_line_id',
+      'video_id',
+      'video_name',
+      'collection_id',
+      'collection_name',
+    ],
     addOrderBy: {
-      sort: 'desc',
+      sort: 'asc',
     },
   },
 })

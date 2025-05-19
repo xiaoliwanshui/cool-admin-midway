@@ -328,6 +328,8 @@ export class UserLoginService extends BaseService {
         phone,
         password: md5(password),
         nickName: phone,
+        avatarUrl:
+          'http://127.0.0.1:8001/upload/20250514/7abeac6e56104ef38f33ac6d648f66a4_1. Police.png',
         loginType: 2,
         unionid: phone,
       });

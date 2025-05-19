@@ -22,7 +22,7 @@ import { Body, Inject, Post } from '@midwayjs/core';
   },
   pageQueryOp: {
     keyWordLikeFields: ['title'],
-    fieldEq: ['category_id', 'year', 'language', 'region'],
+    fieldEq: ['category_id', 'year', 'language', 'region', 'play_url_put_in'],
     addOrderBy: {
       updateTime: 'desc',
     },
