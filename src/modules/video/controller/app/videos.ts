@@ -38,7 +38,7 @@ import { Body, Inject, Post } from '@midwayjs/core';
       ];
     },
     addOrderBy: {
-      updateTime: 'desc',
+      year: 'desc',
     },
   },
 })
