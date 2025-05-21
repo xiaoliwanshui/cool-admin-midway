@@ -2,7 +2,7 @@ import { BaseService } from '@cool-midway/core';
 import { InjectEntityModel } from '@midwayjs/typeorm';
 import { Repository } from 'typeorm';
 import { VideoEntity } from '../entity/videos';
-import { AlbumEntity } from '../entity/album';
+import { VideoAlbumEntity } from '../entity/album';
 import { VideoAlbum } from '../entity/album_video';
 import { VideoWeekEntity } from '../entity/week_video';
 import { WeekEntity } from '../entity/week';
@@ -19,8 +19,8 @@ export class VideosService extends BaseService {
   @InjectEntityModel(VideoEntity)
   videoEntity: Repository<VideoEntity>;
 
-  @InjectEntityModel(AlbumEntity)
-  albumEntity: Repository<AlbumEntity>;
+  @InjectEntityModel(VideoAlbumEntity)
+  albumEntity: Repository<VideoAlbumEntity>;
 
   @InjectEntityModel(VideoAlbum)
   videoAlbum: Repository<VideoAlbum>;

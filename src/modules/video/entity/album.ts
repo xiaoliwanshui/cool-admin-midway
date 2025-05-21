@@ -5,7 +5,7 @@ import { BaseEntity } from '../../base/entity/base';
  * 文章信息
  */
 @Entity('video_album')
-export class AlbumEntity extends BaseEntity {
+export class VideoAlbumEntity extends BaseEntity {
   @Column({ comment: '类型 1影片 2名人 3文章', nullable: true })
   title: string;
 

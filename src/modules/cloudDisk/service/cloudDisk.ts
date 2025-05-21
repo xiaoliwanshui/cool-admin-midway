@@ -1,7 +1,7 @@
 import { BaseService } from '@cool-midway/core';
 import { InjectEntityModel } from '@midwayjs/typeorm';
 import { In, Repository } from 'typeorm';
-import { AlbumEntity } from '../entity/album';
+import { CloudDiskAlbumEntity } from '../entity/album';
 import { CloudDiskEntity } from '../entity/cloudDisk';
 import { AlbumCloudDiskEntity } from '../entity/album_cloudDisk';
 
@@ -12,8 +12,8 @@ export class CloudDiskService extends BaseService {
   @InjectEntityModel(CloudDiskEntity)
   cloudDiskEntity: Repository<CloudDiskEntity>;
 
-  @InjectEntityModel(AlbumEntity)
-  albumEntity: Repository<AlbumEntity>;
+  @InjectEntityModel(CloudDiskAlbumEntity)
+  albumEntity: Repository<CloudDiskAlbumEntity>;
 
   @InjectEntityModel(AlbumCloudDiskEntity)
   albumCloudDiskEntity: Repository<AlbumCloudDiskEntity>;

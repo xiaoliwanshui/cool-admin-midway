@@ -2,6 +2,7 @@ import { CoolConfig } from '@cool-midway/core';
 import { MidwayConfig } from '@midwayjs/core';
 import { entities } from '../entities';
 import { TenantSubscriber } from '../modules/base/db/tenant';
+import { redisStore } from 'cache-manager-ioredis-yet';
 
 /**
  * 本地开发 npm run prod 读取的配置文件
@@ -13,9 +14,9 @@ export default {
         type: 'mysql',
         host: '127.0.0.1',
         port: 3306,
-        username: 'root',
-        password: '123456',
-        database: 'cool',
+        username: 'cms',
+        password: 'nXAbTjbDm4sMwdbd',
+        database: 'cms',
         // 自动建表 注意：线上部署的时候不要使用，有可能导致数据丢失
         synchronize: false,
         // 打印日志
@@ -28,6 +29,20 @@ export default {
         entities,
         // 订阅者
         subscribers: [TenantSubscriber],
+      },
+    },
+  },
+  cacheManager: {
+    clients: {
+      default: {
+        store: redisStore,
+        options: {
+          port: 6379,
+          host: '127.0.0.1',
+          password: '',
+          ttl: 0,
+          db: 0,
+        },
       },
     },
   },
