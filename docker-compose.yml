@@ -18,9 +18,9 @@ services:
     environment:
       TZ: Asia/Shanghai # 指定时区
       MYSQL_ROOT_PASSWORD: "123456" # 配置root用户密码
-      MYSQL_DATABASE: "cool" # 业务库名
+      MYSQL_DATABASE: "cms" # 业务库名
       MYSQL_USER: "root" # 业务库用户名
-      MYSQL_PASSWORD: "123456" # 业务库密码
+      MYSQL_PASSWORD: "admin" # 业务库密码
     networks:
       - cool
     ports:

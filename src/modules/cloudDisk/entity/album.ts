@@ -1,11 +1,11 @@
 import { BaseEntity } from '@cool-midway/core';
-import { Entity, Column, Index } from 'typeorm';
+import { Column, Entity } from 'typeorm';
 
 /**
  * 云盘专辑模块
  */
 @Entity('cloud_disk_album')
-export class AlbumEntity extends BaseEntity {
+export class CloudDiskAlbumEntity extends BaseEntity {
   @Column({ comment: '标题', length: 255 })
   title: string;
 
