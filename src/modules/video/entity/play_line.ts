@@ -1,4 +1,4 @@
-import { Column, Entity, Unique } from 'typeorm';
+import { Column, Entity, Index, Unique } from 'typeorm';
 import { BaseEntity } from '../../base/entity/base';
 
 /**
@@ -7,18 +7,21 @@ import { BaseEntity } from '../../base/entity/base';
 @Entity('video_play_line')
 @Unique(['file'])
 export class PlayLineEntity extends BaseEntity {
+  @Index()
   @Column({ comment: '影视ID', nullable: true, type: 'bigint' })
   video_id: number;
 
   @Column({ comment: '影视名称', nullable: true })
   video_name: string;
 
+  @Index()
   @Column({ comment: '资源ID', nullable: true, type: 'bigint' })
   video_line_id: number;
 
   @Column({ comment: '名称', length: 256 })
   name: string;
 
+  @Index()
   @Column({ comment: '资源id', nullable: true })
   collection_id: number;
 

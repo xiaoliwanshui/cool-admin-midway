@@ -1,4 +1,4 @@
-import { Column, Entity, Unique } from 'typeorm';
+import { Column, Entity, Index, Unique } from 'typeorm';
 import { BaseEntity } from '../../base/entity/base';
 
 /**
@@ -10,6 +10,7 @@ export class VideoEntity extends BaseEntity {
   @Column({ comment: '影片标题', length: 191, nullable: true })
   title: string;
   //添加索引
+  @Index()
   @Column({ comment: '分类', nullable: true })
   category_id: number;
   @Column({ comment: '影片封面图', type: 'text', nullable: true })
@@ -112,10 +113,10 @@ export class VideoEntity extends BaseEntity {
   note: string;
   @Column({
     comment: '年份',
-    length: 256,
-    nullable: true,
+    default: 0,
   })
-  year: string;
+  @Index()
+  year: number;
   @Column({
     comment: '关联专题id',
     nullable: true,
@@ -133,11 +134,13 @@ export class VideoEntity extends BaseEntity {
     type: 'bigint',
   })
   duration: number;
+  @Index()
   @Column({
     comment: '自定义地区',
     nullable: true,
   })
   region: number;
+  @Index()
   @Column({
     comment: '自定义语言',
     nullable: true,
@@ -266,6 +269,7 @@ export class VideoEntity extends BaseEntity {
     type: 'longtext',
   })
   play_url: string;
+  @Index()
   @Column({
     comment: '播放地址是否入库1-1已经入库 0未入库',
     nullable: true,
@@ -273,7 +277,7 @@ export class VideoEntity extends BaseEntity {
     type: 'int',
   })
   play_url_put_in: number;
-
+  @Index()
   @Column({ comment: '资源id', nullable: true })
   collection_id: number;
 

@@ -1,4 +1,4 @@
-import { Column, Entity } from 'typeorm';
+import { Column, Entity, Index } from 'typeorm';
 import { BaseEntity } from '../../base/entity/base';
 
 /**
@@ -46,7 +46,7 @@ export class VideoAlbumEntity extends BaseEntity {
 
   @Column({ comment: '排序', nullable: true, default: 0 })
   sort: number;
-
+  @Index()
   @Column({ comment: '专题关联类型', nullable: true, default: 0 })
   category_id: number;
 }

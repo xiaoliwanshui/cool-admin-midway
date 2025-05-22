@@ -133,8 +133,8 @@ export class ConcurrencyService {
                     return;
                   }
                   item.categoryId = category.sys_category_id;
-                  item.languageId = language.id;
-                  item.region = area.id;
+                  item.language = language.id;
+                  item.area = area.id;
                   let video: VideoBean = new VideoBean(item);
                   videoList.push(video);
                   video = null; // 显式释放引用
@@ -148,7 +148,6 @@ export class ConcurrencyService {
                 videoList.length = 0; // 显式释放引用
               } else {
                 result = null;
-                // Handle error case
               }
               results.splice(videoParamsArray.indexOf(result as any), 1);
             });
@@ -243,7 +242,6 @@ export class ConcurrencyService {
         {
           taskStatus: 3,
           execResult: JSON.stringify(error),
-          //将params转成JSON对象
           execParams: JSON.stringify(params.getObject()),
           endDate: moment().format('YYYY-MM-DD HH:mm:ss'),
           errorMessage: JSON.stringify(error),

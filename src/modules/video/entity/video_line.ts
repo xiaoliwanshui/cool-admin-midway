@@ -16,7 +16,7 @@ export class VideoLineEntity extends BaseEntity {
 
   @Column({ comment: '名称', length: 256 })
   collection_name: string;
-
+  @Index()
   @Column({ comment: '资源id', nullable: true })
   collection_id: number;
 
