@@ -78,7 +78,7 @@ export class VideoBean {
   private popularity_month?: number;
   private popularity_sum?: number;
   private note?: string;
-  private year?: string;
+  private year?: number;
   private status?: number;
   private create_at?: number;
   private update_at?: number;
@@ -119,7 +119,7 @@ export class VideoBean {
   private remarks?: string;
 
   constructor(resources?: any) {
-    this.setCategoryId(resources.category_id);
+    this.setCategoryId(resources.categoryId);
     this.setTitle(resources.vod_name || resources.name);
     this.setAlias(resources.vod_alias || resources.alias);
     this.setRemarks(resources.vod_remarks || resources.remarks);
@@ -148,7 +148,6 @@ export class VideoBean {
     this.setImdbScore(resources.vod_imdb_score || resources.imdb_score);
     this.setDoubanScore(resources.vod_douban_score || resources.douban_score);
     this.setUnit(resources.vod_unit || resources.unit);
-
     this.setLanguage(resources.language);
     this.setRegion(resources.area);
     this.setYear(resources.vod_year || resources.year);
@@ -403,12 +402,12 @@ export class VideoBean {
     }
   }
 
-  getYear(): string {
+  getYear(): number {
     return this.year;
   }
 
-  setYear(value: string): void {
-    if (typeof value === 'string' && value.trim() !== '') {
+  setYear(value: number): void {
+    if (typeof value === 'number') {
       this.year = value;
     }
   }

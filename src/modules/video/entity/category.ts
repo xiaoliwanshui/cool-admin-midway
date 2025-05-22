@@ -18,12 +18,6 @@ export class CategoryEntity extends BaseEntity {
   @Column({ comment: '排序', nullable: true, type: 'bigint' })
   sort: number;
 
-  @Column({ comment: 'create_at', nullable: true, type: 'bigint' })
-  create_at: number;
-
-  @Column({ comment: 'update_at', nullable: true, type: 'bigint' })
-  update_at: number;
-
   @Column({ comment: '是否是竖屏，1-是，0-否', nullable: true, type: 'int' })
   is_vertical: number;
 

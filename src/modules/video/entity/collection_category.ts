@@ -1,4 +1,4 @@
-import { Column, Entity, Unique } from 'typeorm';
+import { Column, Entity, Index, Unique } from 'typeorm';
 import { BaseEntity } from '../../base/entity/base';
 
 /**
@@ -13,6 +13,7 @@ export class CollectionCategoryEntity extends BaseEntity {
   @Column({ comment: '资源名称', nullable: true })
   collection_name: string;
   @Column({ comment: '采集资源分类id', nullable: true })
+  @Index()
   class_id: number;
   @Column({ comment: '采集资源分类名称', nullable: true })
   class_name: string;
@@ -21,6 +22,7 @@ export class CollectionCategoryEntity extends BaseEntity {
   @Column({ comment: '采集资源分类pid', nullable: true })
   parentId: number;
   @Column({ comment: '系统资源分类id', nullable: true })
+  @Index()
   sys_category_id: number;
   @Column({
     comment: '收费模式 1免费 2vip免费 3金币点播',
