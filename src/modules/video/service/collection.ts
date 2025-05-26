@@ -93,43 +93,40 @@ export class CollectionService extends BaseService {
         }
       }
 
-      if (collectionEntity.data_method == 1) {
-        for (page; page <= pagecount; page++) {
-          let videoParams: VideoParams = new VideoParams();
-          videoParams.setPg(page);
-          videoParams.setPage(page);
-          videoParams.setPs(limit);
-          videoParams.setPagesize(limit);
-          videoParams.setPagecount(pagecount);
-          videoParams.setAc('detail');
-          videoParams.setOp(op);
-          if (h) {
-            videoParams.setH(h);
-          }
-          videoParams.setTotal(total);
-          videoParamsList.push(videoParams);
-          videoParams = null; // 显式释放引用
+      for (page; page <= pagecount; page++) {
+        let videoParams: VideoParams = new VideoParams();
+        videoParams.setPg(page);
+        videoParams.setPage(page);
+        videoParams.setPs(limit);
+        videoParams.setPagesize(limit);
+        videoParams.setPagecount(pagecount);
+        videoParams.setAc('detail');
+        videoParams.setOp(op);
+        if (h) {
+          videoParams.setH(h);
         }
-
-        // 将 videoParamsList 进行分批，每批最大 100 个
-        let videoParamsArray: VideoParams[][] = [];
-        videoParamsArray = videoParamsList.reduce((acc, cur) => {
-          const last = acc[acc.length - 1];
-          if (!last || last.length === 100) {
-            acc.push([cur]);
-          } else {
-            last.push(cur);
-          }
-          return acc;
-        }, []);
-
-        await this.concurrencyService.syncVideoPageList(
-          collectionEntity,
-          videoParamsArray
-        );
-        videoParamsList = null; // 显式释放引用
-        videoParamsArray = null; // 显式释放引用
+        videoParams.setTotal(total);
+        videoParamsList.push(videoParams);
+        videoParams = null; // 显式释放引用
       }
+      // 将 videoParamsList 进行分批，每批最大 100 个
+      let videoParamsArray: VideoParams[][] = [];
+      videoParamsArray = videoParamsList.reduce((acc, cur) => {
+        const last = acc[acc.length - 1];
+        if (!last || last.length === 100) {
+          acc.push([cur]);
+        } else {
+          last.push(cur);
+        }
+        return acc;
+      }, []);
+
+      await this.concurrencyService.syncVideoPageList(
+        collectionEntity,
+        videoParamsArray
+      );
+      videoParamsList = null; // 显式释放引用
+      videoParamsArray = null; // 显式释放引用
 
       return videoParamsList;
     } catch (error) {

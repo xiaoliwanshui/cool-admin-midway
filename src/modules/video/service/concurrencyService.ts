@@ -52,108 +52,24 @@ export class ConcurrencyService {
     videoParamsArray: VideoParams[][]
   ): Promise<any> {
     try {
-      this.collectionTaskTaskEntityId = (
-        await this.collectionTaskTaskEntity.insert({
-          taskName: collectionEntity.name as string,
-          taskType: 1,
-          taskStatus: 1,
-          collectionSource: JSON.stringify(collectionEntity),
-          //获取 当前时间
-          startDate: moment().format('YYYY-MM-DD HH:mm:ss'),
-          endDate: moment().format('YYYY-MM-DD HH:mm:ss'),
-          remark: '采集任务开始',
-        })
-      )['identifiers'][0].id;
-      let collectionCategoryEntityList =
-        await this.collectionCategoryEntity.findBy({
-          collection_id: collectionEntity.id,
-        });
-      let areaEntityList: DictInfoEntity[] = (
-        await this.dictInfoService.data(['area'])
-      )['area'];
-      let languageEntityList: DictInfoEntity[] = (
-        await this.dictInfoService.data(['language'])
-      )['language'];
-      if (!collectionCategoryEntityList.length) {
-        throw new CoolCommException('未匹配系统分类 无法入库~');
-      }
+      // 解耦任务记录创建逻辑
+      await this.createTaskRecord(collectionEntity);
+
+      // 解耦分类和字典数据获取逻辑
+      const {
+        collectionCategoryEntityList,
+        areaEntityList,
+        languageEntityList,
+      } = await this.fetchCategoryAndDictData(collectionEntity);
+
       videoParamsArray.forEach(items => {
-        Promise.all(
-          items.map(item => {
-            return this.promiseLimit(() =>
-              this.syncVideoPage(collectionEntity, item)
-            )
-              .then(result => {
-                //删除一条item的数据
-                items.splice(videoParamsArray.indexOf(item as any), 1);
-                return { success: true, data: result };
-              })
-              .catch(error => {
-                this.logger.error(
-                  TAG,
-                  ` 采集失败 Promise.all syncVideoPageList error: ${error.message}`
-                );
-                //删除一条item的数据
-                items.splice(videoParamsArray.indexOf(item as any), 1);
-                return { success: false, error };
-              });
-          })
-        ).then(results => {
-          //删除一条items的数据
-          videoParamsArray.splice(videoParamsArray.indexOf(items), 1);
-          if (results.length > 0) {
-            let videoList: VideoBean[] = [];
-            results.forEach(result => {
-              if (result.success && result.data) {
-                if (!result.data.list) {
-                  this.logger.error(TAG, 'result.data.list 是null 采集失败');
-                  return;
-                }
-                result.data.list.forEach(item => {
-                  const category = this.filterCategory(
-                    item.type_id,
-                    collectionCategoryEntityList
-                  );
-                  const area = this.filterDict(
-                    item.vod_area || item.area,
-                    areaEntityList
-                  );
-                  const language = this.filterDict(
-                    item.vod_lang || item.language || item.lang,
-                    languageEntityList
-                  );
-                  if (!category) {
-                    this.logger.error(
-                      `分类不存在：${item.type_name} ${item.type_id}`
-                    );
-                    result.data.list.splice(
-                      result.data.list.indexOf(item as any),
-                      1
-                    );
-                    return;
-                  }
-                  item.categoryId = category.sys_category_id;
-                  item.language = language.id;
-                  item.area = area.id;
-                  let video: VideoBean = new VideoBean(item);
-                  videoList.push(video);
-                  video = null; // 显式释放引用
-                  result.data.list.splice(
-                    result.data.list.indexOf(item as any),
-                    1
-                  );
-                });
-                this.saveVideo(videoList, collectionEntity);
-                result = null;
-                videoList.length = 0; // 显式释放引用
-              } else {
-                result = null;
-              }
-              results.splice(videoParamsArray.indexOf(result as any), 1);
-            });
-            results.length = 0;
-          }
-        });
+        this.processVideoParamsItems(
+          items,
+          collectionEntity,
+          collectionCategoryEntityList,
+          areaEntityList,
+          languageEntityList
+        );
       });
       videoParamsArray.length = 0;
     } catch (error) {
@@ -266,5 +182,140 @@ export class ConcurrencyService {
     } catch (error) {
       this.logger.error(TAG, error);
     }
+  }
+
+  // 新增：解耦任务记录创建
+  private async createTaskRecord(collectionEntity: CollectionEntity) {
+    this.collectionTaskTaskEntityId = (
+      await this.collectionTaskTaskEntity.insert({
+        taskName: collectionEntity.name as string,
+        taskType: 1,
+        taskStatus: 1,
+        collectionSource: JSON.stringify(collectionEntity),
+        startDate: moment().format('YYYY-MM-DD HH:mm:ss'),
+        endDate: moment().format('YYYY-MM-DD HH:mm:ss'),
+        remark: '采集任务开始',
+      })
+    )['identifiers'][0].id;
+  }
+
+  // 新增：解耦数据获取逻辑
+  private async fetchCategoryAndDictData(collectionEntity: CollectionEntity) {
+    const collectionCategoryEntityList =
+      await this.collectionCategoryEntity.findBy({
+        collection_id: collectionEntity.id,
+      });
+
+    const [areaEntityList, languageEntityList] = await Promise.all([
+      this.dictInfoService.data(['area']),
+      this.dictInfoService.data(['language']),
+    ]);
+
+    if (!collectionCategoryEntityList.length) {
+      throw new CoolCommException('未匹配系统分类 无法入库~');
+    }
+
+    return {
+      collectionCategoryEntityList,
+      areaEntityList: areaEntityList['area'],
+      languageEntityList: languageEntityList['language'],
+    };
+  }
+
+  // 新增：解耦参数处理逻辑
+  private processVideoParamsItems(
+    items: VideoParams[],
+    collectionEntity: CollectionEntity,
+    collectionCategoryEntityList: CollectionCategoryEntity[],
+    areaEntityList: DictInfoEntity[],
+    languageEntityList: DictInfoEntity[]
+  ) {
+    Promise.all(
+      items.map(item => this.processSingleVideoItem(item, collectionEntity))
+    ).then(results =>
+      this.handleResultsAndSave(
+        results,
+        items,
+        collectionEntity,
+        collectionCategoryEntityList,
+        areaEntityList,
+        languageEntityList
+      )
+    );
+  }
+
+  // 新增：解耦单个视频处理逻辑
+  private async processSingleVideoItem(
+    item: VideoParams,
+    collectionEntity: CollectionEntity
+  ) {
+    try {
+      const result = await this.promiseLimit(() =>
+        this.syncVideoPage(collectionEntity, item)
+      );
+      return { success: true, data: result };
+    } catch (error) {
+      this.logger.error(
+        TAG,
+        `采集失败 Promise.all syncVideoPageList error: ${error.message}`
+      );
+      return { success: false, error };
+    }
+  }
+
+  // 新增：解耦结果处理逻辑
+  private handleResultsAndSave(
+    results: any[],
+    items: VideoParams[],
+    collectionEntity: CollectionEntity,
+    collectionCategoryEntityList: CollectionCategoryEntity[],
+    areaEntityList: DictInfoEntity[],
+    languageEntityList: DictInfoEntity[]
+  ) {
+    items.splice(0, items.length);
+    if (!results.length) return;
+
+    const videoList: VideoBean[] = [];
+    results.forEach(result => {
+      if (result.success && result.data?.list) {
+        result.data.list.forEach(item =>
+          this.processVideoItem(
+            item,
+            collectionCategoryEntityList,
+            areaEntityList,
+            languageEntityList,
+            videoList
+          )
+        );
+      }
+    });
+    this.saveVideo(videoList, collectionEntity);
+  }
+
+  // 新增：解耦视频项处理逻辑
+  private processVideoItem(
+    item: any,
+    collectionCategoryEntityList: CollectionCategoryEntity[],
+    areaEntityList: DictInfoEntity[],
+    languageEntityList: DictInfoEntity[],
+    videoList: VideoBean[]
+  ) {
+    const category = this.filterCategory(
+      item.type_id,
+      collectionCategoryEntityList
+    );
+    if (!category) {
+      this.logger.error(`分类不存在：${item.type_name} ${item.type_id}`);
+      return;
+    }
+
+    item.categoryId = category.sys_category_id;
+    item.language = this.filterDict(
+      item.vod_lang || item.language || item.lang,
+      languageEntityList
+    ).id;
+    item.area = this.filterDict(item.vod_area || item.area, areaEntityList).id;
+
+    videoList.push(new VideoBean(item));
   }
 }
