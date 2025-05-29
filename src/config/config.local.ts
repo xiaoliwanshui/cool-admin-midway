@@ -1,6 +1,7 @@
 import { CoolConfig } from '@cool-midway/core';
 import { MidwayConfig } from '@midwayjs/core';
 import { TenantSubscriber } from '../modules/base/db/tenant';
+import { entities } from '../entities';
 
 /**
  * 本地开发 npm run dev 读取的配置文件
@@ -12,11 +13,11 @@ export default {
         type: 'mysql',
         host: '127.0.0.1',
         port: 3306,
-        username: 'root',
-        password: 'admin',
+        username: 'cms',
+        password: 'nXAbTjbDm4sMwdbd',
         database: 'cms',
         // 自动建表 注意：线上部署的时候不要使用，有可能导致数据丢失
-        synchronize: true,
+        synchronize: false,
         // 打印日志
         logging: false,
         // 字符集
@@ -24,7 +25,7 @@ export default {
         // 是否开启缓存
         cache: true,
         // 实体路径
-        entities: ['**/modules/*/entity'],
+        entities,
         // 订阅者
         subscribers: [TenantSubscriber],
       },
