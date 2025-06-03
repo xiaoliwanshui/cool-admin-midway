@@ -7,6 +7,7 @@ import { BaseEntity } from '../../base/entity/base';
 @Entity('video')
 @Unique(['title'])
 export class VideoEntity extends BaseEntity {
+  @Index({ fulltext: true }) // 定义全文索引
   @Column({ comment: '影片标题', length: 191, nullable: true })
   title: string;
   //添加索引
@@ -41,8 +42,10 @@ export class VideoEntity extends BaseEntity {
   buy_mode: number;
   @Column({ comment: '金币点播值', nullable: true, type: 'bigint' })
   gold: number;
+  @Index({ fulltext: true }) // 定义全文索引
   @Column({ comment: '导演', type: 'text', nullable: true })
   directors: string;
+  @Index({ fulltext: true }) // 定义全文索引
   @Column({ comment: '演员', type: 'text', nullable: true })
   actors: string;
   @Column({

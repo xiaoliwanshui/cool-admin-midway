@@ -16,19 +16,26 @@ export class TaskCollectService extends BaseService {
   @Inject()
   collectionService: CollectionService;
 
-  /**
-   * 描述
-   */
   async day(id: number) {
-    this.logger.info(TAG, '日采集调用了');
-    await this.collectionService.day(id);
-    return '任务执行成功';
+    try {
+      this.logger.info(TAG, '日采集调用了');
+      await this.collectionService.day(id);
+      return '任务执行成功';
+    } catch (error) {
+      this.logger.error(TAG, '日采集任务异常', error);
+      throw error;
+    }
   }
 
   async week(id: number) {
-    this.logger.info(TAG, '周采集调用了');
-    await this.collectionService.week(id);
-    return '任务执行成功';
+    try {
+      this.logger.info(TAG, '周采集调用了');
+      await this.collectionService.week(id);
+      return '任务执行成功';
+    } catch (error) {
+      this.logger.error(TAG, '周采集任务异常', error);
+      throw error;
+    }
   }
 
   async videoFilter() {
@@ -38,14 +45,19 @@ export class TaskCollectService extends BaseService {
     try {
       await this.nativeQuery(SQLQuery);
     } catch (error) {
-      this.logger.error(TAG, error);
-      await this.nativeQuery('ROLLBACK;'); // 回滚事务
-      throw error; // 或者根据业务需求进行其他处理
+      this.logger.error(TAG, '数据分类异常', error);
+      await this.nativeQuery('ROLLBACK;');
+      throw error;
     }
   }
 
   async checkVideoLine() {
-    this.logger.info(TAG, '检查视频线路调用了');
-    await this.collectionService.checkVideoLine();
+    try {
+      this.logger.info(TAG, '检查视频线路调用了');
+      await this.collectionService.checkVideoLine();
+    } catch (error) {
+      this.logger.error(TAG, '检查视频线路异常', error);
+      throw error;
+    }
   }
 }
