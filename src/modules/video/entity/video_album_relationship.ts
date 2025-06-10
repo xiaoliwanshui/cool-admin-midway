@@ -4,8 +4,8 @@ import { BaseEntity } from '../../base/entity/base';
 /**
  * 文章信息
  */
-@Entity('video_album__relationship')
-export class VideoAlbum extends BaseEntity {
+@Entity('video_album_relationship')
+export class VideoAlbumRelationship extends BaseEntity {
   @Index()
   @Column({ comment: '专辑id', nullable: true, type: 'bigint' })
   album_id: number;

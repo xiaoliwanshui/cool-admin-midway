@@ -4,7 +4,7 @@ import {
   CoolUrlTag,
   TagTypes,
 } from '@cool-midway/core';
-import { VideoAlbum } from '../../entity/album_video';
+import {  VideoAlbumRelationship} from '../../entity/video_album_relationship';
 import { VideoEntity } from '../../entity/videos';
 
 /**
@@ -12,7 +12,7 @@ import { VideoEntity } from '../../entity/videos';
  */
 @CoolController({
   api: ['add', 'delete', 'update', 'info', 'list', 'page'],
-  entity: VideoAlbum,
+  entity: VideoAlbumRelationship,
   insertParam: ctx => {
     return {
       // 获得当前登录的后台用户ID，需要请求头传Authorization参数
@@ -20,54 +20,53 @@ import { VideoEntity } from '../../entity/videos';
     };
   },
   pageQueryOp: {
-    // fieldEq: ['album_id', 'videos_id'],
     fieldEq: [
       { column: 'a.album_id', requestParam: 'album_id' },
       { column: 'a.videos_id', requestParam: 'videos_id' },
     ],
     select: [
       'a.*',
-      ' b.title',
-      'b.category_id',
-      ' b.surface_plot',
-      ' b.recommend',
-      'b.cycle',
-      'b.cycle_img',
-      'b.charging_mode',
-      'b.buy_mode',
-      'b.gold',
-      'b.directors',
-      'b.actors',
-      'b.imdb_score',
-      'b.imdb_score_id',
-      'b.douban_score',
-      'b.douban_score_id',
-      'b.introduce',
-      'b.label',
-      'b.language',
-      'b.region',
-      'b.note',
-      'b.duration',
-      'b.serial_number',
-      'b.year',
-      'b.alias',
-      'b.status',
-      'b.popularity_sum',
-      'b.popularity_day',
-      'b.popularity_month',
-      'b.popularity_week',
-      'b.release_at',
-      'b.shelf_at',
-      'b.screenshot',
-      'b.play_url',
-      'b.play_url_put_in',
-      'b.trailer_time',
-      'b.unit',
-      'b.number',
-      'b.total',
-      'b.horizontal_poster',
-      'b.vertical_poster',
-      'b.gif',
+      "b.title",
+      "b.category_id",
+      "b.category_pid",
+      "b.surface_plot",
+      "b.cycle",
+      "b.cycle_img",
+      "b.directors",
+      "b.actors",
+      "b.imdb_score",
+      "b.imdb_score_id",
+      "b.douban_score",
+      "b.douban_score_id",
+      "b.introduce",
+      "b.popularity",
+      "b.popularity_day",
+      "b.popularity_week",
+      "b.popularity_month",
+      "b.popularity_sum",
+      "b.note",
+      "b.year",
+      "b.status",
+      "b.duration",
+      "b.region",
+      "b.language",
+      "b.number",
+      "b.total",
+      "b.horizontal_poster",
+      "b.remarks",
+      "b.vertical_poster",
+      "b.publish",
+      "b.pubdate",
+      "b.serial_number",
+      "b.screenshot",
+      "b.end",
+      "b.unit",
+      "b.play_url",
+      "b.play_url_put_in",
+      "b.collection_id",
+      "b.up",
+      "b.down",
+      "b.collection_name"
     ],
     join: [
       {
@@ -83,4 +82,4 @@ import { VideoEntity } from '../../entity/videos';
   key: TagTypes.IGNORE_TOKEN,
   value: ['page', 'info'],
 })
-export class AppAlbumsVideoController extends BaseController {}
+export class AppVideoAlbumRelationshipController extends BaseController {}

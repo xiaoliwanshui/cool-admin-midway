@@ -16,6 +16,12 @@ export class TaskCollectService extends BaseService {
   @Inject()
   collectionService: CollectionService;
 
+  /**
+   * 执行每日采集任务
+   * @param id 视频ID
+   * @returns 返回任务执行结果
+   * @throws 采集任务异常时抛出错误
+   */
   async day(id: number) {
     try {
       this.logger.info(TAG, '日采集调用了');
@@ -27,6 +33,12 @@ export class TaskCollectService extends BaseService {
     }
   }
 
+  /**
+   * 执行每周采集任务
+   * @param id 视频ID
+   * @returns 返回任务执行结果
+   * @throws 采集任务异常时抛出错误
+   */
   async week(id: number) {
     try {
       this.logger.info(TAG, '周采集调用了');
@@ -38,6 +50,11 @@ export class TaskCollectService extends BaseService {
     }
   }
 
+  /**
+   * 过滤视频数据并更新数据库
+   * @returns 返回任务执行结果
+   * @throws 数据分类异常时抛出错误
+   */
   async videoFilter() {
     this.logger.info(TAG, '数据分类调用了');
     const SQLQuery =
@@ -51,6 +68,11 @@ export class TaskCollectService extends BaseService {
     }
   }
 
+  /**
+   * 检查视频线路是否正常
+   * @returns 返回任务执行结果
+   * @throws 检查视频线路异常时抛出错误
+   */
   async checkVideoLine() {
     try {
       this.logger.info(TAG, '检查视频线路调用了');

@@ -14,10 +14,10 @@ export class VideoEntity extends BaseEntity {
   @Index()
   @Column({ comment: '分类', nullable: true })
   category_id: number;
+  @Column({ comment: '父级分类', nullable: true })
+  category_pid: number;
   @Column({ comment: '影片封面图', type: 'text', nullable: true })
   surface_plot: string;
-  @Column({ comment: '是否推荐 1是 2否', type: 'bigint', nullable: true })
-  recommend: number;
   @Column({
     comment: '是否轮播 1是 2否',
     type: 'bigint',
@@ -31,17 +31,6 @@ export class VideoEntity extends BaseEntity {
     nullable: true,
   })
   cycle_img: string;
-  @Column({
-    comment: '收费模式 1免费 2vip免费 3金币点播',
-    nullable: true,
-    type: 'bigint',
-    default: 1,
-  })
-  charging_mode: string;
-  @Column({ comment: '购买模式 1按部 2按集', nullable: true, type: 'bigint' })
-  buy_mode: number;
-  @Column({ comment: '金币点播值', nullable: true, type: 'bigint' })
-  gold: number;
   @Index({ fulltext: true }) // 定义全文索引
   @Column({ comment: '导演', type: 'text', nullable: true })
   directors: string;
@@ -81,12 +70,21 @@ export class VideoEntity extends BaseEntity {
   })
   introduce: string;
   @Column({
+    comment: '总人气',
+    type: 'bigint',
+    nullable: true,
+    default: 0,
+  })
+  popularity: number;
+  @Column({
     comment: '日人气',
     type: 'bigint',
     nullable: true,
     default: 0,
   })
   popularity_day: number;
+
+
   @Column({
     comment: '周人气',
     type: 'bigint',
@@ -121,11 +119,6 @@ export class VideoEntity extends BaseEntity {
   @Index()
   year: number;
   @Column({
-    comment: '关联专题id',
-    nullable: true,
-  })
-  album_id: number;
-  @Column({
     comment: '状态',
     nullable: true,
     type: 'bigint',
@@ -149,12 +142,6 @@ export class VideoEntity extends BaseEntity {
     nullable: true,
   })
   language: number;
-  @Column({
-    comment: '自定义标签',
-    length: 256,
-    nullable: true,
-  })
-  label: string;
   @Column({
     comment: '总集数',
     nullable: true,
@@ -194,6 +181,12 @@ export class VideoEntity extends BaseEntity {
   })
   publish: string;
   @Column({
+    comment: '上映日期',
+    nullable: true,
+    type: 'text',
+  })
+  pubdate: string;
+  @Column({
     comment: '序列号',
     nullable: true,
     type: 'text',
@@ -206,66 +199,17 @@ export class VideoEntity extends BaseEntity {
   })
   screenshot: string;
   @Column({
-    comment: 'gif',
-    nullable: true,
-    type: 'text',
-  })
-  gif: string;
-  @Column({
-    comment: 'alias',
-    nullable: true,
-    type: 'text',
-  })
-  alias: string;
-  @Column({
-    comment: 'alias',
-    type: 'bigint',
-    nullable: true,
-  })
-  release_at: number;
-  @Column({
-    comment: 'shelf_at',
-    nullable: true,
-    type: 'bigint',
-  })
-  shelf_at: number;
-  @Column({
-    comment: 'end',
+    comment: '是否连载完毕 0,1',
     nullable: true,
     type: 'tinyint',
   })
   end: number;
   @Column({
-    comment: 'unit',
+    comment: '单位',
     nullable: true,
     length: 32,
   })
   unit: string;
-
-  @Column({
-    comment: 'watch',
-    type: 'bigint',
-    nullable: true,
-  })
-  watch: number;
-  @Column({
-    comment: 'use_local_image',
-    type: 'tinyint',
-    nullable: true,
-  })
-  use_local_image: number;
-  @Column({
-    comment: '片头时间',
-    type: 'int',
-  })
-  titles_time: number;
-  @Column({
-    comment: '片尾时间',
-    type: 'int',
-    default: 0,
-    nullable: true,
-  })
-  trailer_time: number;
   @Column({
     comment: '采集的源地址',
     nullable: true,
@@ -283,6 +227,15 @@ export class VideoEntity extends BaseEntity {
   @Index()
   @Column({ comment: '资源id', nullable: true })
   collection_id: number;
+
+  @Index()
+  @Column({ comment: '顶数', nullable: true })
+  up: number;
+
+  @Index()
+  @Column({ comment: '踩数', nullable: true })
+  down: number;
+
 
   @Column({ comment: '资源名称', nullable: true, length: 256 })
   collection_name: string;

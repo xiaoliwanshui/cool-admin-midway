@@ -64,6 +64,7 @@ export class PlayLineEntity extends BaseEntity {
   })
   live_source: number;
 
+  @Index()
   @Column({ comment: '排序', nullable: true, default: 0 })
   sort: number;
 

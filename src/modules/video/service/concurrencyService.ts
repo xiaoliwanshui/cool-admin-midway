@@ -101,7 +101,7 @@ export class ConcurrencyService {
   filterCategory(
     category_id: number,
     collectionCategoryEntityList: CollectionCategoryEntity[]
-  ): CollectionCategoryEntity | null {
+  ): { category_id: number; category_pid: number} | null {
     try {
       const result = collectionCategoryEntityList.filter(item => {
         if (item.class_id == category_id) {
@@ -109,12 +109,21 @@ export class ConcurrencyService {
         }
       });
       if (result.length) {
-        return result[0];
+        //根据 result[0]的parentId 过滤出父分类
+        const parentCategory = collectionCategoryEntityList.find(
+          item => item.id === result[0].parentId
+        );
+        return {
+          category_id:result[0].sys_category_id,
+          category_pid: parentCategory?.sys_category_id ? parentCategory.sys_category_id : 0,
+        };
       }
     } catch (error) {
       return null;
     }
   }
+
+
 
   filterDict(name: string, DictInfoEntityList: DictInfoEntity[]) {
     try {
@@ -309,7 +318,10 @@ export class ConcurrencyService {
       return;
     }
 
-    item.categoryId = category.sys_category_id;
+    item.categoryId = category.category_id;
+    item.categoryPid = category.category_pid;
+    item.collectionName=collectionCategoryEntityList[0].collection_name;
+    item.collectionId=collectionCategoryEntityList[0].collection_id;
     item.language = this.filterDict(
       item.vod_lang || item.language || item.lang,
       languageEntityList

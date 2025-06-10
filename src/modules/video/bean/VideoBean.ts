@@ -1,6 +1,9 @@
+import {ILogger, Inject} from "@midwayjs/core";
+
 interface VIDEOBEAN {
   title?: string;
   category_id?: number;
+  category_pid?: number;
   surface_plot?: string;
   recommend?: number;
   cycle?: number;
@@ -55,18 +58,18 @@ interface VIDEOBEAN {
   album_id?: null | number;
   douban_score?: number;
   remarks?: string;
+  vod_up?: number;
+  vod_down?: number;
 }
-
+const TAG = 'VideoBean';
 export class VideoBean {
-  type_id: number;
   private title?: string;
   private category_id?: number;
+  private category_pid?: number;
   private surface_plot?: string;
-  private recommend?: number;
   private cycle?: number;
   private cycle_img?: string;
   private charging_mode?: number;
-  private buy_mode?: number;
   private gold?: number;
   private directors?: string;
   private actors?: string;
@@ -85,7 +88,6 @@ export class VideoBean {
   private duration?: number;
   private region?: number;
   private language?: number;
-  private label?: string;
   private number?: number;
   private total?: number;
   private horizontal_poster?: string;
@@ -93,16 +95,8 @@ export class VideoBean {
   private publish?: string;
   private serial_number?: string;
   private screenshot?: string;
-  private gif?: string;
-  private alias?: string;
-  private release_at?: number;
-  private shelf_at?: number;
   private end?: number;
   private unit?: string;
-  private watch?: number;
-  private use_local_image?: number;
-  private titles_time?: number;
-  private trailer_time?: number;
   private site_id?: number;
   private category_pid_status?: number;
   private category_child_id_status?: number;
@@ -112,82 +106,103 @@ export class VideoBean {
   private updateUserId?: null | number;
   private id?: number;
   private douban_score_id?: null | number;
-  private album_id?: null | number;
   private douban_score?: number;
   private collection_id?: number;
   private collection_name?: string;
   private remarks?: string;
+  private  up?: number;
+  private down?: number;
+  private  popularity?: number;
+  private  pubdate?:string;
 
   constructor(resources?: any) {
-    this.setCategoryId(resources.categoryId);
-    this.setTitle(resources.vod_name || resources.name);
-    this.setAlias(resources.vod_alias || resources.alias);
-    this.setRemarks(resources.vod_remarks || resources.remarks);
-    this.setSurfacePlot(
-      resources.vod_surface_plot ||
-        resources.surface_plot ||
-        resources.pic ||
-        resources.vod_pic
-    );
-    this.setDirectors(resources.vod_directors || resources.director);
-    this.setActors(resources.vod_actors || resources.actors);
-    this.setStatus(resources.vod_status || resources.status);
-    this.setEnd(resources.vod_isEnd || resources.isEnd);
-    this.setCollectionName(resources.collectionName);
-    this.setCollectionId(resources.id);
-    this.setIntroduce(
-      resources.vod_introduce ||
-        resources.introduce ||
-        resources.des ||
-        resources.vod_content
-    );
-    this.setNumber(resources.vod_number || resources.number);
-    this.setTrailerTime(resources.vod_release_time || resources.release_time);
-    this.setShelfAt(resources.vod_shelf_time || resources.shelf_time);
-    this.setDuration(resources.vod_duration || resources.duration);
-    this.setImdbScore(resources.vod_imdb_score || resources.imdb_score);
-    this.setDoubanScore(resources.vod_douban_score || resources.douban_score);
-    this.setUnit(resources.vod_unit || resources.unit);
-    this.setLanguage(resources.language);
-    this.setRegion(resources.area);
-    this.setYear(resources.vod_year || resources.year);
-    this.setDoubanScoreId(resources.vod_douban_id);
-    this.setDoubanScore(resources.vod_douban_score);
-    this.setActors(resources.vod_actor);
-    this.setDirectors(resources.vod_director);
-    this.setPlayUrl(resources.vod_play_url || resources.play_url);
-    this.setPopularityDay(
-      resources.vod_popularity_day ||
-        resources.popularity_day ||
-        resources.vod_hits_day
-    );
-    this.setPopularityWeek(
-      resources.vod_popularity_week ||
+   try {
+     this.setCategoryId(Number(resources.categoryId));
+     this.setCategoryPid(Number(resources.categoryPid));
+     this.setTitle(resources.vod_name || resources.name);
+     this.setRemarks(resources.vod_remarks || resources.remarks);
+     this.setSurfacePlot(
+       resources.vod_surface_plot ||
+       resources.surface_plot ||
+       resources.pic ||
+       resources.vod_pic
+     );
+     this.setDirectors(resources.vod_directors || resources.director);
+     this.setActors(resources.vod_actors || resources.actors);
+     this.setStatus(Number(resources.vod_status || resources.status));
+     this.setEnd(Number(resources.vod_isend ||resources.vod_isEnd || resources.isEnd));
+
+     this.setCollectionName(resources.collectionName);
+     this.setCollectionId(resources.collectionId);
+     this.setIntroduce(
+       resources.vod_introduce ||
+       resources.introduce ||
+       resources.des ||
+       resources.vod_content
+     );
+     this.setNumber(Number(resources.vod_number || resources.number));
+     this.setDuration(Number(resources.vod_duration || resources.duration));
+     this.setImdbScore(Number(resources.vod_imdb_score || resources.imdb_score));
+     this.setDoubanScore(Number(resources.vod_douban_score || resources.douban_score));
+     this.setUnit(resources.vod_unit || resources.unit);
+     this.setLanguage(resources.language);
+     this.setRegion(resources.area);
+     this.setYear(Number(resources.vod_year || resources.year));
+     this.setDoubanScoreId(Number(resources.vod_douban_id));
+     this.setDoubanScore(Number(resources.vod_douban_score));
+     this.setActors(resources.vod_actor);
+     this.setDirectors(resources.vod_director);
+     this.setPlayUrl(resources.vod_play_url || resources.play_url);
+     this.setPubdate(resources.vod_pubdate || resources.pubdate);
+     this.setPopularity(Number( resources.popularity ||
+       resources.vod_hits))
+     this.setPopularityDay(
+     Number(  resources.vod_popularity_day ||
+       resources.popularity_day ||
+       resources.vod_hits_day)
+     );
+     this.setPopularityWeek(
+      Number( resources.vod_popularity_week ||
         resources.popularity_week ||
-        resources.vod_hits_week
-    );
-    this.setPopularityMonth(
-      resources.vod_popularity_month ||
-        resources.popularity_month ||
-        resources.vod_hits_month
-    );
-    this.setHorizontalPoster(
-      resources.vod_pic_thumb || resources.pic || resources.vod_pic
-    );
-    this.setVerticalPoster(
-      resources.vod_vertical_poster ||
-        resources.vertical_poster ||
-        resources.pic
-    );
-    this.setNote(resources.vod_note || resources.note);
-    this.setCycle(resources.vod_cycle || resources.cycle);
-    this.setTitlesTime(0);
-    this.setTotal(
-      this.extractNumber(
-        resources.vod_total || resources.total || resources.note || '0'
-      )
-    );
-    this.setPlayUrlPutIn(0);
+        resources.vod_hits_week)
+     );
+     this.setPopularityMonth(
+     Number(  resources.vod_popularity_month ||
+       resources.popularity_month ||
+       resources.vod_hits_month)
+     );
+     this.setHorizontalPoster(
+       resources.vod_pic_thumb || resources.pic || resources.vod_pic
+     );
+     this.setVerticalPoster(
+       resources.vod_vertical_poster ||
+       resources.vertical_poster ||
+       resources.pic
+     );
+     this.setNote(resources.vod_note || resources.note);
+     this.setCycle(resources.vod_cycle || resources.cycle);
+     this.setTotal(
+       this.extractNumber(
+         resources.vod_total || resources.total || resources.note || '0'
+       )
+     );
+     this.setPlayUrlPutIn(0);
+     this.setUp(Number(resources.vod_up || resources.up))
+     this.setDown(Number(resources.vod_down || resources.down))
+   }catch (e) {
+     console.info(TAG,  e);
+   }
+  }
+
+
+  getPopularity():number{
+    return this.popularity;
+  }
+
+  setPopularity(value: number): void {
+    if (typeof value === 'number'&&!isNaN(value) ) {
+      this.popularity = value;
+    }
   }
 
   getTitle(): string {
@@ -200,13 +215,51 @@ export class VideoBean {
     }
   }
 
+  setPubdate(value: string):  void {
+    if (typeof value === 'string' && value.trim() !== '') {
+      this.pubdate = value;
+    }
+  }
+
+  getPubdate(): string {
+    return this.pubdate;
+  }
+
   getCategoryId(): number {
     return this.category_id;
   }
 
   setCategoryId(value: number): void {
-    if (typeof value === 'number' && value >= 0) {
+    if (typeof value === 'number' &&!isNaN(value)) {
       this.category_id = value;
+    }
+  }
+
+  getCategoryPid(): number {
+    return this.category_pid;
+  }
+  setCategoryPid(value: number): void {
+    if (typeof value === 'number' &&!isNaN(value)) {
+      this.category_pid = value;
+    }
+  }
+
+  getUp(): number {
+    return this.up;
+  }
+  setUp(value: number): void {
+    if (typeof value === 'number'&&!isNaN(value) ) {
+      this.up = value;
+    }
+  }
+
+  getDown(): number {
+    return this.down;
+  }
+
+  setDown(value: number): void {
+    if (typeof value === 'number'&&!isNaN(value) ) {
+      this.down = value;
     }
   }
 
@@ -231,65 +284,20 @@ export class VideoBean {
     }
   }
 
-  getRecommend(): number {
-    return this.recommend;
-  }
-
-  setRecommend(value: number): void {
-    if (typeof value === 'number' && value >= 0) {
-      this.recommend = value;
-    }
-  }
 
   getCycle(): number {
     return this.cycle;
   }
 
   setCycle(value: number): void {
-    if (typeof value === 'number' && value >= 0) {
+    if (typeof value === 'number'&&!isNaN(value) ) {
       this.cycle = value;
     }
   }
 
-  getCycleImg(): string {
-    return this.cycle_img;
-  }
 
-  setCycleImg(value: string): void {
-    if (typeof value === 'string' && value.trim() !== '') {
-      this.cycle_img = value;
-    }
-  }
 
-  getChargingMode(): number {
-    return this.charging_mode;
-  }
 
-  setChargingMode(value: number): void {
-    if (typeof value === 'number' && value >= 0) {
-      this.charging_mode = value;
-    }
-  }
-
-  getBuyMode(): number {
-    return this.buy_mode;
-  }
-
-  setBuyMode(value: number): void {
-    if (typeof value === 'number' && value >= 0) {
-      this.buy_mode = value;
-    }
-  }
-
-  getGold(): number {
-    return this.gold;
-  }
-
-  setGold(value: number): void {
-    if (typeof value === 'number' && value >= 0) {
-      this.gold = value;
-    }
-  }
 
   getDirectors(): string {
     return this.directors;
@@ -316,7 +324,7 @@ export class VideoBean {
   }
 
   setImdbScore(value: number): void {
-    if (typeof value === 'number' && value >= 0) {
+    if (typeof value === 'number'&&!isNaN(value) ) {
       this.imdb_score = value;
     }
   }
@@ -357,7 +365,7 @@ export class VideoBean {
   }
 
   setPopularityDay(value: number): void {
-    if (typeof value === 'number' && value >= 0) {
+    if (typeof value === 'number' &&!isNaN(value)) {
       this.popularity_day = value;
     }
   }
@@ -367,7 +375,7 @@ export class VideoBean {
   }
 
   setPopularityWeek(value: number): void {
-    if (typeof value === 'number' && value >= 0) {
+    if (typeof value === 'number'&&!isNaN(value) ) {
       this.popularity_week = value;
     }
   }
@@ -377,7 +385,7 @@ export class VideoBean {
   }
 
   setPopularityMonth(value: number): void {
-    if (typeof value === 'number' && value >= 0) {
+    if (typeof value === 'number' &&!isNaN(value)) {
       this.popularity_month = value;
     }
   }
@@ -387,7 +395,7 @@ export class VideoBean {
   }
 
   setPopularitySum(value: number): void {
-    if (typeof value === 'number' && value >= 0) {
+    if (typeof value === 'number'&&!isNaN(value) ) {
       this.popularity_sum = value;
     }
   }
@@ -407,7 +415,7 @@ export class VideoBean {
   }
 
   setYear(value: number): void {
-    if (typeof value === 'number') {
+    if (typeof value === 'number'&&!isNaN(value)) {
       this.year = value;
     }
   }
@@ -417,37 +425,18 @@ export class VideoBean {
   }
 
   setStatus(value: number): void {
-    if (typeof value === 'number' && value >= 0) {
+    if (typeof value === 'number'&&!isNaN(value)) {
       this.status = value;
     }
   }
 
-  getCreateAt(): number {
-    return this.create_at;
-  }
-
-  setCreateAt(value: number): void {
-    if (typeof value === 'number' && value >= 0) {
-      this.create_at = value;
-    }
-  }
-
-  getUpdateAt(): number {
-    return this.update_at;
-  }
-
-  setUpdateAt(value: number): void {
-    if (typeof value === 'number' && value >= 0) {
-      this.update_at = value;
-    }
-  }
 
   getDuration(): number {
     return this.duration;
   }
 
   setDuration(value: number): void {
-    if (typeof value === 'number' && value >= 0) {
+    if (typeof value === 'number'&&!isNaN(value) ) {
       this.duration = value;
     }
   }
@@ -472,22 +461,12 @@ export class VideoBean {
     }
   }
 
-  getLabel(): string {
-    return this.label;
-  }
-
-  setLabel(value: string): void {
-    if (typeof value === 'string' && value.trim() !== '') {
-      this.label = value;
-    }
-  }
-
   getNumber(): number {
     return this.number;
   }
 
   setNumber(value: number): void {
-    if (typeof value === 'number' && value >= 0) {
+    if (typeof value === 'number' && !isNaN(value)) {
       this.number = value;
     }
   }
@@ -497,7 +476,7 @@ export class VideoBean {
   }
 
   setTotal(value: number): void {
-    if (typeof value === 'number' && value >= 0) {
+    if (typeof value === 'number'&&!isNaN(value) ) {
       this.total = value;
     }
   }
@@ -522,25 +501,7 @@ export class VideoBean {
     }
   }
 
-  getPublish(): string {
-    return this.publish;
-  }
 
-  setPublish(value: string): void {
-    if (typeof value === 'string' && value.trim() !== '') {
-      this.publish = value;
-    }
-  }
-
-  getSerialNumber(): string {
-    return this.serial_number;
-  }
-
-  setSerialNumber(value: string): void {
-    if (typeof value === 'string' && value.trim() !== '') {
-      this.serial_number = value;
-    }
-  }
 
   getScreenshot(): string {
     return this.screenshot;
@@ -552,52 +513,14 @@ export class VideoBean {
     }
   }
 
-  getGif(): string {
-    return this.gif;
-  }
 
-  setGif(value: string): void {
-    if (typeof value === 'string' && value.trim() !== '') {
-      this.gif = value;
-    }
-  }
-
-  getAlias(): string {
-    return this.alias;
-  }
-
-  setAlias(value: string): void {
-    if (typeof value === 'string' && value.trim() !== '') {
-      this.alias = value;
-    }
-  }
-
-  getReleaseAt(): number {
-    return this.release_at;
-  }
-
-  setReleaseAt(value: number): void {
-    if (typeof value === 'number' && value >= 0) {
-      this.release_at = value;
-    }
-  }
-
-  getShelfAt(): number {
-    return this.shelf_at;
-  }
-
-  setShelfAt(value: number): void {
-    if (typeof value === 'number' && value >= 0) {
-      this.shelf_at = value;
-    }
-  }
 
   getEnd(): number {
     return this.end;
   }
 
   setEnd(value: number): void {
-    if (typeof value === 'number' && value >= 0) {
+    if (typeof value === 'number'&&!isNaN(value)) {
       this.end = value;
     }
   }
@@ -618,80 +541,11 @@ export class VideoBean {
   }
 
   setCollectionId(value: number): void {
-    if (typeof value === 'number' && value >= 0) {
+    if (typeof value === 'number'&&!isNaN(value) ) {
       this.collection_id = value;
     }
   }
 
-  getWatch(): number {
-    return this.watch;
-  }
-
-  setWatch(value: number): void {
-    if (typeof value === 'number' && value >= 0) {
-      this.watch = value;
-    }
-  }
-
-  getUseLocalImage(): number {
-    return this.use_local_image;
-  }
-
-  setUseLocalImage(value: number): void {
-    if (typeof value === 'number' && value >= 0) {
-      this.use_local_image = value;
-    }
-  }
-
-  getTitlesTime(): number {
-    return this.titles_time;
-  }
-
-  setTitlesTime(value: number): void {
-    if (typeof value === 'number' && value >= 0) {
-      this.titles_time = value;
-    }
-  }
-
-  getTrailerTime(): number {
-    return this.trailer_time;
-  }
-
-  setTrailerTime(value: number): void {
-    if (typeof value === 'number' && value >= 0) {
-      this.trailer_time = value;
-    }
-  }
-
-  getSiteId(): number {
-    return this.site_id;
-  }
-
-  setSiteId(value: number): void {
-    if (typeof value === 'number' && value >= 0) {
-      this.site_id = value;
-    }
-  }
-
-  getCategoryPidStatus(): number {
-    return this.category_pid_status;
-  }
-
-  setCategoryPidStatus(value: number): void {
-    if (typeof value === 'number' && value >= 0) {
-      this.category_pid_status = value;
-    }
-  }
-
-  getCategoryChildIdStatus(): number {
-    return this.category_child_id_status;
-  }
-
-  setCategoryChildIdStatus(value: number): void {
-    if (typeof value === 'number' && value >= 0) {
-      this.category_child_id_status = value;
-    }
-  }
 
   getPlayUrl(): string {
     return this.play_url;
@@ -708,7 +562,7 @@ export class VideoBean {
   }
 
   setPlayUrlPutIn(value: number): void {
-    if (typeof value === 'number' && value >= 0) {
+    if (typeof value === 'number' &&!isNaN(value)) {
       this.play_url_put_in = value;
     }
   }
@@ -718,7 +572,7 @@ export class VideoBean {
   }
 
   setCreateUserId(value: null | number): void {
-    if (value === null || (typeof value === 'number' && value >= 0)) {
+    if (value === null || (typeof value === 'number' )) {
       this.createUserId = value;
     }
   }
@@ -728,47 +582,29 @@ export class VideoBean {
   }
 
   setUpdateUserId(value: null | number): void {
-    if (value === null || (typeof value === 'number' && value >= 0)) {
+    if (value === null || (typeof value === 'number' )) {
       this.updateUserId = value;
     }
   }
 
-  getId(): number {
-    return this.id;
-  }
-
-  setId(value: number): void {
-    if (typeof value === 'number' && value >= 0) {
-      this.id = value;
-    }
-  }
 
   getDoubanScoreId(): null | number {
     return this.douban_score_id;
   }
 
   setDoubanScoreId(value: null | number): void {
-    if (value === null || (typeof value === 'number' && value >= 0)) {
+    if (value === null || (typeof value === 'number'&&!isNaN(value) )) {
       this.douban_score_id = value;
     }
   }
 
-  getAlbumId(): null | number {
-    return this.album_id;
-  }
-
-  setAlbumId(value: null | number): void {
-    if (value === null || (typeof value === 'number' && value >= 0)) {
-      this.album_id = value;
-    }
-  }
 
   getDoubanScore(): number {
     return this.douban_score;
   }
 
   setDoubanScore(value: number): void {
-    if (typeof value === 'number' && value >= 0) {
+    if (typeof value === 'number' &&!isNaN(value)) {
       this.douban_score = value;
     }
   }

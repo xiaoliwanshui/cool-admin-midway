@@ -16,13 +16,16 @@ export class VideoLineEntity extends BaseEntity {
 
   @Column({ comment: '名称', length: 256 })
   collection_name: string;
+
   @Index()
   @Column({ comment: '资源id', nullable: true })
   collection_id: number;
 
+  @Index()
   @Column({ comment: '关联播放器ID', nullable: true, default: 0 })
   player_id: number;
 
+  @Index()
   @Column({ comment: '排序', nullable: true, default: 0 })
   sort: number;
 
