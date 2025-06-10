@@ -3,7 +3,7 @@ import { InjectEntityModel } from '@midwayjs/typeorm';
 import { Repository } from 'typeorm';
 import { VideoEntity } from '../entity/videos';
 import { VideoAlbumEntity } from '../entity/album';
-import { VideoAlbum } from '../entity/album_video';
+import {VideoAlbumRelationship} from '../entity/video_album_relationship';
 import { VideoWeekEntity } from '../entity/week_video';
 import { WeekEntity } from '../entity/week';
 import { ILogger, Inject, Provide } from '@midwayjs/core';
@@ -22,8 +22,8 @@ export class VideosService extends BaseService {
   @InjectEntityModel(VideoAlbumEntity)
   albumEntity: Repository<VideoAlbumEntity>;
 
-  @InjectEntityModel(VideoAlbum)
-  videoAlbum: Repository<VideoAlbum>;
+  @InjectEntityModel(VideoAlbumRelationship)
+  videoAlbumRelationship: Repository<VideoAlbumRelationship>;
 
   @InjectEntityModel(PlayLineEntity)
   playLineEntity: Repository<PlayLineEntity>;
@@ -90,7 +90,7 @@ export class VideosService extends BaseService {
   async videoAlbumRelationshipPage(list: Array<any>, query: any): Promise<any> {
     for (const item of list) {
       let video = [];
-      let data = await this.videoAlbum.find({
+      let data = await this.videoAlbumRelationship.find({
         where: { album_id: item.id },
         take: query.videoSize || 4,
       });
@@ -136,7 +136,7 @@ export class VideosService extends BaseService {
       const result = await this.videoEntity.findOneBy({
         title: videoEntity.title,
       });
-      this.logger.info(TAG, `insert ${videoEntity.title} success`);
+    //  this.logger.info(TAG, `insert ${videoEntity.title} success`);
       // 显式释放对象引用
       await this.VideoLineService.insert(result, collectionEntity);
       collectionEntity = null;
@@ -149,7 +149,7 @@ export class VideosService extends BaseService {
         title: videoEntity.title,
       });
       // 显式释放对象引用;
-      this.logger.info(TAG, `update ${videoEntity.title} success`);
+   //   this.logger.info(TAG, `update ${videoEntity.title} success`);
       if (result) {
         // 显式释放对象引用
         await this.VideoLineService.insert(result, collectionEntity);

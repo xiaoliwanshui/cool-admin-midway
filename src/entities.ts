@@ -12,7 +12,7 @@ import * as entity9 from './modules/video/entity/collection_category';
 import * as entity10 from './modules/video/entity/collection';
 import * as entity11 from './modules/video/entity/category';
 import * as entity12 from './modules/video/entity/barrage';
-import * as entity13 from './modules/video/entity/album_video';
+import * as entity13 from './modules/video/entity/video_album_relationship';
 import * as entity14 from './modules/video/entity/album';
 import * as entity15 from './modules/video/entity/ads';
 import * as entity16 from './modules/user/entity/wx';

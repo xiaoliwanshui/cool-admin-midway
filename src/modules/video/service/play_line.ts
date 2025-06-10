@@ -19,19 +19,19 @@ export class PlayLineService extends BaseService {
     try {
       // 插入或更新数据
       await this.playLineEntity.insert(data);
-      this.logger.info(
-        TAG,
-        `insert ${data.collection_name} ${data.video_name} ${data.name} success`
-      );
+      // this.logger.info(
+      //   TAG,
+      //   `insert ${data.collection_name} ${data.video_name} ${data.name} success`
+      // );
       // 显式释放对象引用
       data = null;
     } catch (error) {
       // 更新数据
       await this.playLineEntity.update({ file: data.file }, data);
-      this.logger.info(
-        TAG,
-        `update ${data.collection_name} ${data.video_name} ${data.name} success`
-      );
+      // this.logger.info(
+      //   TAG,
+      //   `update ${data.collection_name} ${data.video_name} ${data.name} success`
+      // );
       // 显式释放对象引用
       data = null;
     }

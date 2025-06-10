@@ -71,7 +71,7 @@ export class VideoLineService extends BaseService {
       });
       return result;
     } catch (error) {
-      this.logger.error(TAG, error);
+    //  this.logger.error(TAG, error);
       return [];
     }
   }
@@ -101,7 +101,7 @@ export class VideoLineService extends BaseService {
       parseVideoList.forEach(item => {
         this.playLineService.insert(item);
       });
-      this.logger.info(TAG, `insert ${videoEntity.title} success`);
+    //  this.logger.info(TAG, `insert ${videoEntity.title} success`);
       // 显式释放对象引用
       videoEntity = null;
       parseVideoList = null;
@@ -134,7 +134,7 @@ export class VideoLineService extends BaseService {
         parseVideoList.forEach(item => {
           this.playLineService.insert(item);
         });
-        this.logger.info(TAG, `update ${videoEntity.title} success`);
+     //   this.logger.info(TAG, `update ${videoEntity.title} success`);
         // 显式释放对象引用
         videoEntity = null;
         parseVideoList = null;

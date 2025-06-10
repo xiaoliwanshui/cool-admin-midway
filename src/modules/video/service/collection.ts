@@ -34,6 +34,14 @@ export class CollectionService extends BaseService {
   @InjectEntityModel(CollectionTaskTaskEntity)
   collectionTaskTaskEntity: Repository<CollectionTaskTaskEntity>;
 
+  /**
+   * 处理按天同步视频的业务逻辑
+   *
+   * @param id - 集合实体的唯一标识符
+   *
+   * 此方法会根据提供的集合ID查找对应的集合实体，
+   * 然后调用syncVideo方法，并传入操作类型'day'和小时数24。
+   */
   async day(id: number) {
     const collectionEntity = await this.collectionEntity.findOneBy({ id });
     await this.syncVideo(collectionEntity, {
