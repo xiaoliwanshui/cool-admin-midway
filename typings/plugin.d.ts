@@ -1,3 +1,4 @@
+import * as upload_cos from './upload-cos';
 import { BaseUpload, MODETYPE } from './upload';
 type AnyString = string & {};
 /**
@@ -5,4 +6,5 @@ type AnyString = string & {};
  */
 interface PluginMap {
   upload: BaseUpload;
+  'upload-cos': upload_cos.CoolPlugin;
 }
