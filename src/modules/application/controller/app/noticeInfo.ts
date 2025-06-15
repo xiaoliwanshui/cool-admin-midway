@@ -15,6 +15,9 @@ import { NoticeInfoEntity } from '../../entity/noticeInfo';
   pageQueryOp: {
     keyWordLikeFields: ['a.title'],
     fieldEq: ['type', 'status'],
+    addOrderBy: {
+      createTime: 'desc',
+    },
   },
 })
 @CoolUrlTag({
