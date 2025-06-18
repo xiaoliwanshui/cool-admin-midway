@@ -13,7 +13,7 @@ import { NoticeInfoEntity } from '../../entity/noticeInfo';
   api: ['add', 'delete', 'update', 'info', 'list', 'page'],
   entity: NoticeInfoEntity,
   pageQueryOp: {
-    keyWordLikeFields: ['a.title'],
+    keyWordLikeFields: ['title'],
     fieldEq: ['type', 'status'],
     addOrderBy: {
       createTime: 'desc',
