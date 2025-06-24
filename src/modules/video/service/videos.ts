@@ -47,11 +47,22 @@ export class VideosService extends BaseService {
    * 排序查询
    */
   async sort(query: any): Promise<any> {
-    const find = this.videoEntity.createQueryBuilder();
-    const { sort, category_pid } = query;
-    delete query.sort;
-    find.where(category_pid ? { category_pid } : {}).orderBy(sort, 'DESC');
-    return this.entityRenderPage(find, query);
+    query.page = query.page ? query.page : 1;
+    query.size = query.size ? query.size : 10;
+    let order={}
+    if(query.sort){
+      order[query.sort]= 'ASC'
+    }
+    const data:VideoEntity[] = await this.videoEntity.find(
+      {
+        order:{
+          ...order
+        },
+        skip: query.page * (query.page - 1),
+        take: query.size,
+      }
+    )
+    return {list:data,pagination:{page:query.page,size:query.size,}}
   }
 
   async album(query: any): Promise<any> {
@@ -132,7 +143,7 @@ export class VideosService extends BaseService {
   ): Promise<VideoEntity> {
     try {
       // 插入数据
-      await this.videoEntity.insert(videoEntity);
+      await this.videoEntity.upsert(videoEntity,['title']);
       const result = await this.videoEntity.findOneBy({
         title: videoEntity.title,
       });

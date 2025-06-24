@@ -1,10 +1,13 @@
 import {
   BaseController,
-  CoolController,
+  CoolController, CoolTag,
   CoolUrlTag,
   TagTypes,
 } from '@cool-midway/core';
+import { Body, Inject, Post } from '@midwayjs/core';
 import { VideoAlbumEntity } from '../../entity/album';
+import {AlbumVideoServer} from "../../service/album_video";
+
 
 /**
  *
@@ -26,4 +29,13 @@ import { VideoAlbumEntity } from '../../entity/album';
   key: TagTypes.IGNORE_TOKEN,
   value: ['page', 'info'],
 })
-export class AppAlbumController extends BaseController {}
+export class AppAlbumController extends BaseController {
+  @Inject()
+  albumService: AlbumVideoServer;
+
+  @CoolTag(TagTypes.IGNORE_TOKEN)
+  @Post('/album')
+  async album(@Body() body): Promise<unknown> {
+    return this.ok(await this.albumService.album(body))
+  }
+}
