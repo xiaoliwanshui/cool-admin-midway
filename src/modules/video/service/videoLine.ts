@@ -36,7 +36,7 @@ export class VideoLineService extends BaseService {
   parseVideoList(
     videoEntity: VideoEntity,
     collectionEntity: CollectionEntity,
-    videoLineEntity: VideoLineEntity
+    videoLineEntityId: number
   ): Array<Line> {
     try {
       // 使用 '#' 分割字符串，得到每一集的字符串
@@ -63,7 +63,7 @@ export class VideoLineService extends BaseService {
             video_name: videoEntity.title,
             tag: collectionEntity.param,
             sort: index,
-            video_line_id: videoLineEntity.id,
+            video_line_id: videoLineEntityId,
             collection_id: collectionEntity.id,
             collection_name: collectionEntity.name,
           });
@@ -82,33 +82,28 @@ export class VideoLineService extends BaseService {
   ): Promise<void> {
     try {
       // 插入或更新数据
-      await this.videoLineEntity.insert({
+     const data= await this.videoLineEntity.upsert({
         collection_name: collectionEntity.name,
         tag: collectionEntity.param,
         video_id: videoEntity.id,
         video_name: videoEntity.title,
         collection_id: collectionEntity.id,
-      });
-      let result = await this.videoLineEntity.findOneBy({
-        video_id: videoEntity.id,
-        collection_id: collectionEntity.id,
-      });
+      }, ['collection_id', 'video_id']);
       let parseVideoList = this.parseVideoList(
         videoEntity,
         collectionEntity,
-        result
+        data.raw.insertId
       );
       parseVideoList.forEach(item => {
         this.playLineService.insert(item);
       });
-    //  this.logger.info(TAG, `insert ${videoEntity.title} success`);
+     this.logger.info(TAG, `insert ${videoEntity.title} success`);
       // 显式释放对象引用
       videoEntity = null;
       parseVideoList = null;
-      result = null;
     } catch (error) {
       // 更新数据
-      await this.videoLineEntity.update(
+    const data=  await this.videoLineEntity.update(
         {
           video_id: videoEntity.id,
           collection_id: collectionEntity.id,
@@ -121,25 +116,19 @@ export class VideoLineService extends BaseService {
           collection_id: collectionEntity.id,
         }
       );
-      let result = await this.videoLineEntity.findOneBy({
-        video_id: videoEntity.id,
-        collection_id: collectionEntity.id,
-      });
-      if (result) {
         let parseVideoList = this.parseVideoList(
           videoEntity,
           collectionEntity,
-          result
+          data.raw.insertId
         );
         parseVideoList.forEach(item => {
           this.playLineService.insert(item);
         });
-     //   this.logger.info(TAG, `update ${videoEntity.title} success`);
+       this.logger.info(TAG, `update ${videoEntity.title} success`);
         // 显式释放对象引用
         videoEntity = null;
         parseVideoList = null;
-        result = null;
-      }
+
     }
   }
 }

@@ -1,18 +1,18 @@
-import { ILogger, Inject, Provide } from '@midwayjs/core';
-import { CollectionEntity } from '../entity/collection';
-import { VideoParams } from '../bean/VideoParams';
+import {ILogger, Inject, Provide} from '@midwayjs/core';
+import {CollectionEntity} from '../entity/collection';
+import {VideoParams} from '../bean/VideoParams';
 import axios from 'axios';
-import { VideoResponseData } from '../bean/SourceVideo';
-import { VideoBean } from '../bean/VideoBean';
-import { CollectionCategoryEntity } from '../entity/collection_category';
-import { InjectEntityModel } from '@midwayjs/typeorm';
-import { Repository } from 'typeorm';
-import { VideoEntity } from '../entity/videos';
-import { VideosService } from './videos';
-import { CoolCommException } from '@cool-midway/core';
-import { DictInfoService } from '../../dict/service/info';
-import { DictInfoEntity } from '../../dict/entity/info';
-import { CollectionTaskTaskEntity } from '../entity/collection_task';
+import {VideoResponseData} from '../bean/SourceVideo';
+import {VideoBean} from '../bean/VideoBean';
+import {CollectionCategoryEntity} from '../entity/collection_category';
+import {InjectEntityModel} from '@midwayjs/typeorm';
+import {Repository} from 'typeorm';
+import {VideoEntity} from '../entity/videos';
+import {VideosService} from './videos';
+import {CoolCommException} from '@cool-midway/core';
+import {DictInfoService} from '../../dict/service/info';
+import {DictInfoEntity} from '../../dict/entity/info';
+import {CollectionTaskTaskEntity} from '../entity/collection_task';
 import * as moment from 'moment';
 
 const promiseLimit = require('promise-limit');
@@ -62,7 +62,8 @@ export class ConcurrencyService {
         languageEntityList,
       } = await this.fetchCategoryAndDictData(collectionEntity);
 
-      videoParamsArray.forEach(items => {
+      while (videoParamsArray.length) {
+        let items = videoParamsArray.shift();
         this.processVideoParamsItems(
           items,
           collectionEntity,
@@ -70,8 +71,9 @@ export class ConcurrencyService {
           areaEntityList,
           languageEntityList
         );
-      });
-      videoParamsArray.length = 0;
+      }
+
+      videoParamsArray = null;
     } catch (error) {
       this.logger.error(TAG, error);
       return error;
@@ -101,7 +103,7 @@ export class ConcurrencyService {
   filterCategory(
     category_id: number,
     collectionCategoryEntityList: CollectionCategoryEntity[]
-  ): { category_id: number; category_pid: number} | null {
+  ): { category_id: number; category_pid: number } | null {
     try {
       const result = collectionCategoryEntityList.filter(item => {
         if (item.class_id == category_id) {
@@ -114,7 +116,7 @@ export class ConcurrencyService {
           item => item.id === result[0].parentId
         );
         return {
-          category_id:result[0].sys_category_id,
+          category_id: result[0].sys_category_id,
           category_pid: parentCategory?.sys_category_id ? parentCategory.sys_category_id : 0,
         };
       }
@@ -122,7 +124,6 @@ export class ConcurrencyService {
       return null;
     }
   }
-
 
 
   filterDict(name: string, DictInfoEntityList: DictInfoEntity[]) {
@@ -179,14 +180,16 @@ export class ConcurrencyService {
   async saveVideo(videoList: VideoBean[], collectionEntity: CollectionEntity) {
     try {
       // 直接使用原对象，避免不必要的复制
-      videoList.forEach((item, index) => {
+
+      while (videoList.length) {
+        const item = videoList.shift();
         this.videosService.insert(
           item as unknown as VideoEntity,
           collectionEntity
         );
-      });
+      }
       // 显式清空数组，释放内存
-      videoList.length = 0;
+      videoList = null;
       collectionEntity = null;
     } catch (error) {
       this.logger.error(TAG, error);
@@ -232,25 +235,24 @@ export class ConcurrencyService {
   }
 
   // 新增：解耦参数处理逻辑
-  private processVideoParamsItems(
+  private async processVideoParamsItems(
     items: VideoParams[],
     collectionEntity: CollectionEntity,
     collectionCategoryEntityList: CollectionCategoryEntity[],
     areaEntityList: DictInfoEntity[],
     languageEntityList: DictInfoEntity[]
   ) {
-    Promise.all(
-      items.map(item => this.processSingleVideoItem(item, collectionEntity))
-    ).then(results =>
-      this.handleResultsAndSave(
-        results,
-        items,
+    while (items.length > 0) {
+      let item = items.shift();
+      const result = await this.processSingleVideoItem(item, collectionEntity);
+      this.handleResultsAndSaves(
+        result,
         collectionEntity,
         collectionCategoryEntityList,
         areaEntityList,
         languageEntityList
       )
-    );
+    }
   }
 
   // 新增：解耦单个视频处理逻辑
@@ -262,32 +264,59 @@ export class ConcurrencyService {
       const result = await this.promiseLimit(() =>
         this.syncVideoPage(collectionEntity, item)
       );
-      return { success: true, data: result };
+      return {success: true, data: result};
     } catch (error) {
       this.logger.error(
         TAG,
         `采集失败 Promise.all syncVideoPageList error: ${error.message}`
       );
-      return { success: false, error };
+      return {success: false, error};
     }
   }
 
+
   // 新增：解耦结果处理逻辑
-  private handleResultsAndSave(
-    results: any[],
-    items: VideoParams[],
+  private handleResultsAndSaves(
+    result: any,
     collectionEntity: CollectionEntity,
     collectionCategoryEntityList: CollectionCategoryEntity[],
     areaEntityList: DictInfoEntity[],
     languageEntityList: DictInfoEntity[]
   ) {
-    items.splice(0, items.length);
-    if (!results.length) return;
-
+    if (!result) return;
     const videoList: VideoBean[] = [];
-    results.forEach(result => {
+    if (result.success && result.data?.list) {
+      while (result.data.list.length) {
+        let item = result.data.list.shift();
+        this.processVideoItem(
+          item,
+          collectionCategoryEntityList,
+          areaEntityList,
+          languageEntityList,
+          videoList
+        )
+      }
+    }
+
+    this.saveVideo(videoList, collectionEntity);
+  }
+
+
+  // 新增：解耦结果处理逻辑
+  private handleResultsAndSave(
+    results: any[],
+    collectionEntity: CollectionEntity,
+    collectionCategoryEntityList: CollectionCategoryEntity[],
+    areaEntityList: DictInfoEntity[],
+    languageEntityList: DictInfoEntity[]
+  ) {
+    if (!results.length) return;
+    const videoList: VideoBean[] = [];
+    while (results.length) {
+      const result = results.shift();
       if (result.success && result.data?.list) {
-        result.data.list.forEach(item =>
+        while (result.data.list.length) {
+          let item = result.data.list.shift();
           this.processVideoItem(
             item,
             collectionCategoryEntityList,
@@ -295,9 +324,9 @@ export class ConcurrencyService {
             languageEntityList,
             videoList
           )
-        );
+        }
       }
-    });
+    }
     this.saveVideo(videoList, collectionEntity);
   }
 
@@ -317,17 +346,28 @@ export class ConcurrencyService {
       this.logger.error(`分类不存在：${item.type_name} ${item.type_id}`);
       return;
     }
-
     item.categoryId = category.category_id;
     item.categoryPid = category.category_pid;
-    item.collectionName=collectionCategoryEntityList[0].collection_name;
-    item.collectionId=collectionCategoryEntityList[0].collection_id;
-    item.language = this.filterDict(
+    item.collectionName = collectionCategoryEntityList[0].collection_name;
+    item.collectionId = collectionCategoryEntityList[0].collection_id;
+    const language = this.filterDict(
       item.vod_lang || item.language || item.lang,
       languageEntityList
-    ).id;
-    item.area = this.filterDict(item.vod_area || item.area, areaEntityList).id;
-
+    )
+    if (language) {
+      item.language = this.filterDict(
+        item.vod_lang || item.language || item.lang,
+        languageEntityList
+      ).id;
+    } else {
+      item.language = 611
+    }
+    const area = this.filterDict(item.vod_area || item.area, areaEntityList);
+    if (area) {
+      item.area = this.filterDict(item.vod_area || item.area, areaEntityList).id;
+    } else {
+      item.area = 570
+    }
     videoList.push(new VideoBean(item));
   }
 }
