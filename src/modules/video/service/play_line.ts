@@ -18,7 +18,7 @@ export class PlayLineService extends BaseService {
   async insert(data: Line): Promise<void> {
     try {
       // 插入或更新数据
-      await this.playLineEntity.insert(data);
+      await this.playLineEntity.save(data);
       // this.logger.info(
       //   TAG,
       //   `insert ${data.collection_name} ${data.video_name} ${data.name} success`

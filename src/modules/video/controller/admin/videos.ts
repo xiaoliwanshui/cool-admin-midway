@@ -43,16 +43,6 @@ export class AdminVideoController extends BaseController {
   }
 
   @CoolTag(TagTypes.IGNORE_TOKEN)
-  @Post('/album')
-  async album(@Body() body): Promise<unknown> {
-    try {
-      return this.ok(await this.videosService.album(body));
-    } catch (error) {
-      return this.fail(error);
-    }
-  }
-
-  @CoolTag(TagTypes.IGNORE_TOKEN)
   @Post('/week')
   async week(@Body() body): Promise<unknown> {
     try {

@@ -75,7 +75,7 @@ export class CollectionService extends BaseService {
   async syncVideo(
     collectionEntity: CollectionEntity,
     params: VIDEOPARAMS
-  ): Promise<any> {
+  ): Promise<void> {
     try {
       let defaultParams = new VideoParams();
       let result = await axios.get(
@@ -136,10 +136,10 @@ export class CollectionService extends BaseService {
       videoParamsList = null; // 显式释放引用
       videoParamsArray = null; // 显式释放引用
 
-      return videoParamsList;
+      return null;
     } catch (error) {
       this.logger.error(TAG, error);
-      return error;
+      return null;
     }
   }
 }
