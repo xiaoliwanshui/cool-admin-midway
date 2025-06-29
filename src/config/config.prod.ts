@@ -1,8 +1,8 @@
-import { CoolConfig } from '@cool-midway/core';
-import { MidwayConfig } from '@midwayjs/core';
-import { entities } from '../entities';
-import { TenantSubscriber } from '../modules/base/db/tenant';
-import { redisStore } from 'cache-manager-ioredis-yet';
+import {CoolConfig} from '@cool-midway/core';
+import {MidwayConfig} from '@midwayjs/core';
+import {entities} from '../entities';
+import {TenantSubscriber} from '../modules/base/db/tenant';
+import {redisStore} from 'cache-manager-ioredis-yet';
 
 /**
  * 本地开发 npm run prod 读取的配置文件
@@ -12,7 +12,7 @@ export default {
     dataSource: {
       default: {
         type: 'mysql',
-        host: '114.134.185.181',
+        host: '127.0.0.1',
         port: 3306,
         username: 'cms',
         password: 'n4mM4KHkEyaNZEm2',
