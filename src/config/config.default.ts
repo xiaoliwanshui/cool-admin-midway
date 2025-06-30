@@ -1,8 +1,7 @@
 import { CoolConfig } from '@cool-midway/core';
 import { MidwayConfig } from '@midwayjs/core';
-import { CoolCacheStore } from '@cool-midway/core';
 import * as path from 'path';
-import { pCachePath, pUploadPath } from '../comm/path';
+import { pUploadPath } from '../comm/path';
 import { availablePort } from '../comm/port';
 
 // redis缓存
@@ -49,6 +48,14 @@ export default {
   //     },
   //   },
   // },
+  redis: {
+    client: {
+      port: 6379, // Redis port
+      host: '127.0.0.1', // Redis host
+      password: '',
+      db: 1,
+    },
+  },
   cacheManager: {
     clients: {
       default: {

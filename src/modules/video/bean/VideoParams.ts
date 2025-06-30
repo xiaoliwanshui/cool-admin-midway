@@ -29,6 +29,36 @@ export class VideoParams {
   private wd = '';
   private pagecount = 0;
 
+  constructor({
+    total = 0,
+    srid = 0,
+    ac = 'videolist',
+    h = undefined,
+    ids = '',
+    limit = 0,
+    op = 'all',
+    page = 1,
+    pagesize = 0,
+    pg = 1,
+    ps = 0,
+    t = 0,
+    wd = '',
+  }) {
+    this.total = total;
+    this.srid = srid;
+    this.ac = ac;
+    this.h = h;
+    this.ids = ids;
+    this.limit = limit;
+    this.op = op;
+    this.page = page;
+    this.pagesize = pagesize;
+    this.pg = pg;
+    this.ps = ps;
+    this.t = t;
+    this.wd = wd;
+  }
+
   getSrid(): number {
     return this.srid;
   }

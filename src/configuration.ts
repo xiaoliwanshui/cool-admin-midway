@@ -21,6 +21,7 @@ import * as upload from '@midwayjs/upload';
 // import * as task from '@cool-midway/task';
 // import * as rpc from '@cool-midway/rpc';
 import * as prometheus from '@midwayjs/prometheus'; // 导入模块
+import * as redis from '@midwayjs/redis';
 
 @Configuration({
   imports: [
@@ -49,6 +50,7 @@ import * as prometheus from '@midwayjs/prometheus'; // 导入模块
       enabledEnvironment: ['local', 'prod'],
     },
     prometheus,
+    redis, // 导入 redis 组件
   ],
   importConfigs: [
     {

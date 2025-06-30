@@ -33,6 +33,17 @@ export class TaskCollectService extends BaseService {
     }
   }
 
+  async startCollection() {
+    try {
+      this.logger.info(TAG, '采集调用了');
+      await this.collectionService.startCollection();
+      return '任务执行成功';
+    } catch (error) {
+      this.logger.error(TAG, '采集任务异常', error);
+      throw error;
+    }
+  }
+
   /**
    * 执行每周采集任务
    * @param id 视频ID
