@@ -1,21 +1,20 @@
-import {ILogger, Inject, Provide} from '@midwayjs/core';
-import {CollectionEntity} from '../entity/collection';
-import {VideoParams} from '../bean/VideoParams';
+import { ILogger, Inject, Provide } from '@midwayjs/core';
+import { CollectionEntity } from '../entity/collection';
+import { VideoParams } from '../bean/VideoParams';
 import axios from 'axios';
-import {VideoResponseData} from '../bean/SourceVideo';
-import {VideoBean} from '../bean/VideoBean';
-import {CollectionCategoryEntity} from '../entity/collection_category';
-import {InjectEntityModel} from '@midwayjs/typeorm';
-import {Repository} from 'typeorm';
-import {VideoEntity} from '../entity/videos';
-import {VideosService} from './videos';
-import {CoolCommException} from '@cool-midway/core';
-import {DictInfoService} from '../../dict/service/info';
-import {DictInfoEntity} from '../../dict/entity/info';
-import {CollectionTaskTaskEntity} from '../entity/collection_task';
+import { VideoResponseData } from '../bean/SourceVideo';
+import { VideoBean } from '../bean/VideoBean';
+import { CollectionCategoryEntity } from '../entity/collection_category';
+import { InjectEntityModel } from '@midwayjs/typeorm';
+import { Repository } from 'typeorm';
+import { VideoEntity } from '../entity/videos';
+import { VideosService } from './videos';
+import { CoolCommException } from '@cool-midway/core';
+import { DictInfoService } from '../../dict/service/info';
+import { DictInfoEntity } from '../../dict/entity/info';
+import { CollectionTaskTaskEntity } from '../entity/collection_task';
 import * as moment from 'moment';
-
-const promiseLimit = require('promise-limit');
+import { RedisService } from '@midwayjs/redis';
 
 const TAG = 'ConcurrencyService';
 
@@ -38,42 +37,37 @@ export class ConcurrencyService {
   @Inject()
   dictInfoService: DictInfoService;
 
-  private promiseLimit = promiseLimit(15);
+  @Inject()
+  redisService: RedisService;
 
   private collectionTaskTaskEntityId = 0;
 
-  //同步结束后的任务
-  async syncVideoPageListEnd() {
-    this.logger.info(TAG, 'syncVideoPageListEnd');
+  async getRedisData() {
+    if (this.redisService.exists('collection')) {
+      const data = await this.redisService.lpop('collection');
+      return JSON.parse(data);
+    }
   }
 
-  async syncVideoPageList(
-    collectionEntity: CollectionEntity,
-    videoParamsArray: VideoParams[][]
-  ): Promise<any> {
+  async syncVideoPageList(): Promise<any> {
     try {
-      // 解耦任务记录创建逻辑
-      await this.createTaskRecord(collectionEntity);
-
-      // 解耦分类和字典数据获取逻辑
+      const data: any = await this.getRedisData();
+      // // 解耦任务记录创建逻辑
+      await this.createTaskRecord(data.collectionEntity as CollectionEntity);
       const {
         collectionCategoryEntityList,
         areaEntityList,
         languageEntityList,
-      } = await this.fetchCategoryAndDictData(collectionEntity);
-
-      while (videoParamsArray.length) {
-        let items = videoParamsArray.shift();
-        this.processVideoParamsItems(
-          items,
-          collectionEntity,
-          collectionCategoryEntityList,
-          areaEntityList,
-          languageEntityList
-        );
-      }
-
-      videoParamsArray = null;
+      } = await this.fetchCategoryAndDictData(
+        data.collectionEntity as CollectionEntity
+      );
+      await this.processVideoParamsItems(
+        new VideoParams(data.videoParams),
+        data.collectionEntity as CollectionEntity,
+        collectionCategoryEntityList,
+        areaEntityList,
+        languageEntityList
+      );
     } catch (error) {
       this.logger.error(TAG, error);
       return error;
@@ -117,14 +111,15 @@ export class ConcurrencyService {
         );
         return {
           category_id: result[0].sys_category_id,
-          category_pid: parentCategory?.sys_category_id ? parentCategory.sys_category_id : 0,
+          category_pid: parentCategory?.sys_category_id
+            ? parentCategory.sys_category_id
+            : 0,
         };
       }
     } catch (error) {
       return null;
     }
   }
-
 
   filterDict(name: string, DictInfoEntityList: DictInfoEntity[]) {
     try {
@@ -144,9 +139,12 @@ export class ConcurrencyService {
     params: VideoParams
   ): Promise<VideoResponseData | Object> {
     try {
-      const result = await axios.get(
-        collectionEntity.address + '?' + params.getQueryString()
-      );
+      const uri: string =
+        collectionEntity.address + '?' + params.getQueryString();
+      //删除uri的空格
+      uri.replace(/\s+/g, '');
+      this.logger.info(TAG, uri);
+      const result = await axios.get(uri);
       if (params.getPagecount() === params.getPage()) {
         await this.collectionTaskTaskEntity.update(
           this.collectionTaskTaskEntityId,
@@ -159,10 +157,14 @@ export class ConcurrencyService {
         );
         this.logger.info(TAG, 'request page task finished');
       }
-
       return result.data;
     } catch (error) {
-      this.logger.info(TAG, `request error ${JSON.stringify(error)}`);
+      this.logger.info(
+        TAG,
+        `request error ${
+          collectionEntity.address + '?' + params.getQueryString()
+        }`
+      );
       await this.collectionTaskTaskEntity.update(
         this.collectionTaskTaskEntityId,
         {
@@ -236,23 +238,20 @@ export class ConcurrencyService {
 
   // 新增：解耦参数处理逻辑
   private async processVideoParamsItems(
-    items: VideoParams[],
+    item: VideoParams,
     collectionEntity: CollectionEntity,
     collectionCategoryEntityList: CollectionCategoryEntity[],
     areaEntityList: DictInfoEntity[],
     languageEntityList: DictInfoEntity[]
   ) {
-    while (items.length > 0) {
-      let item = items.shift();
-      const result = await this.processSingleVideoItem(item, collectionEntity);
-      this.handleResultsAndSaves(
-        result,
-        collectionEntity,
-        collectionCategoryEntityList,
-        areaEntityList,
-        languageEntityList
-      )
-    }
+    const result = await this.processSingleVideoItem(item, collectionEntity);
+    this.handleResultsAndSaves(
+      result,
+      collectionEntity,
+      collectionCategoryEntityList,
+      areaEntityList,
+      languageEntityList
+    );
   }
 
   // 新增：解耦单个视频处理逻辑
@@ -261,19 +260,17 @@ export class ConcurrencyService {
     collectionEntity: CollectionEntity
   ) {
     try {
-      const result = await this.promiseLimit(() =>
-        this.syncVideoPage(collectionEntity, item)
-      );
-      return {success: true, data: result};
+      const result = await this.syncVideoPage(collectionEntity, item);
+
+      return { success: true, data: result };
     } catch (error) {
       this.logger.error(
         TAG,
         `采集失败 Promise.all syncVideoPageList error: ${error.message}`
       );
-      return {success: false, error};
+      return { success: false, error };
     }
   }
-
 
   // 新增：解耦结果处理逻辑
   private handleResultsAndSaves(
@@ -294,13 +291,12 @@ export class ConcurrencyService {
           areaEntityList,
           languageEntityList,
           videoList
-        )
+        );
       }
     }
 
     this.saveVideo(videoList, collectionEntity);
   }
-
 
   // 新增：解耦结果处理逻辑
   private handleResultsAndSave(
@@ -323,7 +319,7 @@ export class ConcurrencyService {
             areaEntityList,
             languageEntityList,
             videoList
-          )
+          );
         }
       }
     }
@@ -353,20 +349,23 @@ export class ConcurrencyService {
     const language = this.filterDict(
       item.vod_lang || item.language || item.lang,
       languageEntityList
-    )
+    );
     if (language) {
       item.language = this.filterDict(
         item.vod_lang || item.language || item.lang,
         languageEntityList
       ).id;
     } else {
-      item.language = 611
+      item.language = 611;
     }
     const area = this.filterDict(item.vod_area || item.area, areaEntityList);
     if (area) {
-      item.area = this.filterDict(item.vod_area || item.area, areaEntityList).id;
+      item.area = this.filterDict(
+        item.vod_area || item.area,
+        areaEntityList
+      ).id;
     } else {
-      item.area = 570
+      item.area = 570;
     }
     videoList.push(new VideoBean(item));
   }

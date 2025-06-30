@@ -3,6 +3,7 @@ import { InjectEntityModel } from '@midwayjs/typeorm';
 import { Repository } from 'typeorm';
 import { ILogger, Inject, Provide } from '@midwayjs/core';
 import axios from 'axios';
+import { RedisService } from '@midwayjs/redis';
 import { CollectionEntity } from '../entity/collection';
 import { CollectionCategoryEntity } from '../entity/collection_category';
 import { VIDEOPARAMS, VideoParams } from '../bean/VideoParams';
@@ -33,6 +34,9 @@ export class CollectionService extends BaseService {
 
   @InjectEntityModel(CollectionTaskTaskEntity)
   collectionTaskTaskEntity: Repository<CollectionTaskTaskEntity>;
+
+  @Inject()
+  redisService: RedisService;
 
   /**
    * 处理按天同步视频的业务逻辑
@@ -76,14 +80,13 @@ export class CollectionService extends BaseService {
     collectionEntity: CollectionEntity,
     params: VIDEOPARAMS
   ): Promise<void> {
+    //给list 类型的redis 添加数据
     try {
-      let defaultParams = new VideoParams();
+      let defaultParams = new VideoParams(params ? params : {});
       let result = await axios.get(
         collectionEntity.address + '?' + defaultParams.getQueryString()
       );
-      defaultParams = null; // 显式释放引用
 
-      let videoParamsList: VideoParams[] = [];
       const pagecount: number = result.data.pagecount;
       const limit: number = result.data.limit;
       const total: number = result.data.total;
@@ -100,9 +103,8 @@ export class CollectionService extends BaseService {
           h = params.h;
         }
       }
-
       for (page; page <= pagecount; page++) {
-        let videoParams: VideoParams = new VideoParams();
+        let videoParams: VideoParams = new VideoParams({});
         videoParams.setPg(page);
         videoParams.setPage(page);
         videoParams.setPs(limit);
@@ -114,32 +116,26 @@ export class CollectionService extends BaseService {
           videoParams.setH(h);
         }
         videoParams.setTotal(total);
-        videoParamsList.push(videoParams);
+        this.redisService.lpush(
+          'collection',
+          JSON.stringify({
+            videoParams,
+            collectionEntity,
+          })
+        );
+        this.redisService.expire('collection', 60 * 60 * 2);
         videoParams = null; // 显式释放引用
       }
-      // 将 videoParamsList 进行分批，每批最大 100 个
-      let videoParamsArray: VideoParams[][] = [];
-      videoParamsArray = videoParamsList.reduce((acc, cur) => {
-        const last = acc[acc.length - 1];
-        if (!last || last.length === 100) {
-          acc.push([cur]);
-        } else {
-          last.push(cur);
-        }
-        return acc;
-      }, []);
-
-      await this.concurrencyService.syncVideoPageList(
-        collectionEntity,
-        videoParamsArray
-      );
-      videoParamsList = null; // 显式释放引用
-      videoParamsArray = null; // 显式释放引用
-
-      return null;
+      await this.startCollection();
     } catch (error) {
       this.logger.error(TAG, error);
       return null;
+    }
+  }
+
+  async startCollection() {
+    if (this.redisService.exists('collection')) {
+      await this.concurrencyService.syncVideoPageList();
     }
   }
 }
