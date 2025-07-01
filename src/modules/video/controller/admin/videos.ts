@@ -22,7 +22,14 @@ import { Body, Inject, Post } from '@midwayjs/core';
   },
   pageQueryOp: {
     keyWordLikeFields: ['title'],
-    fieldEq: ['category_id', 'year', 'language', 'region', 'play_url_put_in','category_pid'],
+    fieldEq: [
+      'category_id',
+      'year',
+      'language',
+      'region',
+      'play_url_put_in',
+      'category_pid',
+    ],
     addOrderBy: {
       updateTime: 'desc',
     },
@@ -33,7 +40,7 @@ export class AdminVideoController extends BaseController {
   videosService: VideosService;
 
   @CoolTag(TagTypes.IGNORE_TOKEN)
-  @Post('/sort')
+  @Post('/sort', { summary: '排序' })
   async sort(@Body() body): Promise<unknown> {
     try {
       return this.ok(await this.videosService.sort(body));
@@ -43,7 +50,7 @@ export class AdminVideoController extends BaseController {
   }
 
   @CoolTag(TagTypes.IGNORE_TOKEN)
-  @Post('/week')
+  @Post('/week', { summary: '周数据' })
   async week(@Body() body): Promise<unknown> {
     try {
       return this.ok(await this.videosService.week(body));

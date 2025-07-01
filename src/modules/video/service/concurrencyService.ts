@@ -43,8 +43,9 @@ export class ConcurrencyService {
   private collectionTaskTaskEntityId = 0;
 
   async getRedisData() {
-    if (this.redisService.exists('collection')) {
-      const data = await this.redisService.lpop('collection');
+    const data = await this.redisService.exists('video:collection');
+    if (data) {
+      const data = await this.redisService.lpop('video:collection');
       return JSON.parse(data);
     }
   }
