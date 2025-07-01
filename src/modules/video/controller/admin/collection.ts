@@ -23,7 +23,7 @@ export class AdminCollectionController extends BaseController {
   collectionService: CollectionService;
 
   @CoolTag(TagTypes.IGNORE_TOKEN)
-  @Post('/collection_day')
+  @Post('/collection_day', { summary: '日更新' })
   async collection(
     @Body('params') params: any,
     @Body('collection') collection: any

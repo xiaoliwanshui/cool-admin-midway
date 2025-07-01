@@ -26,7 +26,7 @@ export class AdminCollectionCategoryController extends BaseController {
   categoryService: CategoryService;
 
   @CoolTag(TagTypes.IGNORE_TOKEN)
-  @Post('/sync_category')
+  @Post('/sync_category', { summary: '同步分类' })
   async sort(@Body() body): Promise<unknown> {
     try {
       return this.ok(await this.categoryService.syncCategory(body));
@@ -35,7 +35,7 @@ export class AdminCollectionCategoryController extends BaseController {
     }
   }
 
-  @Post('/match_category')
+  @Post('/match_category', { summary: '匹配分类' })
   async matchCategory(): Promise<unknown> {
     try {
       return this.ok(await this.categoryService.matchCategory());

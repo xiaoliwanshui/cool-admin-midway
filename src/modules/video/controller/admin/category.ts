@@ -24,7 +24,7 @@ export class AdminCategoryEntityController extends BaseController {
   @Inject()
   categoryService: CategoryService;
 
-  @Post('/match_category')
+  @Post('/match_category', { summary: '匹配分类' })
   async matchCategory(): Promise<unknown> {
     try {
       return this.ok(await this.categoryService.matchCategory());

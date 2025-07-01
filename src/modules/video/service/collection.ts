@@ -117,13 +117,13 @@ export class CollectionService extends BaseService {
         }
         videoParams.setTotal(total);
         this.redisService.lpush(
-          'collection',
+          'video:collection',
           JSON.stringify({
             videoParams,
             collectionEntity,
           })
         );
-        this.redisService.expire('collection', 60 * 60 * 2);
+        this.redisService.expire('video:collection', 60 * 60 * 2);
         videoParams = null; // 显式释放引用
       }
       await this.startCollection();
@@ -134,8 +134,11 @@ export class CollectionService extends BaseService {
   }
 
   async startCollection() {
-    if (this.redisService.exists('collection')) {
+    const data = await this.redisService.exists('video:collection');
+    if (data) {
       await this.concurrencyService.syncVideoPageList();
+    } else {
+      this.logger.info(TAG, '没有数据');
     }
   }
 }

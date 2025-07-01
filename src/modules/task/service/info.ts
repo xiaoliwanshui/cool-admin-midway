@@ -1,14 +1,21 @@
-import { App, Init, Inject, Provide, Scope, ScopeEnum } from '@midwayjs/core';
+import {
+  App,
+  IMidwayApplication,
+  Init,
+  Inject,
+  Provide,
+  Scope,
+  ScopeEnum,
+} from '@midwayjs/core';
 import { BaseService } from '@cool-midway/core';
 import { InjectEntityModel } from '@midwayjs/typeorm';
 import { Repository } from 'typeorm';
 import { TaskInfoEntity } from '../entity/info';
-import * as _ from 'lodash';
-import { IMidwayApplication } from '@midwayjs/core';
 import { CoolQueueHandle } from '@cool-midway/task';
 import { TaskBullService } from './bull';
 import { TaskLocalService } from './local';
 import { TaskLogEntity } from '../entity/log';
+
 /**
  * 任务
  */
@@ -78,6 +85,7 @@ export class TaskInfoService extends BaseService {
       ? await this.taskBullService.start(id)
       : await this.taskLocalService.start(id, type);
   }
+
   /**
    * 手动执行一次
    * @param id
@@ -87,6 +95,7 @@ export class TaskInfoService extends BaseService {
       ? this.taskBullService.once(id)
       : this.taskLocalService.once(id);
   }
+
   /**
    * 检查任务是否存在
    * @param jobId
@@ -96,15 +105,18 @@ export class TaskInfoService extends BaseService {
       ? this.taskBullService.exist(jobId)
       : this.taskLocalService.exist(jobId);
   }
+
   /**
    * 新增或修改
    * @param params
    */
   async addOrUpdate(params) {
+    console.log('params', params);
     this.type === 'bull'
       ? this.taskBullService.addOrUpdate(params)
       : this.taskLocalService.addOrUpdate(params);
   }
+
   /**
    * 删除
    * @param ids
@@ -114,6 +126,7 @@ export class TaskInfoService extends BaseService {
       ? this.taskBullService.delete(ids)
       : this.taskLocalService.delete(ids);
   }
+
   /**
    * 任务日志
    * @param query
@@ -150,4 +163,8 @@ export class TaskInfoService extends BaseService {
       ? this.taskBullService.info(id)
       : this.taskLocalService.info(id);
   }
+
+  /**
+   * 修改采集间隔时间
+   */
 }
