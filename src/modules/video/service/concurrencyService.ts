@@ -2,7 +2,6 @@ import { ILogger, Inject, Provide } from '@midwayjs/core';
 import { CollectionEntity } from '../entity/collection';
 import { VideoParams } from '../bean/VideoParams';
 import axios from 'axios';
-import { VideoResponseData } from '../bean/SourceVideo';
 import { VideoBean } from '../bean/VideoBean';
 import { CollectionCategoryEntity } from '../entity/collection_category';
 import { InjectEntityModel } from '@midwayjs/typeorm';
@@ -15,6 +14,7 @@ import { DictInfoEntity } from '../../dict/entity/info';
 import { CollectionTaskTaskEntity } from '../entity/collection_task';
 import * as moment from 'moment';
 import { RedisService } from '@midwayjs/redis';
+import { VIDEO_RESPONSE } from '../bean/video_response';
 
 const TAG = 'ConcurrencyService';
 
@@ -138,7 +138,7 @@ export class ConcurrencyService {
   async syncVideoPage(
     collectionEntity: CollectionEntity,
     params: VideoParams
-  ): Promise<VideoResponseData | Object> {
+  ): Promise<VIDEO_RESPONSE | Object> {
     try {
       const uri: string =
         collectionEntity.address + '?' + params.getQueryString();

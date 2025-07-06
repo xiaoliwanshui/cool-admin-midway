@@ -65,6 +65,9 @@ import { AlbumVideoServer } from '../../service/album_video';
       'b.up',
       'b.down',
       'b.collection_name',
+      'b.sub_title',
+      'b.video_tag',
+      'b.video_class',
     ],
     join: [
       {
