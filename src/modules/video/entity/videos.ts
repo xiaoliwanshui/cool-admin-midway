@@ -10,6 +10,13 @@ export class VideoEntity extends BaseEntity {
   @Index({ fulltext: true }) // 定义全文索引
   @Column({ comment: '影片标题', length: 191, nullable: true })
   title: string;
+  @Column({ comment: '影片副标题', length: 191, nullable: true })
+  sub_title: string;
+
+  @Column({ comment: '影片标签', length: 191, nullable: true })
+  video_tag: string;
+  @Column({ comment: '影片类型', length: 191, nullable: true })
+  video_class: string;
   //添加索引
   @Index()
   @Column({ comment: '分类', nullable: true })
@@ -83,7 +90,6 @@ export class VideoEntity extends BaseEntity {
     default: 0,
   })
   popularity_day: number;
-
 
   @Column({
     comment: '周人气',
@@ -235,7 +241,6 @@ export class VideoEntity extends BaseEntity {
   @Index()
   @Column({ comment: '踩数', nullable: true })
   down: number;
-
 
   @Column({ comment: '资源名称', nullable: true, length: 256 })
   collection_name: string;
