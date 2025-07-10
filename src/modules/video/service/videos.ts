@@ -3,7 +3,7 @@ import { InjectEntityModel } from '@midwayjs/typeorm';
 import { Repository } from 'typeorm';
 import { VideoEntity } from '../entity/videos';
 import { VideoAlbumEntity } from '../entity/album';
-import {VideoAlbumRelationship} from '../entity/video_album_relationship';
+import { VideoAlbumRelationship } from '../entity/video_album_relationship';
 import { VideoWeekEntity } from '../entity/week_video';
 import { WeekEntity } from '../entity/week';
 import { ILogger, Inject, Provide } from '@midwayjs/core';
@@ -49,20 +49,19 @@ export class VideosService extends BaseService {
   async sort(query: any): Promise<any> {
     query.page = query.page ? query.page : 1;
     query.size = query.size ? query.size : 10;
-    let order={}
-    if(query.sort){
-      order[query.sort]= 'ASC'
+    let order = {};
+    if (query.sort) {
+      order[query.sort] = 'DESC';
     }
-    const data:VideoEntity[] = await this.videoEntity.find(
-      {
-        order:{
-          ...order
-        },
-        skip: query.page * (query.page - 1),
-        take: query.size,
-      }
-    )
-    return {list:data,pagination:{page:query.page,size:query.size,}}
+    const data: VideoEntity[] = await this.videoEntity.find({
+      order: {
+        ...order,
+      },
+      //且video_class字段有值
+      skip: query.page * (query.page - 1),
+      take: query.size,
+    });
+    return { list: data, pagination: { page: query.page, size: query.size } };
   }
 
   async week(query: any): Promise<any> {
@@ -106,7 +105,7 @@ export class VideosService extends BaseService {
   ): Promise<void> {
     try {
       // 插入数据
-     const data = await this.videoEntity.upsert(videoEntity,['title']);
+      const data = await this.videoEntity.upsert(videoEntity, ['title']);
       videoEntity.id = data.raw.insertId;
       // 显式释放对象引用
       await this.VideoLineService.insert(videoEntity, collectionEntity);
@@ -114,8 +113,11 @@ export class VideosService extends BaseService {
       videoEntity = null;
     } catch (error) {
       // 更新数据
-     const data= await this.videoEntity.update({ title: videoEntity.title }, videoEntity);
-     videoEntity.id = data.raw.insertId;
+      const data = await this.videoEntity.update(
+        { title: videoEntity.title },
+        videoEntity
+      );
+      videoEntity.id = data.raw.insertId;
       if (videoEntity.id) {
         // 显式释放对象引用
         await this.VideoLineService.insert(videoEntity, collectionEntity);
