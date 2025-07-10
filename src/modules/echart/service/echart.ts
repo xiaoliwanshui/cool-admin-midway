@@ -129,10 +129,11 @@ export class EChartService extends BaseService {
           startDate,
           endDate: now,
         })
+        .andWhere('video.updateTime != video.createTime') // 增加过滤条件，排除 createTime == updateTime 的情况
         .groupBy('DATE(video.updateTime)') // 按日期分组
         .orderBy('DATE(video.updateTime)', 'ASC') // 按日期升序排列
         .limit(12) // 限制返回最多12条数据
-        .getRawMany(), // 返回原始数据,
+        .getRawMany(), // 返回原始数据
       create: await this.videoEntity
         .createQueryBuilder('video')
         .select('DATE(video.createTime)', 'date') // 按天分组日期格式化成年月日格式
@@ -141,6 +142,9 @@ export class EChartService extends BaseService {
           startDate,
           endDate: now,
         })
+        .andWhere(
+          'video.updateTime IS NULL OR video.updateTime = video.createTime'
+        ) // 过滤仅包含 createTime 的记录
         .groupBy('DATE(video.createTime)') // 按日期分组
         .orderBy('DATE(video.createTime)', 'ASC') // 按日期升序排列
         .limit(12) // 限制返回最多12条数据
