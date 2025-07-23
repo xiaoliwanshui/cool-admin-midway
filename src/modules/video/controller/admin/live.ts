@@ -15,7 +15,7 @@ import { UserLiveEntity } from '../../entity/live';
   },
   pageQueryOp: {
     keyWordLikeFields: ['title'],
-    fieldEq: ['type', 'status'],
+    fieldEq: ['category_id', 'status'],
   },
 })
 export class AdminLiveController extends BaseController {}
