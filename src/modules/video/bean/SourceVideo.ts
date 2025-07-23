@@ -1,3 +1,11 @@
+/**
+ * @Author: 17691002584 17691002584@163.com
+ * @Date: 2025-06-19 18:13:15
+ * @LastEditors: 17691002584 17691002584@163.com
+ * @LastEditTime: 2025-07-20 13:35:58
+ * @FilePath: src/modules/video/bean/SourceVideo.ts
+ * @Description: 这是默认设置,可以在设置》工具》File Description中进行配置
+ */
 export interface VideoResponseData {
   code: number;
   msg: string;

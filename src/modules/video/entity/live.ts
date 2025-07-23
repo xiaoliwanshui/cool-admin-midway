@@ -15,10 +15,7 @@ export class UserLiveEntity extends BaseEntity {
   roomId: string;
 
   @Column({ comment: '分类', nullable: true })
-  type: number;
-
-  @Column({ comment: '标签', type: 'json', nullable: true })
-  types: number;
+  category_id: number;
 
   @Column({ comment: '推流地址', nullable: true })
   pushUrl: string;

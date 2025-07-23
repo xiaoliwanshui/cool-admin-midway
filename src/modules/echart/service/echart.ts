@@ -53,6 +53,22 @@ export class EChartService extends BaseService {
     };
   }
 
+  /**
+   * sysLogEntity实体中的params字段为json数据 统计params中keyWord字段不为空的记录 并统计出对应的次数
+   */
+  async keyWord() {
+    return await this.sysLogEntity
+      .createQueryBuilder('sysLog')
+      .select('MAX(sysLog.params)', 'params') // 使用 MAX 聚合函数处理非分组字段
+      .addSelect('COUNT(sysLog.id)', 'count')
+      .where('sysLog.params IS NOT NULL')
+      .andWhere("JSON_EXTRACT(sysLog.params, '$.keyWord') IS NOT NULL") // 修改 JSON 路径表达式
+      .groupBy("JSON_EXTRACT(sysLog.params, '$.keyWord')") // 修改 GROUP BY 中的 JSON 路径表达式
+      .orderBy('count', 'DESC')
+      .limit(12)
+      .getRawMany();
+  }
+
   // 新增函数：统计 title 出现次数最多的前十条记录（分今日、本周、本月、本年）
   async statisticTitleCount() {
     const now = new Date();
@@ -119,7 +135,6 @@ export class EChartService extends BaseService {
     const now = new Date();
     const startDate = new Date(now);
     startDate.setDate(now.getDate() - 11); // 获取过去12天的起始日期
-
     return {
       update: await this.videoEntity
         .createQueryBuilder('video')
@@ -129,7 +144,6 @@ export class EChartService extends BaseService {
           startDate,
           endDate: now,
         })
-        .andWhere('video.updateTime != video.createTime') // 增加过滤条件，排除 createTime == updateTime 的情况
         .groupBy('DATE(video.updateTime)') // 按日期分组
         .orderBy('DATE(video.updateTime)', 'ASC') // 按日期升序排列
         .limit(12) // 限制返回最多12条数据
@@ -160,6 +174,7 @@ export class EChartService extends BaseService {
       statisticTitleCount: await this.statisticTitleCount(),
       videoCategory: await this.videoCategoryPid(),
       videoCreateTime: await this.videoCreateTime(),
+      keyWord: await this.keyWord(),
     };
     //判断redis中是否有数据，有则删除 没有就插入
     if (await this.redisService.exists('video:echarts')) {

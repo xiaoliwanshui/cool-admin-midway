@@ -34,24 +34,23 @@ export class CategoryService {
     try {
       let list = [];
       const result: any = await axios.get(query.address);
-      if (query.data_method == 1) {
-        const savePromises = result.data.class.map(async item => {
-          await this.saveCategory({
-            parentId: item.type_pid,
-            class_id: item.type_id,
-            class_name: item.type_name,
-            collection_id: query.id,
-            collection_name: query.name,
-          });
+      const savePromises = result.data.class.map(async item => {
+        await this.saveCategory({
+          parentId: item.type_pid,
+          class_id: item.type_id,
+          class_name: item.type_name,
+          collection_id: query.id,
+          collection_name: query.name,
         });
+      });
 
-        await Promise.all(savePromises);
-        let data: CollectionCategoryEntity[] = await this.collectionCategoryEntity.findBy({
+      await Promise.all(savePromises);
+      let data: CollectionCategoryEntity[] =
+        await this.collectionCategoryEntity.findBy({
           collection_id: query.id,
         });
-        list = this.updateParentId(data);
-      } else {
-      }
+      list = this.updateParentId(data);
+
       return { list };
     } catch (error) {
       this.logger.error(TAG, error);
@@ -64,7 +63,8 @@ export class CategoryService {
    * @param data - 分类数据数组，包含当前所有分类信息
    * @returns 返回更新后的分类数据数组
    */
-  updateParentId(data: CollectionCategoryEntity[]): CollectionCategoryEntity[] {    // 创建一个映射，用于快速查找 class_id 对应的记录
+  updateParentId(data: CollectionCategoryEntity[]): CollectionCategoryEntity[] {
+    // 创建一个映射，用于快速查找 class_id 对应的记录
     const classIdMap = {};
     data.forEach(item => {
       classIdMap[item.class_id] = item;
