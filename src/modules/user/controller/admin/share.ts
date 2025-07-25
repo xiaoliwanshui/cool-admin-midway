@@ -10,7 +10,7 @@ import { ShareEntity } from '../../entity/share';
  * 分享控制器
  */
 @CoolController({
-  api: ['info', 'list', 'page', 'add', 'delete'],
+  api: ['info', 'list', 'page', 'add', 'delete', 'update'],
   entity: ShareEntity,
   insertParam: ctx => {
     return {

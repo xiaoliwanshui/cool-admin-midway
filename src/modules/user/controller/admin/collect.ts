@@ -1,6 +1,6 @@
 import {
-  CoolController,
   BaseController,
+  CoolController,
   CoolUrlTag,
   TagTypes,
 } from '@cool-midway/core';
@@ -10,7 +10,7 @@ import { CollectEntity } from '../../entity/collect';
  * 收藏控制器
  */
 @CoolController({
-  api: ['info', 'list', 'page', 'add'],
+  api: ['info', 'list', 'page', 'add', 'delete', 'update'],
   entity: CollectEntity,
   insertParam: ctx => {
     return {

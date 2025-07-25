@@ -10,7 +10,7 @@ import { LikeEntity } from '../../entity/like';
  * 喜欢控制器
  */
 @CoolController({
-  api: ['info', 'list', 'page', 'add'],
+  api: ['info', 'list', 'page', 'add', 'delete', 'update'],
   entity: LikeEntity,
   insertParam: ctx => {
     return {
