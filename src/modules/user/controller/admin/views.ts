@@ -11,7 +11,7 @@ import { ViewsEntity } from '../../entity/views';
  */
 
 @CoolController({
-  api: ['info', 'list', 'page', 'delete'],
+  api: ['info', 'list', 'page', 'add', 'delete', 'update'],
   entity: ViewsEntity,
   insertParam: ctx => {
     return {
