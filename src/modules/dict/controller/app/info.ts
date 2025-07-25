@@ -23,6 +23,13 @@ import { DictInfoEntity } from '../../entity/info';
     addOrderBy: {
       createTime: 'ASC',
     },
+    where: ctx => {
+      const { aldult } = ctx.request.headers;
+      if (aldult === '0') {
+        return [['id != :id', { id: 643 }]];
+      }
+      return [[]];
+    },
   },
 })
 @CoolUrlTag({

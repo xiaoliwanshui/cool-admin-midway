@@ -25,10 +25,19 @@ import { Body, Inject, Post } from '@midwayjs/core';
   },
   pageQueryOp: {
     keyWordLikeFields: ['title'],
-    fieldEq: ['category_id', 'cycle', 'year', 'language', 'region','category_pid'],
+    fieldEq: [
+      'category_id',
+      'cycle',
+      'year',
+      'language',
+      'region',
+      'category_pid',
+    ],
     where: ctx => {
       const { directors, actors } = ctx.request.body;
-      return [
+      //获取请求头
+      const { aldult } = ctx.request.headers;
+      const where = [
         [
           'directors like :directors',
           { directors: `%${directors}%` },
@@ -36,6 +45,10 @@ import { Body, Inject, Post } from '@midwayjs/core';
         ],
         ['actors like :actors', { actors: `%${actors}%` }, actors],
       ];
+      if (aldult === '0') {
+        where.push(['category_pid != :category_pid', { category_pid: 643 }]);
+      }
+      return where;
     },
     addOrderBy: {
       year: 'desc',
