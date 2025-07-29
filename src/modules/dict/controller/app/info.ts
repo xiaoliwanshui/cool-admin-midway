@@ -43,8 +43,7 @@ export class AppDictInfoController extends BaseController {
   async data(@Body('types') types: string[] = []) {
     const data: any = await this.dictInfoService.data(types);
     const {aldult} = this.ctx.request.headers;
-    if (aldult === undefined || aldult === '0') {
-      console.log('aldult===>', aldult);
+    if ((aldult === undefined || aldult === '0') && data.video_category) {
       data.video_category = data.video_category.filter(e => e.id != 643);
     }
     return this.ok(data);
