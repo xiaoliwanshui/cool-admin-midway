@@ -1,9 +1,9 @@
-import { DictTypeEntity } from './../entity/type';
-import { DictInfoEntity } from './../entity/info';
-import { Config, Provide } from '@midwayjs/core';
-import { BaseService } from '@cool-midway/core';
-import { InjectEntityModel } from '@midwayjs/typeorm';
-import { Repository, In } from 'typeorm';
+import {DictTypeEntity} from './../entity/type';
+import {DictInfoEntity} from './../entity/info';
+import {Config, Provide} from '@midwayjs/core';
+import {BaseService} from '@cool-midway/core';
+import {InjectEntityModel} from '@midwayjs/typeorm';
+import {In, Repository} from 'typeorm';
 import * as _ from 'lodash';
 
 /**
@@ -28,7 +28,7 @@ export class DictInfoService extends BaseService {
     const result = {};
     let typeData = await this.dictTypeEntity.find();
     if (!_.isEmpty(types)) {
-      typeData = await this.dictTypeEntity.findBy({ key: In(types) });
+      typeData = await this.dictTypeEntity.findBy({key: In(types)});
     }
     if (_.isEmpty(typeData)) {
       return {};
@@ -42,8 +42,9 @@ export class DictInfoService extends BaseService {
         'a.parentId',
         'a.orderNum',
         'a.value',
+        'a.status'
       ])
-      .where('a.typeId in(:...typeIds)', {
+      .where('a.typeId in(:...typeIds) and status = 1', {
         typeIds: typeData.map(e => {
           return e.id;
         }),
@@ -52,7 +53,7 @@ export class DictInfoService extends BaseService {
       .addOrderBy('a.createTime', 'ASC')
       .getMany();
     for (const item of typeData) {
-      result[item.key] = _.filter(data, { typeId: item.id }).map(e => {
+      result[item.key] = _.filter(data, {typeId: item.id}).map(e => {
         const value = e.value ? Number(e.value) : e.value;
         return {
           ...e,
@@ -80,14 +81,14 @@ export class DictInfoService extends BaseService {
    */
   async getValues(value: string | string[], key: string) {
     // 获取字典类型
-    const type = await this.dictTypeEntity.findOneBy({ key });
+    const type = await this.dictTypeEntity.findOneBy({key});
     if (!type) {
       return null; // 或者适当的错误处理
     }
 
     // 根据typeId获取所有相关的字典信息
     const dictValues = await this.dictInfoEntity.find({
-      where: { typeId: type.id },
+      where: {typeId: type.id},
     });
 
     // 如果value是字符串，直接查找
@@ -131,7 +132,7 @@ export class DictInfoService extends BaseService {
    * @param id
    */
   private async delChildDict(id) {
-    const delDict = await this.dictInfoEntity.findBy({ parentId: id });
+    const delDict = await this.dictInfoEntity.findBy({parentId: id});
     if (_.isEmpty(delDict)) {
       return;
     }
