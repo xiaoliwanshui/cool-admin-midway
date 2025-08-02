@@ -1,10 +1,5 @@
-import {
-  BaseController,
-  CoolController,
-  CoolUrlTag,
-  TagTypes,
-} from '@cool-midway/core';
-import { PlayLineEntity } from '../../entity/play_line';
+import {BaseController, CoolController, CoolUrlTag, TagTypes,} from '@cool-midway/core';
+import {PlayLineEntity} from '../../entity/play_line';
 
 /**
  *
@@ -33,6 +28,7 @@ import { PlayLineEntity } from '../../entity/play_line';
 })
 @CoolUrlTag({
   key: TagTypes.IGNORE_TOKEN,
-  value: ['page', 'info'],
+  value: ['page', 'info', 'update'],
 })
-export class AppPlayLineController extends BaseController {}
+export class AppPlayLineController extends BaseController {
+}
