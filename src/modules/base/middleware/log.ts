@@ -1,7 +1,5 @@
-import { Middleware } from '@midwayjs/core';
-import * as _ from 'lodash';
-import { NextFunction, Context } from '@midwayjs/koa';
-import { IMiddleware } from '@midwayjs/core';
+import { IMiddleware, Middleware } from '@midwayjs/core';
+import { Context, NextFunction } from '@midwayjs/koa';
 import { BaseSysLogService } from '../service/sys/log';
 
 /**
@@ -14,11 +12,13 @@ export class BaseLogMiddleware implements IMiddleware<Context, NextFunction> {
       const baseSysLogService = await ctx.requestContext.getAsync(
         BaseSysLogService
       );
+      console.log('ctx.request.headers');
       baseSysLogService.record(
         ctx,
         ctx.url,
         ctx.req.method === 'GET' ? ctx.request.query : ctx.request.body,
-        ctx.admin ? ctx.admin.userId : null
+        ctx.admin ? ctx.admin.userId : null,
+        ctx.request.headers
       );
       await next();
     };
