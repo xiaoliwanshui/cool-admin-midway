@@ -1,5 +1,5 @@
 import { BaseEntity, transformerJson } from '../base';
-import { Column, Index, Entity } from 'typeorm';
+import { Column, Entity, Index } from 'typeorm';
 
 /**
  * 系统日志
@@ -22,7 +22,15 @@ export class BaseSysLogEntity extends BaseEntity {
     comment: '参数',
     nullable: true,
     type: 'json',
-    transformer: transformerJson,
+    transformer: transformerJson
   })
   params: string;
+
+  @Column({
+    comment: '头部信息',
+    nullable: true,
+    type: 'json',
+    transformer: transformerJson
+  })
+  headers: string;
 }

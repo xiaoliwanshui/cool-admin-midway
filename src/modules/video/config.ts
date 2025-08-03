@@ -1,4 +1,5 @@
 import { ModuleConfig } from '@cool-midway/core';
+import { BaseLogMiddleware } from '../base/middleware/log';
 
 /**
  * 模块配置
@@ -12,8 +13,8 @@ export default () => {
     // 中间件，只对本模块有效
     middlewares: [],
     // 中间件，全局有效
-    globalMiddlewares: [],
+    globalMiddlewares: [BaseLogMiddleware],
     // 模块加载顺序，默认为0，值越大越优先加载
-    order: 0,
+    order: 0
   } as ModuleConfig;
 };

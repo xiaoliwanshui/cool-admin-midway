@@ -2,7 +2,6 @@ import { Inject, Provide } from '@midwayjs/core';
 import { BaseService } from '@cool-midway/core';
 import { InjectEntityModel } from '@midwayjs/typeorm';
 import { LessThan, Repository } from 'typeorm';
-import * as _ from 'lodash';
 import { BaseSysLogEntity } from '../../entity/sys/log';
 import * as moment from 'moment';
 import { Utils } from '../../../../comm/utils';
@@ -32,13 +31,14 @@ export class BaseSysLogService extends BaseService {
    * @param params 参数
    * @param userId 用户ID
    */
-  async record(context: Context, url, params, userId) {
+  async record(context: Context, url, params, userId, headers) {
     const ip = await this.utils.getReqIP(context);
     const sysLog = new BaseSysLogEntity();
     sysLog.userId = userId;
     sysLog.ip = typeof ip === 'string' ? ip : ip.join(',');
     sysLog.action = url.split('?')[0];
     sysLog.params = params;
+    sysLog.headers = headers;
     await this.baseSysLogEntity.insert(sysLog);
   }
 
