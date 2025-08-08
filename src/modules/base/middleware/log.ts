@@ -12,7 +12,6 @@ export class BaseLogMiddleware implements IMiddleware<Context, NextFunction> {
       const baseSysLogService = await ctx.requestContext.getAsync(
         BaseSysLogService
       );
-      console.log('ctx.request.headers');
       baseSysLogService.record(
         ctx,
         ctx.url,
