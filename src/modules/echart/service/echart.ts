@@ -8,6 +8,8 @@ import { ViewsEntity } from '../../user/entity/views';
 import { VideoEntity } from '../../video/entity/videos';
 import { RedisService } from '@midwayjs/redis';
 import { DictInfoService } from '../../dict/service/info';
+import { PlayLineEntity } from '../../video/entity/play_line';
+import { FeedbackInfoEntity } from '../../application/entity/feedbackInfo';
 
 /**
  * 用户信息
@@ -17,17 +19,24 @@ export class EChartService extends BaseService {
   @InjectEntityModel(UserInfoEntity)
   userInfoEntity: Repository<UserInfoEntity>;
 
+  @InjectEntityModel(FeedbackInfoEntity)
+  feedbackInfoEntity: Repository<FeedbackInfoEntity>;
+
   @InjectEntityModel(BaseSysLogEntity)
   sysLogEntity: Repository<BaseSysLogEntity>;
 
   @InjectEntityModel(ViewsEntity)
   viewsEntity: Repository<ViewsEntity>;
 
+  @InjectEntityModel(PlayLineEntity)
+  playLineEntity: Repository<PlayLineEntity>;
+
   @InjectEntityModel(VideoEntity)
   videoEntity: Repository<VideoEntity>;
 
   @Inject()
   dictInfoService: DictInfoService;
+
 
   @Inject()
   redisService: RedisService;
@@ -37,8 +46,43 @@ export class EChartService extends BaseService {
     return {
       total: await this.userInfoEntity.count(),
       today: await this.userInfoEntity.countBy({
-        createTime: new Date(),
+        createTime: new Date()
+      })
+    };
+  }
+
+  //统计playLineEntity status =0的数量 和占比(百分比)
+  async playLine() {
+    const fail: number = await this.playLineEntity.countBy({
+      status: 0
+    });
+    const success: number = await this.playLineEntity.countBy({
+      status: 1
+    });
+    return {
+      fail,
+      success,
+      percent: (fail / (success + fail)) * 100
+    };
+  }
+
+  //统计feedbackInfoEntity feedbackType =0的数量 和占比(百分比)
+  async feedback() {
+    //计算feedbackInfoEntity 周同比 日同比
+    return {
+      week: await this.feedbackInfoEntity.countBy({
+        createTime: Between(
+          new Date(new Date().getTime() - 7 * 24 * 60 * 60 * 1000),
+          new Date()
+        )
       }),
+      day: await this.feedbackInfoEntity.countBy({
+        createTime: Between(
+          new Date(new Date().getTime() - 24 * 60 * 60 * 1000),
+          new Date()
+        )
+      }),
+      sum: await this.feedbackInfoEntity.count()
     };
   }
 
@@ -47,9 +91,9 @@ export class EChartService extends BaseService {
     return {
       total: await this.sysLogEntity.count(),
       today: await this.sysLogEntity.countBy({
-        createTime: new Date(),
+        createTime: new Date()
       }),
-      data: await this.getUserViewsByHourIntervals(),
+      data: await this.getUserViewsByHourIntervals()
     };
   }
 
@@ -62,8 +106,8 @@ export class EChartService extends BaseService {
       .select('MAX(sysLog.params)', 'params') // 使用 MAX 聚合函数处理非分组字段
       .addSelect('COUNT(sysLog.id)', 'count')
       .where('sysLog.params IS NOT NULL')
-      .andWhere("JSON_EXTRACT(sysLog.params, '$.keyWord') IS NOT NULL") // 修改 JSON 路径表达式
-      .groupBy("JSON_EXTRACT(sysLog.params, '$.keyWord')") // 修改 GROUP BY 中的 JSON 路径表达式
+      .andWhere('JSON_EXTRACT(sysLog.params, \'$.keyWord\') IS NOT NULL') // 修改 JSON 路径表达式
+      .groupBy('JSON_EXTRACT(sysLog.params, \'$.keyWord\')') // 修改 GROUP BY 中的 JSON 路径表达式
       .orderBy('count', 'DESC')
       .limit(12)
       .getRawMany();
@@ -92,7 +136,7 @@ export class EChartService extends BaseService {
         .addSelect('COUNT(view.title)', 'count')
         .where('view.createTime BETWEEN :startTime AND :endTime', {
           startTime,
-          endTime,
+          endTime
         })
         .groupBy('view.title')
         .orderBy('count', 'DESC')
@@ -104,7 +148,7 @@ export class EChartService extends BaseService {
       today: await getTopTitles(startOfToday, endOfToday),
       week: await getTopTitles(startOfWeek, endOfWeek),
       month: await getTopTitles(startOfMonth, endOfMonth),
-      year: await getTopTitles(startOfYear, endOfYear),
+      year: await getTopTitles(startOfYear, endOfYear)
     };
   }
 
@@ -115,7 +159,7 @@ export class EChartService extends BaseService {
     const list = await this.videoEntity
       .createQueryBuilder('video')
       .where({
-        category_pid: Not(0),
+        category_pid: Not(0)
       })
       .select('video.category_pid', 'category_pid')
       .addSelect('COUNT(video.id)', 'value')
@@ -142,7 +186,7 @@ export class EChartService extends BaseService {
         .addSelect('COUNT(video.id)', 'value') // 统计每天的数据量
         .where('video.updateTime BETWEEN :startDate AND :endDate', {
           startDate,
-          endDate: now,
+          endDate: now
         })
         .groupBy('DATE(video.updateTime)') // 按日期分组
         .orderBy('DATE(video.updateTime)', 'ASC') // 按日期升序排列
@@ -154,7 +198,7 @@ export class EChartService extends BaseService {
         .addSelect('COUNT(video.id)', 'value') // 统计每天的数据量
         .where('video.createTime BETWEEN :startDate AND :endDate', {
           startDate,
-          endDate: now,
+          endDate: now
         })
         .andWhere(
           'video.updateTime IS NULL OR video.updateTime = video.createTime'
@@ -162,7 +206,7 @@ export class EChartService extends BaseService {
         .groupBy('DATE(video.createTime)') // 按日期分组
         .orderBy('DATE(video.createTime)', 'ASC') // 按日期升序排列
         .limit(12) // 限制返回最多12条数据
-        .getRawMany(), // 返回原始数据
+        .getRawMany() // 返回原始数据
     };
   }
 
@@ -175,6 +219,8 @@ export class EChartService extends BaseService {
       videoCategory: await this.videoCategoryPid(),
       videoCreateTime: await this.videoCreateTime(),
       keyWord: await this.keyWord(),
+      playLine: await this.playLine(),
+      feedback: await this.feedback()
     };
     //判断redis中是否有数据，有则删除 没有就插入
     if (await this.redisService.exists('video:echarts')) {
@@ -208,7 +254,7 @@ export class EChartService extends BaseService {
       '16:00',
       '18:00',
       '20:00',
-      '22:00',
+      '22:00'
     ];
 
     const now = new Date();
@@ -226,8 +272,8 @@ export class EChartService extends BaseService {
       // 查询对应时间区间的浏览数
       const count = await this.sysLogEntity.count({
         where: {
-          createTime: Between(startTime, endTime),
-        },
+          createTime: Between(startTime, endTime)
+        }
       });
 
       // 将结果存入对应的时间区间
