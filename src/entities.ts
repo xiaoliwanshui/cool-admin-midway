@@ -14,7 +14,6 @@ import * as entity11 from './modules/video/entity/collection';
 import * as entity12 from './modules/video/entity/category';
 import * as entity13 from './modules/video/entity/barrage';
 import * as entity14 from './modules/video/entity/album';
-import * as entity15 from './modules/video/entity/ads';
 import * as entity16 from './modules/user/entity/wx';
 import * as entity17 from './modules/user/entity/views';
 import * as entity18 from './modules/user/entity/share';
@@ -43,6 +42,7 @@ import * as entity40 from './modules/base/entity/sys/log';
 import * as entity41 from './modules/base/entity/sys/department';
 import * as entity42 from './modules/base/entity/sys/conf';
 import * as entity43 from './modules/application/entity/noticeInfo';
+
 export const entities = [
   ...Object.values(entity0),
   ...Object.values(entity1),
@@ -59,7 +59,6 @@ export const entities = [
   ...Object.values(entity12),
   ...Object.values(entity13),
   ...Object.values(entity14),
-  ...Object.values(entity15),
   ...Object.values(entity16),
   ...Object.values(entity17),
   ...Object.values(entity18),
@@ -87,5 +86,5 @@ export const entities = [
   ...Object.values(entity40),
   ...Object.values(entity41),
   ...Object.values(entity42),
-  ...Object.values(entity43),
+  ...Object.values(entity43)
 ];
