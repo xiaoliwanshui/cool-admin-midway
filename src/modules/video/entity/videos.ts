@@ -7,9 +7,10 @@ import { BaseEntity } from '../../base/entity/base';
 @Entity('video')
 @Unique(['title'])
 export class VideoEntity extends BaseEntity {
-  @Index({ fulltext: true }) // 定义全文索引
+  @Index({ unique: true }) // 定义全文索引
   @Column({ comment: '影片标题', length: 191, nullable: true })
   title: string;
+
   @Column({ comment: '影片副标题', length: 191, nullable: true })
   sub_title: string;
 
@@ -29,13 +30,13 @@ export class VideoEntity extends BaseEntity {
     comment: '是否轮播 1是 2否',
     type: 'bigint',
     nullable: true,
-    default: 2,
+    default: 2
   })
   cycle: number;
   @Column({
     comment: '轮播图片',
     type: 'text',
-    nullable: true,
+    nullable: true
   })
   cycle_img: string;
   @Index({ fulltext: true }) // 定义全文索引
@@ -48,46 +49,46 @@ export class VideoEntity extends BaseEntity {
     comment: 'imd评分.百分制',
     type: 'bigint',
     nullable: true,
-    default: 0,
+    default: 0
   })
   imdb_score: number;
   @Column({
     comment: 'iimd评分ID',
     length: 256,
     nullable: true,
-    default: 0,
+    default: 0
   })
   imdb_score_id: string;
   @Column({
     comment: '豆瓣评分.百分制',
     nullable: true,
     type: 'int',
-    default: 0,
+    default: 0
   })
   douban_score: number;
   @Column({
     comment: '豆瓣评分ID',
-    nullable: true,
+    nullable: true
   })
   douban_score_id: string;
   @Column({
     comment: '简介',
     type: 'text',
-    nullable: true,
+    nullable: true
   })
   introduce: string;
   @Column({
     comment: '总人气',
     type: 'bigint',
     nullable: true,
-    default: 0,
+    default: 0
   })
   popularity: number;
   @Column({
     comment: '日人气',
     type: 'bigint',
     nullable: true,
-    default: 0,
+    default: 0
   })
   popularity_day: number;
 
@@ -95,131 +96,131 @@ export class VideoEntity extends BaseEntity {
     comment: '周人气',
     type: 'bigint',
     nullable: true,
-    default: 0,
+    default: 0
   })
   popularity_week: number;
   @Column({
     comment: '月人气',
     type: 'bigint',
     nullable: true,
-    default: 0,
+    default: 0
   })
   popularity_month: number;
   @Column({
     comment: '总人气',
     type: 'bigint',
     nullable: true,
-    default: 0,
+    default: 0
   })
   popularity_sum: number;
   @Column({
     comment: '连载状态',
     length: 256,
-    nullable: true,
+    nullable: true
   })
   note: string;
   @Column({
     comment: '年份',
-    default: 0,
+    default: 0
   })
   @Index()
   year: number;
   @Column({
     comment: '状态',
     nullable: true,
-    type: 'bigint',
+    type: 'bigint'
   })
   status: number;
   @Column({
     comment: '时长(单位s)',
     nullable: true,
-    type: 'bigint',
+    type: 'bigint'
   })
   duration: number;
   @Index()
   @Column({
     comment: '自定义地区',
-    nullable: true,
+    nullable: true
   })
   region: number;
   @Index()
   @Column({
     comment: '自定义语言',
-    nullable: true,
+    nullable: true
   })
   language: number;
   @Column({
     comment: '总集数',
     nullable: true,
     default: 1,
-    type: 'bigint',
+    type: 'bigint'
   })
   number: number;
   @Column({
     comment: '更新集数',
     nullable: true,
     default: 1,
-    type: 'bigint',
+    type: 'bigint'
   })
   total: number;
   @Column({
     comment: '横屏海报',
     nullable: true,
-    type: 'text',
+    type: 'text'
   })
   horizontal_poster: string;
   @Column({
     comment: '备注',
     nullable: true,
-    type: 'text',
+    type: 'text'
   })
   remarks: string;
   @Column({
     comment: '竖屏海报',
     nullable: true,
-    type: 'text',
+    type: 'text'
   })
   vertical_poster: string;
   @Column({
     comment: '发行商',
     nullable: true,
-    type: 'text',
+    type: 'text'
   })
   publish: string;
   @Column({
     comment: '上映日期',
     nullable: true,
-    type: 'text',
+    type: 'text'
   })
   pubdate: string;
   @Column({
     comment: '序列号',
     nullable: true,
-    type: 'text',
+    type: 'text'
   })
   serial_number: string;
   @Column({
     comment: '截屏',
     nullable: true,
-    type: 'text',
+    type: 'text'
   })
   screenshot: string;
   @Column({
     comment: '是否连载完毕 0,1',
     nullable: true,
-    type: 'tinyint',
+    type: 'tinyint'
   })
   end: number;
   @Column({
     comment: '单位',
     nullable: true,
-    length: 32,
+    length: 32
   })
   unit: string;
   @Column({
     comment: '采集的源地址',
     nullable: true,
-    type: 'longtext',
+    type: 'longtext'
   })
   play_url: string;
   @Index()
@@ -227,7 +228,7 @@ export class VideoEntity extends BaseEntity {
     comment: '播放地址是否入库1-1已经入库 0未入库',
     nullable: true,
     default: 0, // 默认值是0，
-    type: 'int',
+    type: 'int'
   })
   play_url_put_in: number;
   @Index()
