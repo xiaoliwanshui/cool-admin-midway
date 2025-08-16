@@ -2,6 +2,8 @@ import { Inject, Logger, Provide } from '@midwayjs/core';
 import { BaseService } from '@cool-midway/core';
 import { ILogger } from '@midwayjs/logger';
 import { CollectionService } from '../../video/service/collection';
+import { tagSQLQuery } from '../../video/service/tagGet';
+import { DictInfoService } from '../../dict/service/info';
 
 /**
  * TaskCollectService
@@ -15,6 +17,9 @@ export class TaskCollectService extends BaseService {
 
   @Inject()
   collectionService: CollectionService;
+
+  @Inject()
+  dictInfoService: DictInfoService;
 
   /**
    * 执行每日采集任务
@@ -90,6 +95,42 @@ export class TaskCollectService extends BaseService {
       await this.collectionService.checkVideoLine();
     } catch (error) {
       this.logger.error(TAG, '检查视频线路异常', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 获取视频tag
+   * @returns 获取视频tag
+   * @throws 获取视频tag异常时抛出错误
+   */
+  async getVideoTag() {
+    try {
+      const tags: any[] = await this.nativeQuery(tagSQLQuery);
+      this.logger.info(TAG, '获取视频tag成功', tags);
+      for (const tag of tags) {
+        const tagValues = await this.dictInfoService.findByName(tag.tag);
+        if (!tagValues) {
+          await this.dictInfoService.insertData(
+            {
+              name:
+              tag.tag,
+              orderNum:
+                1,
+              status:
+                1,
+              typeId:
+                54
+            }
+          );
+          this.logger.info(TAG, '添加视频tag成功', tag.tag);
+        } else {
+          this.logger.info(TAG, '视频tag已存在', tag.tag);
+        }
+      }
+
+    } catch (error) {
+      this.logger.error(TAG, '获取视频tag异常', error);
       throw error;
     }
   }

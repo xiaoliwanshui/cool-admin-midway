@@ -1,6 +1,8 @@
 import { Column, Entity, Index, Unique } from 'typeorm';
 import { BaseEntity } from '../../base/entity/base';
 
+const _ = require('lodash');
+
 /**
  * 订单信息c
  */
@@ -47,9 +49,7 @@ export class VideoEntity extends BaseEntity {
   actors: string;
   @Column({
     comment: 'imd评分.百分制',
-    type: 'bigint',
-    nullable: true,
-    default: 0
+    default: _.random(0, 100)
   })
   imdb_score: number;
   @Column({
@@ -63,7 +63,7 @@ export class VideoEntity extends BaseEntity {
     comment: '豆瓣评分.百分制',
     nullable: true,
     type: 'int',
-    default: 0
+    default: _.random(10, 100)
   })
   douban_score: number;
   @Column({
@@ -80,37 +80,32 @@ export class VideoEntity extends BaseEntity {
   @Column({
     comment: '总人气',
     type: 'bigint',
-    nullable: true,
-    default: 0
+    default: _.random(10000, 999999)
   })
   popularity: number;
   @Column({
     comment: '日人气',
     type: 'bigint',
-    nullable: true,
-    default: 0
+    default: _.random(10000, 999999)
   })
   popularity_day: number;
 
   @Column({
     comment: '周人气',
     type: 'bigint',
-    nullable: true,
-    default: 0
+    default: _.random(10000, 999999)
   })
   popularity_week: number;
   @Column({
     comment: '月人气',
     type: 'bigint',
-    nullable: true,
-    default: 0
+    default: _.random(10000, 999999)
   })
   popularity_month: number;
   @Column({
     comment: '总人气',
     type: 'bigint',
-    nullable: true,
-    default: 0
+    default: _.random(10000, 999999)
   })
   popularity_sum: number;
   @Column({
@@ -121,7 +116,7 @@ export class VideoEntity extends BaseEntity {
   note: string;
   @Column({
     comment: '年份',
-    default: 0
+    default: 2000
   })
   @Index()
   year: number;
@@ -245,4 +240,12 @@ export class VideoEntity extends BaseEntity {
 
   @Column({ comment: '资源名称', nullable: true, length: 256 })
   collection_name: string;
+
+  @Index()
+  @Column({ comment: '搜索榜单分类', nullable: true })
+  searchRecommendType: number;
+
+  @Index()
+  @Column({ comment: '排序' })
+  sort: number;
 }
