@@ -1,10 +1,4 @@
-import {
-  BaseController,
-  CoolController,
-  CoolTag,
-  CoolUrlTag,
-  TagTypes,
-} from '@cool-midway/core';
+import { BaseController, CoolController, CoolTag, CoolUrlTag, TagTypes } from '@cool-midway/core';
 import { VideoEntity } from '../../entity/videos';
 
 import { VideosService } from '../../service/videos';
@@ -20,7 +14,7 @@ import { Body, Inject, Post } from '@midwayjs/core';
   insertParam: ctx => {
     return {
       // 获得当前登录的后台用户ID，需要请求头传Authorization参数
-      createUserId: ctx.user.id,
+      createUserId: ctx.user.id
     };
   },
   pageQueryOp: {
@@ -31,19 +25,20 @@ import { Body, Inject, Post } from '@midwayjs/core';
       'year',
       'language',
       'region',
-      'category_pid',
+      'category_pid'
     ],
     where: ctx => {
-      const { directors, actors } = ctx.request.body;
+      const { directors, actors, video_tag } = ctx.request.body;
       //获取请求头
       const { aldult } = ctx.request.headers;
       const where = [
         [
           'directors like :directors',
           { directors: `%${directors}%` },
-          directors,
+          directors
         ],
         ['actors like :actors', { actors: `%${actors}%` }, actors],
+        ['video_tag like :video_tag', { video_tag: `%${video_tag}%` }, video_tag]
       ];
       if (aldult === '0') {
         where.push(['category_pid != :category_pid', { category_pid: 643 }]);
@@ -51,13 +46,13 @@ import { Body, Inject, Post } from '@midwayjs/core';
       return where;
     },
     addOrderBy: {
-      year: 'desc',
-    },
-  },
+      year: 'desc'
+    }
+  }
 })
 @CoolUrlTag({
   key: TagTypes.IGNORE_TOKEN,
-  value: ['page', 'info', 'update'],
+  value: ['page', 'info', 'update']
 })
 export class AppVideoController extends BaseController {
   @Inject()
