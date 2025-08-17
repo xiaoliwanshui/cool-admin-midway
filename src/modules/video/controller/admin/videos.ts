@@ -1,9 +1,4 @@
-import {
-  BaseController,
-  CoolController,
-  CoolTag,
-  TagTypes,
-} from '@cool-midway/core';
+import { BaseController, CoolController, CoolTag, TagTypes } from '@cool-midway/core';
 import { VideoEntity } from '../../entity/videos';
 import { VideosService } from '../../service/videos';
 import { Body, Inject, Post } from '@midwayjs/core';
@@ -17,7 +12,7 @@ import { Body, Inject, Post } from '@midwayjs/core';
   insertParam: ctx => {
     return {
       // 获得当前登录的后台用户ID，需要请求头传Authorization参数
-      createUserId: ctx.admin.userId,
+      createUserId: ctx.admin.userId
     };
   },
   pageQueryOp: {
@@ -29,11 +24,12 @@ import { Body, Inject, Post } from '@midwayjs/core';
       'region',
       'play_url_put_in',
       'category_pid',
+      'searchRecommendType'
     ],
     addOrderBy: {
-      updateTime: 'desc',
-    },
-  },
+      updateTime: 'desc'
+    }
+  }
 })
 export class AdminVideoController extends BaseController {
   @Inject()

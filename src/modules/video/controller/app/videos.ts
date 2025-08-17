@@ -25,7 +25,8 @@ import { Body, Inject, Post } from '@midwayjs/core';
       'year',
       'language',
       'region',
-      'category_pid'
+      'category_pid',
+      'searchRecommendType'
     ],
     where: ctx => {
       const { directors, actors, video_tag } = ctx.request.body;
