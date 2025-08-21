@@ -18,11 +18,11 @@ export class WeekEntity extends BaseEntity {
     type: 'text'
   })
   remarks: string;
-  
+
   @Column({
     comment: '时间',
     nullable: true,
-    type: 'text'
+    type: 'time'
   })
   time: string;
 
