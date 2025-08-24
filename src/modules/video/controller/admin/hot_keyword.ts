@@ -1,5 +1,5 @@
 import { BaseController, CoolController } from '@cool-midway/core';
-import { VideoHostKeyWordEntity } from '../../entity/hot_keyWord';
+import { VideoHostKeyWordEntity } from '../../entity/hot_keyword';
 
 /**
  * 轮播图
