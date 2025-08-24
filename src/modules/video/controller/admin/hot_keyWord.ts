@@ -15,7 +15,10 @@ import { VideoHostKeyWordEntity } from '../../entity/hot_keyWord';
   },
   pageQueryOp: {
     keyWordLikeFields: ['keyWord'],
-    fieldEq: ['category_id', 'tag']
+    fieldEq: ['category_id', 'tag'],
+    addOrderBy: {
+      sort: 'desc'
+    }
   }
 })
 export class AdminHotKeyWordController extends BaseController {

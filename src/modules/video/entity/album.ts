@@ -22,7 +22,7 @@ export class VideoAlbumEntity extends BaseEntity {
     comment: '是否推荐 1是 2否',
     nullable: true,
     default: 1,
-    type: 'bigint',
+    type: 'bigint'
   })
   status: number;
 
@@ -46,6 +46,7 @@ export class VideoAlbumEntity extends BaseEntity {
 
   @Column({ comment: '排序', nullable: true, default: 0 })
   sort: number;
+
   @Index()
   @Column({ comment: '专题关联类型', nullable: true, default: 0 })
   category_id: number;
