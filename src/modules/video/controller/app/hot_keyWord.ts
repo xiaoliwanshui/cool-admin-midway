@@ -9,7 +9,10 @@ import { VideoHostKeyWordEntity } from '../../entity/hot_keyWord';
   entity: VideoHostKeyWordEntity,
   pageQueryOp: {
     keyWordLikeFields: ['keyWord'],
-    fieldEq: ['category_id', 'tag']
+    fieldEq: ['category_id', 'tag'],
+    addOrderBy: {
+      sort: 'desc'
+    }
   }
 })
 

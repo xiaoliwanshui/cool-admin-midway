@@ -1,4 +1,4 @@
-import { Column, Entity } from 'typeorm';
+import { Column, Entity, Index } from 'typeorm';
 import { BaseEntity } from '../../base/entity/base';
 
 @Entity('video_swiper')
@@ -15,6 +15,7 @@ export class VideoSwiperEntity extends BaseEntity {
   @Column({ comment: '关联ID', nullable: true })
   relatedId: number;
 
+  @Index()
   @Column({ comment: 'category', nullable: true })
   category: number;
 
