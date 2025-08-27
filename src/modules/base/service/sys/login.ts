@@ -81,7 +81,7 @@ export class BaseSysLoginService extends BaseService {
           roleIds,
           refreshExpire,
           true
-        ),
+        )
       };
 
       // 将用户相关信息保存到缓存
@@ -114,11 +114,11 @@ export class BaseSysLoginService extends BaseService {
       // ignoreChars: 'qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM',
       width,
       height,
-      noise: 3,
+      noise: 3
     });
     const result = {
       captchaId: uuid(),
-      data: svg.data.replace(/"/g, "'"),
+      data: svg.data.replace(/"/g, '\'')
     };
     // 文字变白
     const rpList = [
@@ -130,14 +130,16 @@ export class BaseSysLoginService extends BaseService {
       '#666',
       '#777',
       '#888',
-      '#999',
+      '#999'
     ];
     rpList.forEach(rp => {
       result.data = result.data['replaceAll'](rp, color);
     });
     // Convert SVG to base64
     const base64Data = Buffer.from(result.data).toString('base64');
+    result['svg'] = result.data;
     result.data = `data:image/svg+xml;base64,${base64Data}`;
+
 
     // 半小时过期
     await this.midwayCache.set(
@@ -194,13 +196,13 @@ export class BaseSysLoginService extends BaseService {
       username: user.username,
       userId: user.id,
       passwordVersion: user.passwordV,
-      tenantId: user['tenantId'],
+      tenantId: user['tenantId']
     };
     if (isRefresh) {
       tokenInfo.isRefresh = true;
     }
     return jwt.sign(tokenInfo, this.coolConfig.jwt.secret, {
-      expiresIn: expire,
+      expiresIn: expire
     });
   }
 
@@ -219,14 +221,14 @@ export class BaseSysLoginService extends BaseService {
       const result = {
         expire,
         token: jwt.sign(decoded, this.coolConfig.jwt.secret, {
-          expiresIn: expire,
+          expiresIn: expire
         }),
         refreshExpire,
-        refreshToken: '',
+        refreshToken: ''
       };
       decoded['isRefresh'] = true;
       result.refreshToken = jwt.sign(decoded, this.coolConfig.jwt.secret, {
-        expiresIn: refreshExpire,
+        expiresIn: refreshExpire
       });
       await this.midwayCache.set(
         `admin:passwordVersion:${decoded['userId']}`,
