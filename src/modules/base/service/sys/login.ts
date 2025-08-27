@@ -118,7 +118,8 @@ export class BaseSysLoginService extends BaseService {
     });
     const result = {
       captchaId: uuid(),
-      data: svg.data.replace(/"/g, '\'')
+      data: svg.data.replace(/"/g, '\''),
+      svg: ''
     };
     // 文字变白
     const rpList = [
@@ -137,7 +138,7 @@ export class BaseSysLoginService extends BaseService {
     });
     // Convert SVG to base64
     const base64Data = Buffer.from(result.data).toString('base64');
-    result['svg'] = result.data;
+    result.svg = result.data;
     result.data = `data:image/svg+xml;base64,${base64Data}`;
 
 
