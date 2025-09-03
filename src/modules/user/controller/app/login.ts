@@ -1,10 +1,4 @@
-import {
-  BaseController,
-  CoolController,
-  CoolTag,
-  CoolUrlTag,
-  TagTypes,
-} from '@cool-midway/core';
+import { BaseController, CoolController, CoolTag, CoolUrlTag, TagTypes } from '@cool-midway/core';
 import { Body, Get, Inject, Post, Query } from '@midwayjs/core';
 import { UserLoginService } from '../../service/login';
 import { BaseSysLoginService } from '../../../base/service/sys/login';
@@ -108,8 +102,10 @@ export class AppUserLoginController extends BaseController {
   @Post('/app_login', { summary: '验证码' })
   async AppLogin(
     @Body('phone') phone: string,
-    @Body('password') password: string
+    @Body('password') password: string,
+    @Body('captchaId') captchaId: string,
+    @Body('code') code: string
   ) {
-    return this.ok(await this.userLoginService.appLogin(phone, password));
+    return this.ok(await this.userLoginService.appLogin(phone, password, code, captchaId));
   }
 }
