@@ -15,7 +15,7 @@ export class NoticeInfoEntity extends BaseEntity {
   @Column({
     comment: '类型',
     dict: ['系统公告', '版本更新', '活动通知'],
-    default: 0,
+    default: 0
   })
   type: number;
 
@@ -25,4 +25,12 @@ export class NoticeInfoEntity extends BaseEntity {
 
   @Column({ comment: '状态', dict: ['未发布', '已发布'], default: 0 })
   status: number;
+
+  //app版本号
+  @Column({ comment: 'app版本号', type: 'varchar', length: 20 })
+  appVersion: string;
+
+  //app下载地址
+  @Column({ comment: 'app下载地址', type: 'varchar', length: 512 })
+  appUrl: string;
 }

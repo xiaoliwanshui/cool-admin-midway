@@ -110,14 +110,14 @@ export class UserLoginService extends BaseService {
    */
   async phone(phone: string) {
     let user: any = await this.userInfoEntity.findOneBy({
-      phone: Equal(phone),
+      phone: Equal(phone)
     });
     if (!user) {
       user = {
         phone,
         unionid: phone,
         loginType: 2,
-        nickName: phone.replace(/^(\d{3})\d{4}(\d{4})$/, '$1****$2'),
+        nickName: phone.replace(/^(\d{3})\d{4}(\d{4})$/, '$1****$2')
       };
       await this.userInfoEntity.insert(user);
     }
@@ -141,7 +141,7 @@ export class UserLoginService extends BaseService {
           gender: wxUserInfo.sex,
           city: wxUserInfo.city,
           province: wxUserInfo.province,
-          country: wxUserInfo.country,
+          country: wxUserInfo.country
         },
         1
       );
@@ -168,7 +168,7 @@ export class UserLoginService extends BaseService {
           gender: wxUserInfo.sex,
           city: wxUserInfo.city,
           province: wxUserInfo.province,
-          country: wxUserInfo.country,
+          country: wxUserInfo.country
         },
         1
       );
@@ -192,7 +192,7 @@ export class UserLoginService extends BaseService {
     }
     return this.userWxEntity.save({
       ...wxUserInfo,
-      type,
+      type
     });
   }
 
@@ -234,7 +234,7 @@ export class UserLoginService extends BaseService {
         nickName: wxUserInfo.nickName,
         avatarUrl,
         gender: wxUserInfo.gender,
-        loginType: wxUserInfo.type,
+        loginType: wxUserInfo.type
       };
       await this.userInfoEntity.insert(userInfo);
     }
@@ -252,7 +252,7 @@ export class UserLoginService extends BaseService {
         throw new CoolCommException('token类型非refreshToken');
       }
       const userInfo = await this.userInfoEntity.findOneBy({
-        id: info['id'],
+        id: info['id']
       });
       return this.token({ id: userInfo.id });
     } catch (e) {
@@ -272,7 +272,7 @@ export class UserLoginService extends BaseService {
 
     if (user && user.password == md5(password)) {
       return this.token({
-        id: user.id,
+        id: user.id
       });
     } else {
       throw new CoolCommException('账号或密码错误');
@@ -290,7 +290,7 @@ export class UserLoginService extends BaseService {
       expire,
       token: await this.generateToken(info),
       refreshExpire,
-      refreshToken: await this.generateToken(info, true),
+      refreshToken: await this.generateToken(info, true)
     };
   }
 
@@ -305,10 +305,10 @@ export class UserLoginService extends BaseService {
     const tokenInfo = {
       isRefresh,
       ...info,
-      tenantId: user?.tenantId,
+      tenantId: user?.tenantId
     };
     return jwt.sign(tokenInfo, secret, {
-      expiresIn: isRefresh ? refreshExpire : expire,
+      expiresIn: isRefresh ? refreshExpire : expire
     });
   }
 
@@ -319,7 +319,11 @@ export class UserLoginService extends BaseService {
    * @param password
    * @param code
    */
-  async appLogin(phone: string, password: string) {
+  async appLogin(phone: string, password: string, code: string, captchaId: string) {
+    const check = await this.baseSysLoginService.captchaCheck(captchaId, code);
+    if (!check) {
+      throw new CoolCommException('图片验证码错误');
+    }
     const user = await this.userInfoEntity.findOneBy({ phone });
     if (user) {
       return this.password(phone, password);
@@ -331,7 +335,7 @@ export class UserLoginService extends BaseService {
         avatarUrl:
           'http://127.0.0.1:8001/upload/20250514/7abeac6e56104ef38f33ac6d648f66a4_1. Police.png',
         loginType: 2,
-        unionid: phone,
+        unionid: phone
       });
       return this.password(phone, password);
     }
