@@ -1,9 +1,4 @@
-import {
-  BaseController,
-  CoolController,
-  CoolUrlTag,
-  TagTypes,
-} from '@cool-midway/core';
+import { BaseController, CoolController, CoolUrlTag, TagTypes } from '@cool-midway/core';
 import { NoticeInfoEntity } from '../../entity/noticeInfo';
 
 /**
@@ -14,14 +9,14 @@ import { NoticeInfoEntity } from '../../entity/noticeInfo';
   entity: NoticeInfoEntity,
   pageQueryOp: {
     keyWordLikeFields: ['title'],
-    fieldEq: ['type', 'status'],
     addOrderBy: {
-      createTime: 'desc',
-    },
-  },
+      createTime: 'desc'
+    }
+  }
 })
 @CoolUrlTag({
   key: TagTypes.IGNORE_TOKEN,
-  value: ['page', 'info'],
+  value: ['page', 'info']
 })
-export class AppNoticeInfoController extends BaseController {}
+export class AppNoticeInfoController extends BaseController {
+}

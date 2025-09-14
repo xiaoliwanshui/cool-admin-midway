@@ -210,6 +210,13 @@ export class EChartService extends BaseService {
     };
   }
 
+  //videoEntity play_url_put_in =0 的数量
+  async videoPlayUrlPutInCount() {
+    return await this.videoEntity.countBy({
+      play_url_put_in: 0
+    });
+  }
+
   //调用前面所有的方法并返回数据
   async getData() {
     const data = {
@@ -220,7 +227,8 @@ export class EChartService extends BaseService {
       videoCreateTime: await this.videoCreateTime(),
       keyWord: await this.keyWord(),
       playLine: await this.playLine(),
-      feedback: await this.feedback()
+      feedback: await this.feedback(),
+      videoPlayUrlPutInCount: await this.videoPlayUrlPutInCount()
     };
     //判断redis中是否有数据，有则删除 没有就插入
     if (await this.redisService.exists('video:echarts')) {
@@ -270,14 +278,12 @@ export class EChartService extends BaseService {
       endTime.setHours(Number(hours) + 2, 0, 0, 0);
 
       // 查询对应时间区间的浏览数
-      const count = await this.sysLogEntity.count({
+      // 将结果存入对应的时间区间
+      results[hourIntervals[i]] = await this.sysLogEntity.count({
         where: {
           createTime: Between(startTime, endTime)
         }
       });
-
-      // 将结果存入对应的时间区间
-      results[hourIntervals[i]] = count;
     }
 
     return results;
