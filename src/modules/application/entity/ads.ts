@@ -17,5 +17,13 @@ export class AdsEntity extends BaseEntity {
   appId: string;
 
   @Column({ type: 'varchar', comment: '广告ID', length: 255 })
-  adsId: string;
+  adsId: number;
+
+  //状态
+  @Column({ type: 'int', comment: '状态', default: 1 })
+  status: number;
+
+  //展示页面
+  @Column({ type: 'varchar', comment: '展示页面', length: 255, nullable: true })
+  adsPage: string;
 }

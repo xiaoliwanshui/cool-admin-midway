@@ -15,7 +15,7 @@ import { AdsEntity } from '../../entity/ads';
     };
   },
   pageQueryOp: {
-    fieldEq: ['type']
+    fieldEq: ['type', 'adsPage', 'status']
   }
 })
 export class AdminAdsController extends BaseController {
