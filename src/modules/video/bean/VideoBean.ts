@@ -216,7 +216,13 @@ export class VideoBean {
 
   setVideoTag(value: string) {
     if (typeof value === 'string' && value.trim() !== '') {
-      this.video_tag = value;
+      // 限制video_tag字段长度不超过191字符
+      if (value.length > 191) {
+        this.video_tag = value.substring(0, 188) + '...';
+        console.warn(TAG, `video_tag字段过长，已截断: ${value}`);
+      } else {
+        this.video_tag = value;
+      }
     }
   }
 
@@ -226,7 +232,13 @@ export class VideoBean {
 
   setVideoClass(value: string) {
     if (typeof value === 'string' && value.trim() !== '') {
-      this.video_class = value;
+      // 限制video_class字段长度不超过191字符
+      if (value.length > 191) {
+        this.video_class = value.substring(0, 188) + '...';
+        console.warn(TAG, `video_class字段过长，已截断: ${value}`);
+      } else {
+        this.video_class = value;
+      }
     }
   }
 
@@ -236,7 +248,13 @@ export class VideoBean {
 
   setSubTitle(value: string) {
     if (typeof value === 'string' && value.trim() !== '') {
-      this.sub_title = value;
+      // 限制sub_title字段长度不超过191字符
+      if (value.length > 191) {
+        this.sub_title = value.substring(0, 188) + '...';
+        console.warn(TAG, `sub_title字段过长，已截断: ${value}`);
+      } else {
+        this.sub_title = value;
+      }
     }
   }
 
@@ -260,7 +278,13 @@ export class VideoBean {
 
   setTitle(value: string): void {
     if (typeof value === 'string' && value.trim() !== '') {
-      this.title = value;
+      // 限制title字段长度不超过191字符
+      if (value.length > 191) {
+        this.title = value.substring(0, 188) + '...';
+        console.warn(TAG, `title字段过长，已截断: ${value}`);
+      } else {
+        this.title = value;
+      }
     }
   }
 
@@ -351,7 +375,13 @@ export class VideoBean {
 
   setDirectors(value: string): void {
     if (typeof value === 'string' && value.trim() !== '') {
-      this.directors = value;
+      // directors字段是text类型，但为了防止数据过大，限制在500字符内
+      if (value.length > 500) {
+        this.directors = value.substring(0, 497) + '...';
+        console.warn(TAG, `directors字段过长，已截断`);
+      } else {
+        this.directors = value;
+      }
     }
   }
 
@@ -361,7 +391,13 @@ export class VideoBean {
 
   setActors(value: string): void {
     if (typeof value === 'string' && value.trim() !== '') {
-      this.actors = value;
+      // actors字段是text类型，但为了防止数据过大，限制在500字符内
+      if (value.length > 500) {
+        this.actors = value.substring(0, 497) + '...';
+        console.warn(TAG, `actors字段过长，已截断`);
+      } else {
+        this.actors = value;
+      }
     }
   }
 
@@ -402,7 +438,13 @@ export class VideoBean {
 
   setCollectionName(value: string): void {
     if (typeof value === 'string' && value.trim() !== '') {
-      this.collection_name = value;
+      // 限制collection_name字段长度不超过256字符
+      if (value.length > 256) {
+        this.collection_name = value.substring(0, 253) + '...';
+        console.warn(TAG, `collection_name字段过长，已截断: ${value}`);
+      } else {
+        this.collection_name = value;
+      }
     }
   }
 
@@ -452,7 +494,13 @@ export class VideoBean {
 
   setNote(value: string): void {
     if (typeof value === 'string' && value.trim() !== '') {
-      this.note = value;
+      // note字段有256字符限制
+      if (value.length > 256) {
+        this.note = value.substring(0, 253) + '...';
+        console.warn(TAG, `note字段过长，已截断: ${value}`);
+      } else {
+        this.note = value;
+      }
     }
   }
 
@@ -572,7 +620,13 @@ export class VideoBean {
 
   setUnit(value: string): void {
     if (typeof value === 'string' && value.trim() !== '') {
-      this.unit = value;
+      // unit字段有32字符限制
+      if (value.length > 32) {
+        this.unit = value.substring(0, 29) + '...';
+        console.warn(TAG, `unit字段过长，已截断: ${value}`);
+      } else {
+        this.unit = value;
+      }
     }
   }
 

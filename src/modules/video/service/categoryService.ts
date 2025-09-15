@@ -5,6 +5,7 @@ import { CollectionCategoryEntity } from '../entity/collection_category';
 import axios from 'axios';
 import { DictInfoService } from '../../dict/service/info';
 import { DictInfoEntity } from '../../dict/entity/info';
+import { NetworkErrorHandler } from './networkErrorHandler';
 
 const TAG = 'CategoryService';
 
@@ -18,6 +19,9 @@ export class CategoryService {
 
   @Inject()
   dictInfoService: DictInfoService;
+  
+  @Inject()
+  networkErrorHandler: NetworkErrorHandler;
 
   /**
    * 同步分类
@@ -33,7 +37,19 @@ export class CategoryService {
   async syncCategory(query: any): Promise<any> {
     try {
       let list = [];
-      const result: any = await axios.get(query.address);
+      
+      // 使用网络错误处理器进行请求
+      this.logger.info(TAG, `开始同步分类: ${query.address}`);
+      const result: any = await this.networkErrorHandler.requestWithRetry(
+        {
+          url: query.address,
+          method: 'GET',
+          ...this.networkErrorHandler.getCollectionAxiosConfig()
+        },
+        3, // 最大重试3次
+        2000 // 初始延迟2秒
+      );
+      
       const savePromises = result.data.class.map(async item => {
         await this.saveCategory({
           parentId: item.type_pid,
@@ -53,7 +69,17 @@ export class CategoryService {
 
       return { list };
     } catch (error) {
-      this.logger.error(TAG, error);
+      if (this.networkErrorHandler.isNetworkError(error)) {
+        const errorDetails = this.networkErrorHandler.getNetworkErrorDetails(error);
+        this.logger.error(TAG, `分类同步网络错误: ${errorDetails}`);
+        
+        if (this.networkErrorHandler.isDnsError(error)) {
+          this.logger.warn(TAG, `分类同步DNS解析失败，请检查URL: ${query.address}`);
+        }
+      } else {
+        this.logger.error(TAG, '分类同步失败:', error);
+      }
+      throw error;
     }
   }
 
