@@ -12,6 +12,7 @@ import { CategoryService } from '../service/categoryService';
 import { CollectionTaskTaskEntity } from '../entity/collection_task';
 import { VideoEntity } from '../entity/videos';
 import { VideoLineService } from './videoLine';
+import { NetworkErrorHandler } from './networkErrorHandler';
 
 const TAG = 'CollectionService';
 
@@ -37,6 +38,9 @@ export class CollectionService extends BaseService {
 
   @Inject()
   redisService: RedisService;
+  
+  @Inject()
+  networkErrorHandler: NetworkErrorHandler;
 
   /**
    * 处理按天同步视频的业务逻辑
@@ -83,8 +87,18 @@ export class CollectionService extends BaseService {
     //给list 类型的redis 添加数据
     try {
       let defaultParams = new VideoParams(params ? params : {});
-      let result = await axios.get(
-        collectionEntity.address + '?' + defaultParams.getQueryString()
+      const requestUrl = collectionEntity.address + '?' + defaultParams.getQueryString();
+      
+      // 使用网络错误处理器进行请求
+      this.logger.info(TAG, `开始采集: ${requestUrl}`);
+      let result = await this.networkErrorHandler.requestWithRetry(
+        {
+          url: requestUrl,
+          method: 'GET',
+          ...this.networkErrorHandler.getCollectionAxiosConfig()
+        },
+        3, // 最大重试3次
+        2000 // 初始延迟2秒
       );
 
       const pagecount: number = result.data.pagecount;
@@ -128,17 +142,35 @@ export class CollectionService extends BaseService {
       }
       await this.startCollection();
     } catch (error) {
-      this.logger.error(TAG, error);
-      return null;
+      if (this.networkErrorHandler.isNetworkError(error)) {
+        const errorDetails = this.networkErrorHandler.getNetworkErrorDetails(error);
+        this.logger.error(TAG, `采集失败 - ${errorDetails}`);
+        
+        // 记录采集源状态
+        if (this.networkErrorHandler.isDnsError(error)) {
+          this.logger.warn(TAG, `采集源 "${collectionEntity.name}" DNS解析失败，可能需要检查域名状态`);
+        }
+      } else {
+        this.logger.error(TAG, `采集异常:`, error);
+      }
+      
+      // 网络错误不应该返回null，而是抛出异常让上层处理
+      throw error;
     }
   }
 
   async startCollection() {
-    const data = await this.redisService.exists('video:collection');
-    if (data) {
-      await this.concurrencyService.syncVideoPageList();
-    } else {
-      this.logger.info(TAG, '没有数据');
+    try {
+      const data = await this.redisService.exists('video:collection');
+      if (data) {
+        this.logger.info(TAG, 'Redis中存在采集数据，开始处理');
+        await this.concurrencyService.syncVideoPageList();
+      } else {
+        // 使用debug级别日志，减少在没有数据时的日志输出
+        this.logger.debug(TAG, 'Redis中没有采集数据');
+      }
+    } catch (error) {
+      this.logger.error(TAG, 'Redis查询失败', error);
     }
   }
 }

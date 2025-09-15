@@ -15,6 +15,7 @@ import { CollectionTaskTaskEntity } from '../entity/collection_task';
 import * as moment from 'moment';
 import { RedisService } from '@midwayjs/redis';
 import { VIDEO_RESPONSE } from '../bean/video_response';
+import { NetworkErrorHandler } from './networkErrorHandler';
 
 const TAG = 'ConcurrencyService';
 
@@ -39,40 +40,117 @@ export class ConcurrencyService {
 
   @Inject()
   redisService: RedisService;
+  
+  @Inject()
+  networkErrorHandler: NetworkErrorHandler;
 
   private collectionTaskTaskEntityId = 0;
 
   async getRedisData() {
-    const data = await this.redisService.exists('video:collection');
-    if (data) {
-      const data = await this.redisService.lpop('video:collection');
-      return JSON.parse(data);
+    try {
+      const data = await this.redisService.exists('video:collection');
+      if (data) {
+        const queueData = await this.redisService.lpop('video:collection');
+        if (queueData) {
+          return JSON.parse(queueData);
+        }
+      }
+      return null;
+    } catch (error) {
+      this.logger.error(TAG, 'Redis数据获取失败', error);
+      return null;
     }
   }
 
   async syncVideoPageList(): Promise<any> {
     try {
-      const data: any = await this.getRedisData();
-      // // 解耦任务记录创建逻辑
-      await this.createTaskRecord(data.collectionEntity as CollectionEntity);
-      const {
-        collectionCategoryEntityList,
-        areaEntityList,
-        languageEntityList,
-      } = await this.fetchCategoryAndDictData(
-        data.collectionEntity as CollectionEntity
-      );
-      await this.processVideoParamsItems(
-        new VideoParams(data.videoParams),
-        data.collectionEntity as CollectionEntity,
-        collectionCategoryEntityList,
-        areaEntityList,
-        languageEntityList
-      );
+      this.logger.info(TAG, '开始处理Redis中的视频采集数据');
+      
+      // 循环处理Redis中的所有数据
+      let processedCount = 0;
+      let maxRetries = 100; // 最大重试次数，防止无限循环
+      
+      while (processedCount < maxRetries) {
+        const data: any = await this.getRedisData();
+        if (!data) {
+          if (processedCount === 0) {
+            this.logger.debug(TAG, 'Redis中没有可处理的数据');
+          } else {
+            this.logger.info(TAG, `Redis数据处理完成，共处理${processedCount}条数据`);
+          }
+          break;
+        }
+        
+        // 验证数据结构
+        if (!this.validateRedisData(data)) {
+          this.logger.warn(TAG, `第${processedCount + 1}条数据格式无效，跳过`);
+          processedCount++;
+          continue;
+        }
+        
+        try {
+          this.logger.debug(TAG, `开始处理第${processedCount + 1}条数据`);
+          
+          // 解耦任务记录创建逻辑
+          await this.createTaskRecord(data.collectionEntity as CollectionEntity);
+          
+          const {
+            collectionCategoryEntityList,
+            areaEntityList,
+            languageEntityList,
+          } = await this.fetchCategoryAndDictData(
+            data.collectionEntity as CollectionEntity
+          );
+          
+          await this.processVideoParamsItems(
+            new VideoParams(data.videoParams),
+            data.collectionEntity as CollectionEntity,
+            collectionCategoryEntityList,
+            areaEntityList,
+            languageEntityList
+          );
+          
+          processedCount++;
+          this.logger.debug(TAG, `第${processedCount}条数据处理完成`);
+          
+          // 防止内存溢出，每处理一条数据后添加小延时
+          await new Promise(resolve => setTimeout(resolve, 100));
+          
+        } catch (error) {
+          this.logger.error(TAG, `处理第${processedCount + 1}条数据失败`, error);
+          processedCount++; // 即使失败也计数，避免无限循环
+        }
+      }
+      
+      if (processedCount >= maxRetries) {
+        this.logger.warn(TAG, `达到最大处理次数${maxRetries}，停止处理`);
+      }
+      
     } catch (error) {
-      this.logger.error(TAG, error);
+      this.logger.error(TAG, '处理Redis数据失败', error);
       return error;
     }
+  }
+  
+  /**
+   * 验证Redis数据格式
+   */
+  private validateRedisData(data: any): boolean {
+    if (!data || typeof data !== 'object') {
+      return false;
+    }
+    
+    if (!data.collectionEntity || !data.videoParams) {
+      this.logger.warn(TAG, 'Redis数据缺少必要字段: collectionEntity 或 videoParams');
+      return false;
+    }
+    
+    if (!data.collectionEntity.id || !data.collectionEntity.name) {
+      this.logger.warn(TAG, 'collectionEntity缺少必要字段: id 或 name');
+      return false;
+    }
+    
+    return true;
   }
 
   //实现一个提取字符串中数字的函数
@@ -139,13 +217,25 @@ export class ConcurrencyService {
     collectionEntity: CollectionEntity,
     params: VideoParams
   ): Promise<VIDEO_RESPONSE | Object> {
+    let uri: string = '';
+    
     try {
-      const uri: string =
-        collectionEntity.address + '?' + params.getQueryString();
+      uri = collectionEntity.address + '?' + params.getQueryString();
       //删除uri的空格
       uri.replace(/\s+/g, '');
       this.logger.info(TAG, uri);
-      const result = await axios.get(uri);
+      
+      // 使用网络错误处理器进行请求
+      const result = await this.networkErrorHandler.requestWithRetry(
+        {
+          url: uri,
+          method: 'GET',
+          ...this.networkErrorHandler.getCollectionAxiosConfig()
+        },
+        2, // 最大重试2次（减少重试次数，因为是在循环中）
+        1500 // 初始延迟1.5秒
+      );
+      
       if (params.getPagecount() === params.getPage()) {
         await this.collectionTaskTaskEntity.update(
           this.collectionTaskTaskEntityId,
@@ -160,20 +250,37 @@ export class ConcurrencyService {
       }
       return result.data;
     } catch (error) {
+      // 网络错误详细信息记录
+      let errorMessage = 'Unknown error';
+      if (this.networkErrorHandler.isNetworkError(error)) {
+        errorMessage = this.networkErrorHandler.getNetworkErrorDetails(error);
+        this.logger.error(TAG, `网络请求失败: ${errorMessage}`);
+        
+        if (this.networkErrorHandler.isDnsError(error)) {
+          this.logger.warn(TAG, `采集源 "${collectionEntity.name}" 域名解析失败，可能需要检查URL配置`);
+        }
+      } else {
+        errorMessage = error.message || error.toString();
+        this.logger.error(TAG, `非网络错误: ${errorMessage}`);
+      }
+      
       this.logger.info(
         TAG,
-        `request error ${
-          collectionEntity.address + '?' + params.getQueryString()
-        }`
+        `request error ${uri || 'unknown URL'} - ${errorMessage}`
       );
+      
       await this.collectionTaskTaskEntity.update(
         this.collectionTaskTaskEntityId,
         {
           taskStatus: 3,
-          execResult: JSON.stringify(error),
+          execResult: JSON.stringify({
+            error: errorMessage,
+            code: error.code || 'UNKNOWN',
+            isNetworkError: this.networkErrorHandler.isNetworkError(error)
+          }),
           execParams: JSON.stringify(params.getObject()),
           endDate: moment().format('YYYY-MM-DD HH:mm:ss'),
-          errorMessage: JSON.stringify(error),
+          errorMessage: errorMessage,
         }
       );
       return {};
@@ -182,21 +289,62 @@ export class ConcurrencyService {
 
   async saveVideo(videoList: VideoBean[], collectionEntity: CollectionEntity) {
     try {
-      // 直接使用原对象，避免不必要的复制
-
+      this.logger.info(TAG, `开始保存视频数据，共${videoList.length}条`);
+      
+      // 批量处理避免内存问题，同时减少并发冲突
+      const batchSize = 5; // 减小批处理大小避免重复键冲突
+      let savedCount = 0;
+      let errorCount = 0;
+      
       while (videoList.length) {
-        const item = videoList.shift();
-        this.videosService.insert(
-          item as unknown as VideoEntity,
-          collectionEntity
-        );
+        const batch = videoList.splice(0, batchSize);
+        
+        // 使用串行处理而非并行处理，避免重复键冲突
+        for (const item of batch) {
+          try {
+            await this.videosService.insert(
+              item as unknown as VideoEntity,
+              collectionEntity
+            );
+            savedCount++;
+          } catch (error) {
+            errorCount++;
+            // 重复键错误不记录为系统错误，只记录为debug日志
+            if (this.isDuplicateKeyError(error)) {
+              this.logger.debug(TAG, `视频已存在，跳过: ${item.getTitle()}`);
+            } else {
+              this.logger.error(TAG, `保存视频失败: ${item.getTitle()}`, error);
+            }
+          }
+        }
+        
+        // 内存管理
+        if (process.memoryUsage().heapUsed > 500 * 1024 * 1024) {
+          global.gc && global.gc();
+          this.logger.info(TAG, `内存使用超过500MB，触发垃圾回收`);
+        }
+        
+        // 添加小延时避免数据库连接过载
+        await new Promise(resolve => setTimeout(resolve, 50));
       }
+      
+      this.logger.info(TAG, `视频保存完成，成功${savedCount}条，失败${errorCount}条`);
+      
       // 显式清空数组，释放内存
       videoList = null;
       collectionEntity = null;
     } catch (error) {
-      this.logger.error(TAG, error);
+      this.logger.error(TAG, '批量保存视频数据失败', error);
     }
+  }
+  
+  /**
+   * 判断是否为重复键错误
+   */
+  private isDuplicateKeyError(error: any): boolean {
+    return error.code === 'ER_DUP_ENTRY' || 
+           error.errno === 1062 ||
+           (error.message && error.message.includes('Duplicate entry'));
   }
 
   // 新增：解耦任务记录创建
@@ -226,8 +374,12 @@ export class ConcurrencyService {
       this.dictInfoService.data(['language']),
     ]);
 
+    this.logger.info(TAG, `采集源 "${collectionEntity.name}" 匹配到 ${collectionCategoryEntityList.length} 个分类`);
+    
     if (!collectionCategoryEntityList.length) {
-      throw new CoolCommException('未匹配系统分类 无法入库~');
+      this.logger.error(TAG, `采集源 "${collectionEntity.name}" (ID: ${collectionEntity.id}) 未匹配系统分类，无法入库`);
+      this.logger.error(TAG, '请先在后台管理系统中为该采集源配置分类映射关系');
+      throw new CoolCommException(`采集源 "${collectionEntity.name}" 未匹配系统分类，无法入库`);
     }
 
     return {
@@ -281,9 +433,16 @@ export class ConcurrencyService {
     areaEntityList: DictInfoEntity[],
     languageEntityList: DictInfoEntity[]
   ) {
-    if (!result) return;
+    if (!result) {
+      this.logger.warn(TAG, '无效的API响应结果');
+      return;
+    }
+    
     const videoList: VideoBean[] = [];
     if (result.success && result.data?.list) {
+      this.logger.info(TAG, `开始处理视频列表，共${result.data.list.length}条数据`);
+      
+      let processedCount = 0;
       while (result.data.list.length) {
         let item = result.data.list.shift();
         this.processVideoItem(
@@ -293,10 +452,24 @@ export class ConcurrencyService {
           languageEntityList,
           videoList
         );
+        processedCount++;
       }
+      
+      this.logger.info(TAG, `视频数据处理完成，处理${processedCount}条，有效${videoList.length}条`);
+    } else {
+      this.logger.warn(TAG, '无效的视频数据响应', { 
+        success: result.success, 
+        hasData: !!result.data, 
+        hasList: !!result.data?.list,
+        listLength: result.data?.list?.length 
+      });
     }
 
-    this.saveVideo(videoList, collectionEntity);
+    if (videoList.length > 0) {
+      this.saveVideo(videoList, collectionEntity);
+    } else {
+      this.logger.warn(TAG, '没有有效的视频数据需要保存');
+    }
   }
 
   // 新增：解耦结果处理逻辑
@@ -340,7 +513,7 @@ export class ConcurrencyService {
       collectionCategoryEntityList
     );
     if (!category) {
-      this.logger.error(`分类不存在：${item.type_name} ${item.type_id}`);
+      this.logger.warn(TAG, `分类不存在：${item.type_name} ${item.type_id}，跳过该视频: ${item.vod_name || item.name}`);
       return;
     }
     item.categoryId = category.category_id;
@@ -368,6 +541,13 @@ export class ConcurrencyService {
     } else {
       item.area = 570;
     }
-    videoList.push(new VideoBean(item));
+    
+    try {
+      const videoBean = new VideoBean(item);
+      videoList.push(videoBean);
+      this.logger.debug(TAG, `视频数据处理成功: ${item.vod_name || item.name}`);
+    } catch (error) {
+      this.logger.error(TAG, `创建 VideoBean 失败: ${item.vod_name || item.name}`, error);
+    }
   }
 }
