@@ -18,7 +18,6 @@ import * as entity15 from './modules/video/entity/album';
 import * as entity16 from './modules/user/entity/wx';
 import * as entity17 from './modules/user/entity/views';
 import * as entity18 from './modules/user/entity/share';
-import * as entity19 from './modules/user/entity/member';
 import * as entity20 from './modules/user/entity/like';
 import * as entity21 from './modules/user/entity/info';
 import * as entity22 from './modules/user/entity/contacts';
@@ -67,7 +66,6 @@ export const entities = [
   ...Object.values(entity16),
   ...Object.values(entity17),
   ...Object.values(entity18),
-  ...Object.values(entity19),
   ...Object.values(entity20),
   ...Object.values(entity21),
   ...Object.values(entity22),
