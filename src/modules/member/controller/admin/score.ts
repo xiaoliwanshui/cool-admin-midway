@@ -1,0 +1,64 @@
+import { Body, Get, Inject, Post, Query } from '@midwayjs/core';
+import { BaseController, CoolController } from '@cool-midway/core';
+import { ScoreEntity } from '../../entity/score';
+import { ScoreService } from '../../service/score';
+
+/**
+ * 积分管理控制器
+ */
+@CoolController({
+  api: ['add', 'delete', 'update', 'info', 'list', 'page'],
+  entity: ScoreEntity
+})
+export class ScoreController extends BaseController {
+  @Inject()
+  scoreService: ScoreService;
+
+  /**
+   * 获取用户积分总和
+   */
+  @Get('/total')
+  async getTotal(@Query('createUserId') createUserId: number) {
+    const total = await this.scoreService.getUserTotalScore(createUserId);
+    return this.ok(total);
+  }
+
+  /**
+   * 获取用户积分记录
+   */
+  @Get('/records')
+  async getRecords(@Query('createUserId') createUserId: number) {
+    const records = await this.scoreService.getUserScoreRecords(createUserId);
+    return this.ok(records);
+  }
+
+  /**
+   * 增加积分
+   */
+  @Post('/addScore')
+  async addScore(
+    @Body('createUserId') createUserId: number,
+    @Body('score') score: number,
+    @Body('reason') reason: string,
+    @Body('businessId') businessId?: number,
+    @Body('businessType') businessType?: string
+  ) {
+    await this.scoreService.addScore(createUserId, score, reason, businessId, businessType);
+    return this.ok();
+  }
+
+  /**
+   * 减少积分
+   */
+  @Post('/reduceScore')
+  async reduceScore(
+    @Body('createUserId') createUserId: number,
+    @Body('score') score: number,
+    @Body('reason') reason: string,
+    @Body('businessId') businessId?: number,
+    @Body('businessType') businessType?: string
+  ) {
+    await this.scoreService.reduceScore(createUserId, score, reason, businessId, businessType);
+    return this.ok();
+  }
+}

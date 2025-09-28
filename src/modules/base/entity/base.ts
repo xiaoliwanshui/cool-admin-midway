@@ -1,4 +1,4 @@
-import { Index, PrimaryGeneratedColumn, Column } from 'typeorm';
+import { Column, Index, PrimaryGeneratedColumn } from 'typeorm';
 import * as moment from 'moment';
 import { CoolBaseEntity } from '@cool-midway/core';
 
@@ -13,7 +13,7 @@ export const transformerTime = {
   },
   from(value) {
     return value;
-  },
+  }
 };
 
 /**
@@ -31,7 +31,7 @@ export const transformerJson = {
       }
     }
     return value;
-  },
+  }
 };
 
 /**
@@ -40,7 +40,7 @@ export const transformerJson = {
 export abstract class BaseEntity extends CoolBaseEntity {
   // 默认自增
   @PrimaryGeneratedColumn('increment', {
-    comment: 'ID',
+    comment: 'ID'
   })
   id: number;
 
@@ -48,7 +48,7 @@ export abstract class BaseEntity extends CoolBaseEntity {
   @Column({
     comment: '创建时间',
     type: 'varchar',
-    transformer: transformerTime,
+    transformer: transformerTime
   })
   createTime: Date;
 
@@ -56,7 +56,7 @@ export abstract class BaseEntity extends CoolBaseEntity {
   @Column({
     comment: '更新时间',
     type: 'varchar',
-    transformer: transformerTime,
+    transformer: transformerTime
   })
   updateTime: Date;
 
@@ -64,9 +64,11 @@ export abstract class BaseEntity extends CoolBaseEntity {
   @Column({ comment: '租户ID', nullable: true })
   tenantId: number;
 
+  @Index()
   @Column({ comment: '创建用户ID', nullable: true })
   createUserId: number;
 
+  @Index()
   @Column({ comment: '更新用户ID', nullable: true })
   updateUserId: number;
 }
