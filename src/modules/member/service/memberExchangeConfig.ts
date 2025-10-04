@@ -12,5 +12,11 @@ export class MemberExchangeConfigService {
   @InjectEntityModel(MemberExchangeConfigEntity)
   memberExchangeConfigEntity: Repository<MemberExchangeConfigEntity>;
 
-
+  /**
+   * 获取兑换配置信息
+   * @param id 配置ID
+   */
+  async info(id: number) {
+    return await this.memberExchangeConfigEntity.findOne({ where: { id } });
+  }
 }
