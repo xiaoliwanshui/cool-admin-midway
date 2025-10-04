@@ -2,7 +2,7 @@ import { BaseController, CoolController, CoolTag, CoolUrlTag, TagTypes } from '@
 import { VideoEntity } from '../../entity/videos';
 
 import { VideosService } from '../../service/videos';
-import { Body, Inject, Post } from '@midwayjs/core';
+import { Body, Get, Inject, Post, Query } from '@midwayjs/core';
 
 /**
  * 商品
@@ -74,6 +74,20 @@ export class AppVideoController extends BaseController {
   async week(@Body() body): Promise<unknown> {
     try {
       return this.ok(await this.videosService.week(body));
+    } catch (error) {
+      return this.fail(error);
+    }
+  }
+
+  /**
+   * 根据视频ID获取视频信息和线路资源
+   * @param id 视频ID
+   */
+  @CoolTag(TagTypes.IGNORE_TOKEN)
+  @Get('/detail')
+  async detail(@Query('id') id: number): Promise<unknown> {
+    try {
+      return this.ok(await this.videosService.getVideoDetail(id));
     } catch (error) {
       return this.fail(error);
     }

@@ -10,6 +10,7 @@ import { ILogger, Inject, Provide } from '@midwayjs/core';
 import { CollectionEntity } from '../entity/collection';
 import { VideoLineService } from './videoLine';
 import { PlayLineService } from './play_line';
+import { VideoLineEntity } from '../entity/video_line';
 import { PlayLineEntity } from '../entity/play_line';
 import { DuplicateKeyHandler } from './duplicateKeyHandler';
 
@@ -206,5 +207,44 @@ export class VideosService extends BaseService {
   private prepareVideoForUpdate(videoEntity: VideoEntity): Partial<VideoEntity> {
     const { id, createTime, updateTime, createUserId, ...updateData } = videoEntity;
     return updateData;
+  }
+
+  /**
+   * 根据视频ID获取视频信息和线路资源
+   * @param id 视频ID
+   */
+  async getVideoDetail(id: number): Promise<any> {
+    // 获取视频基本信息
+    const video = await this.videoEntity.findOne({
+      where: { id }
+    });
+
+    if (!video) {
+      throw new Error('视频不存在');
+    }
+
+    // 获取视频线路信息
+    const videoLines = await this.VideoLineService.videoLineEntity.find({
+      where: { video_id: id }
+    });
+
+    // 获取每个线路下的播放资源
+    const linesWithSources = [];
+    for (const line of videoLines) {
+      const playLines = await this.playLineService.playLineEntity.find({
+        where: { video_line_id: line.id },
+        order: { sort: 'ASC' }
+      });
+
+      linesWithSources.push({
+        ...line,
+        playLines
+      });
+    }
+
+    return {
+      video,
+      lines: linesWithSources
+    };
   }
 }
