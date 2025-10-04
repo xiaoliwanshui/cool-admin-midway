@@ -1,9 +1,10 @@
-import {Inject, Provide} from '@midwayjs/core';
+import {ILogger, Inject, Provide} from '@midwayjs/core';
 import {MemberEntity} from '../entity/member';
 import {InjectEntityModel} from '@midwayjs/typeorm';
 import {Repository} from 'typeorm';
 import {CoolCommException} from '@cool-midway/core';
 import {ScoreService} from "./score";
+import {MemberExchangeConfigService} from "./memberExchangeConfig";
 
 /**
  * 会员服务类
@@ -12,6 +13,12 @@ import {ScoreService} from "./score";
 export class MemberService {
   @Inject()
   scoreService: ScoreService;
+
+  @Inject()
+  memberExchangeConfigService: MemberExchangeConfigService;
+
+    @Inject()
+    logger: ILogger;
 
   @InjectEntityModel(MemberEntity)
   memberEntity: Repository<MemberEntity>;
@@ -22,17 +29,31 @@ export class MemberService {
    * @param score 所需积分
    * @param days 兑换天数
    */
-  async exchangeByScore(createUserId: number, score: number, days: number) {
+  async exchangeByScore(createUserId: number, userMmemberExchangeId: number) {
+
+    // 获取兑换配置信息
+    const exchangeConfig = await this.memberExchangeConfigService.info(
+      userMmemberExchangeId
+    );
+    this.logger.info('兑换会员配置信息', exchangeConfig);
+    
+    if (!exchangeConfig) {
+      throw new CoolCommException('无效的兑换配置');
+    }
+    
+    const { days, requiredScore } = exchangeConfig;
+
+
     // 检查用户积分是否足够
     const userScore = await this.scoreService.getUserTotalScore(createUserId);
-    if (userScore < score) {
+    if (userScore < requiredScore) {
       throw new CoolCommException('积分不足');
     }
 
     // 扣除积分
     await this.scoreService.reduceScore(
       createUserId,
-      score,
+      requiredScore,
       `兑换会员${days}天`,
       null,
       'exchange_member'
@@ -60,6 +81,7 @@ export class MemberService {
       newEndTime.setDate(newEndTime.getDate() + days);
       member.endTime = newEndTime;
     }
+      member.score = requiredScore;
 
     // 保存会员信息
     await this.memberEntity.save(member);
@@ -69,7 +91,7 @@ export class MemberService {
       message: `成功兑换${days}天会员`,
       member,
       exchangeInfo: {
-        scoreUsed: score,
+        scoreUsed: requiredScore,
         daysAdded: days
       }
     };

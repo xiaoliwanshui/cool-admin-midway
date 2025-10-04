@@ -35,15 +35,20 @@ export class AppUserMemberController extends BaseController {
    */
   @Post('/exchangeByScore', {summary: '积分兑换会员'})
   async exchangeByScore(
-    @Body('score') score: number,
-    @Body('days') days: number
+    @Body('userMmemberExchangeId') userMmemberExchangeId: number
   ) {
-    if (!score || !days || score <= 0 || days <= 0) {
-      throw new CoolCommException('请输入有效的积分和天数');
-    }
-    
     return this.ok(
-      await this.memberService.exchangeByScore(this.ctx.user.id, score, days)
+      await this.memberService.exchangeByScore(this.ctx.user.id, userMmemberExchangeId)
     );
+  }
+
+  /**
+   * 检查用户是否是有效会员
+   */
+  @Post('/isValidMember', {summary: '检查用户是否是有效会员'})
+  async isValidMember() {
+    return this.ok({
+      isValidMember: await this.memberService.isValidMember(this.ctx.user.id),
+    });
   }
 }

@@ -15,7 +15,7 @@
     "@midwayjs/info": "^3.20.3",
     "@midwayjs/koa": "^3.20.3",
     "@midwayjs/logger": "^3.4.2",
-    "@midwayjs/prometheus": "^3.20.5",
+    "@midwayjs/prometheus": "3",
     "@midwayjs/redis": "^3.20.4",
     "@midwayjs/static-file": "^3.20.5",
     "@midwayjs/typeorm": "^3.20.3",

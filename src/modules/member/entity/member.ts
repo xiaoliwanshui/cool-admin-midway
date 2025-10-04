@@ -19,9 +19,6 @@ export class MemberEntity extends BaseEntity {
   @Column({ comment: '状态', default: 1 })
   status: number;
 
-  @Column({ comment: '注册时间' })
-  registerTime: Date;
-
   @Column({ comment: '开始时间', nullable: true })
   startTime: Date;
 
