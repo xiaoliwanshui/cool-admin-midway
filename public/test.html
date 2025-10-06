@@ -138,6 +138,9 @@
         <div id="tokenArea" style="display: none; margin-top: 20px;">
             <label for="tokenOutput">登录Token:</label>
             <textarea id="tokenOutput" rows="5" style="width: 100%; padding: 10px;" readonly></textarea>
+            
+            <label for="refreshTokenOutput" style="margin-top: 15px; display: block;">刷新Token:</label>
+            <textarea id="refreshTokenOutput" rows="5" style="width: 100%; padding: 10px;" readonly></textarea>
         </div>
         
         <div id="result" class="result" style="display: none;"></div>
@@ -202,6 +205,8 @@
                     showSuccess('登录成功！');
                     // 将token显示在文本域中
                     document.getElementById('tokenOutput').value = data.data.token;
+                    // 将refreshToken显示在文本域中
+                    document.getElementById('refreshTokenOutput').value = data.data.refreshToken;
                     document.getElementById('tokenArea').style.display = 'block';
                     // 可以在这里保存token到localStorage或其他地方
                 } else {
