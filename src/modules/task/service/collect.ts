@@ -81,6 +81,7 @@ export class TaskCollectService extends BaseService {
       'UPDATE video v SET play_url_put_in = CASE WHEN EXISTS (SELECT 1 FROM video_line vl WHERE vl.video_id = v.id) THEN 1 ELSE 0 END;';
     try {
       await this.nativeQuery(SQLQuery);
+       return '任务执行成功';
     } catch (error) {
       this.logger.error(TAG, '数据分类异常', error);
       await this.nativeQuery('ROLLBACK;');
@@ -97,6 +98,7 @@ export class TaskCollectService extends BaseService {
     try {
       this.logger.info(TAG, '检查视频线路调用了');
       await this.collectionService.checkVideoLine();
+       return '任务执行成功';
     } catch (error) {
       this.logger.error(TAG, '检查视频线路异常', error);
       throw error;

@@ -13,6 +13,7 @@ import { CollectionTaskTaskEntity } from '../entity/collection_task';
 import { VideoEntity } from '../entity/videos';
 import { VideoLineService } from './videoLine';
 import { NetworkErrorHandler } from './networkErrorHandler';
+import { PlayLineService } from './play_line';
 
 const TAG = 'CollectionService';
 
@@ -41,6 +42,9 @@ export class CollectionService extends BaseService {
   
   @Inject()
   networkErrorHandler: NetworkErrorHandler;
+  
+  @Inject()
+  playLineService: PlayLineService;
 
   /**
    * 处理按天同步视频的业务逻辑
@@ -70,13 +74,69 @@ export class CollectionService extends BaseService {
     const find = this.videoEntity.createQueryBuilder();
     find.where('play_url_put_in = :play_url_put_in', { play_url_put_in: 0 });
     const data = await this.entityRenderPage(find, { page: 1, size: 10 });
+    
+    // 分批处理播放线路检查，避免内存溢出
+    const batchSize = 50; // 每批处理50条记录
+    let offset = 0;
+    let hasMore = true;
+    
+    while (hasMore) {
+      // 分批获取播放线路
+      const playLines = await this.playLineService.playLineEntity.find({
+        where: {
+          status: 1 // 只检查状态为启用的线路
+        },
+        skip: offset,
+        take: batchSize
+      });
+      
+      // 如果没有更多数据，结束循环
+      if (playLines.length === 0) {
+        hasMore = false;
+        break;
+      }
+      
+      // 检查每个播放线路的链接是否可访问
+      for (const playLine of playLines) {
+        const isAccessible = await this.playLineService.isUrlAccessible(playLine.file);
+        if (!isAccessible) {
+          // 如果链接不可访问，更新状态为禁用
+          await this.playLineService.playLineEntity.update(
+            { id: playLine.id },
+            { status: 0 }
+          );
+          this.logger.warn(TAG, `播放线路 ${playLine.name} 的链接 ${playLine.file} 无法访问，已禁用`);
+        }
+        
+        // 每处理一条记录后稍微延迟，避免请求过于频繁
+        await new Promise(resolve => setTimeout(resolve, 10));
+      }
+      
+      // 更新偏移量
+      offset += batchSize;
+      
+      // 如果返回的数据少于批次大小，说明已经处理完所有数据
+      if (playLines.length < batchSize) {
+        hasMore = false;
+      }
+      
+      // 每处理完一批后，主动触发垃圾回收（如果内存使用过高）
+      if (global.gc) {
+        const used = process.memoryUsage().heapUsed / 1024 / 1024;
+        if (used > 500) { // 如果内存使用超过500MB
+          this.logger.info(TAG, `当前内存使用 ${used.toFixed(2)} MB，触发垃圾回收`);
+          global.gc();
+        }
+      }
+    }
+    
+    // 原有的处理逻辑
     for (const videoEntity of data.list) {
       let collectionEntity = await this.collectionEntity.findOneBy({
         id: videoEntity.collection_id,
       });
       await this.VideoLineService.insert(videoEntity, collectionEntity);
     }
-    //循环videoEntityList 根据
   }
 
   //采集资源
