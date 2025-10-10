@@ -2,7 +2,7 @@ import { Column, Entity, Index, Unique } from 'typeorm';
 import { BaseEntity } from '../../base/entity/base';
 
 /**
- * 文章信息
+ * 播放线路
  */
 @Entity('video_play_line')
 @Unique(['file'])

@@ -2,7 +2,7 @@ import { Column, Entity } from 'typeorm';
 import { BaseEntity } from '../../base/entity/base';
 
 /**
- * 文章信息
+ * 分类
  */
 @Entity('video_category')
 export class CategoryEntity extends BaseEntity {

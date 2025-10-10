@@ -1,7 +1,7 @@
 // import { Column, Entity } from 'typeorm';
 import { BaseEntity } from '../../base/entity/base';
 /**
- * 广告信息
+ * 播放器
  */
 import { Column, Entity } from 'typeorm';
 
