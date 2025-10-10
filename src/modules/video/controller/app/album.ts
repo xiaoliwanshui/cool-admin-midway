@@ -32,8 +32,8 @@ export class AppAlbumController extends BaseController {
   cryptoUtil: CryptoUtil;
 
   @CoolTag(TagTypes.IGNORE_TOKEN)
-  @Post('/album')
-  async album(@Body() body): Promise<unknown> {
+  @Post('/album',{summary:'获取专辑信息'})
+  async album(@Body() body ): Promise<unknown> {
     return this.ok(await this.albumService.album(body));
   }
 }
