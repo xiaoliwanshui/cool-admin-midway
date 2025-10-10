@@ -4,7 +4,7 @@ import { BaseEntity } from '../../base/entity/base';
 const _ = require('lodash');
 
 /**
- * 订单信息c
+ * 视频信息实体
  */
 @Entity('video')
 @Unique(['title'])
