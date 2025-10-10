@@ -84,7 +84,7 @@ export class AppVideoController extends BaseController {
    * @param id 视频ID
    */
   @CoolTag(TagTypes.IGNORE_TOKEN)
-  @Get('/detail')
+  @Get('/detail',{summary:'获取视频详情'})
   async detail(@Query('id') id: number): Promise<unknown> {
     try {
       return this.ok(await this.videosService.getVideoDetail(id));
