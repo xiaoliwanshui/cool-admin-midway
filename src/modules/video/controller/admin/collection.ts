@@ -11,6 +11,7 @@ import { Body, Inject, Post } from '@midwayjs/core';
 @CoolController({
   api: ['add', 'delete', 'update', 'info', 'list', 'page'],
   entity: CollectionEntity,
+  service:CollectionService,
   insertParam: ctx => {
     return {
       // 获得当前登录的后台用户ID，需要请求头传Authorization参数

@@ -44,7 +44,7 @@ export class TaskCollectService extends BaseService {
 
   async startCollection() {
     try {
-      this.logger.info(TAG, '采集调用了');
+      // this.logger.info(TAG, '采集调用了');
       await this.collectionService.startCollection();
       return '任务执行成功';
     } catch (error) {
@@ -194,7 +194,7 @@ export class TaskCollectService extends BaseService {
   async getVideoTag() {
     try {
       const tags: any[] = await this.nativeQuery(tagSQLQuery);
-      this.logger.info(TAG, '获取视频tag成功', tags);
+      // this.logger.info(TAG, '获取视频tag成功', tags);
       for (const tag of tags) {
         const tagValues = await this.dictInfoService.findByName(tag.tag);
         if (!tagValues) {
@@ -210,9 +210,9 @@ export class TaskCollectService extends BaseService {
                 54
             }
           );
-          this.logger.info(TAG, '添加视频tag成功', tag.tag);
+          // this.logger.info(TAG, '添加视频tag成功', tag.tag);
         } else {
-          this.logger.info(TAG, '视频tag已存在', tag.tag);
+          // this.logger.info(TAG, '视频tag已存在', tag.tag);
         }
       }
 

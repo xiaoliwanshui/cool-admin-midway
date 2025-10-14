@@ -13,6 +13,7 @@ import { PlayLineService } from './play_line';
 import { VideoLineEntity } from '../entity/video_line';
 import { PlayLineEntity } from '../entity/play_line';
 import { DuplicateKeyHandler } from './duplicateKeyHandler';
+import { MemberService } from '../../member/service/member';
 
 const TAG = 'VideosService';
 
@@ -38,6 +39,9 @@ export class VideosService extends BaseService {
 
   @Inject()
   VideoLineService: VideoLineService;
+
+  @Inject()
+  memberService: MemberService;
 
   @Inject()
   playLineService: PlayLineService;
@@ -110,36 +114,44 @@ export class VideosService extends BaseService {
   ): Promise<void> {
     try {
       this.logger.debug(TAG, `开始保存视频: ${videoEntity.title}`);
-      
+
       // 检查必要的字段
       if (!videoEntity.title || !videoEntity.title.trim()) {
         this.logger.warn(TAG, '视频标题为空，跳过保存');
         return;
       }
-      
+
       // 数据清理和验证
       this.cleanVideoData(videoEntity);
-      
+
       // 使用重复键处理器安全插入
-      const savedVideo = await this.duplicateKeyHandler.safeVideoInsert(videoEntity);
-      
+      const savedVideo = await this.duplicateKeyHandler.safeVideoInsert(
+        videoEntity
+      );
+
       if (savedVideo && savedVideo.id) {
         videoEntity.id = savedVideo.id;
-        
+
         // 保存视频线路信息
         try {
           await this.VideoLineService.insert(videoEntity, collectionEntity);
           this.logger.info(TAG, `视频 "${videoEntity.title}" 及其线路保存成功`);
         } catch (lineError) {
-          this.logger.error(TAG, `视频线路保存失败: ${videoEntity.title}`, lineError);
+          this.logger.error(
+            TAG,
+            `视频线路保存失败: ${videoEntity.title}`,
+            lineError
+          );
         }
       } else {
-        this.logger.error(TAG, `视频保存失败，无法获取有效ID: ${videoEntity.title}`);
+        this.logger.error(
+          TAG,
+          `视频保存失败，无法获取有效ID: ${videoEntity.title}`
+        );
       }
-      
     } catch (error) {
       this.logger.error(TAG, `保存视频异常: ${videoEntity?.title}`, error);
-      
+
       // 如果重复键处理器也无法处理，则记录错误但不抛出异常，避免影响其他视频的处理
       if (this.duplicateKeyHandler.isDuplicateKeyError(error)) {
         this.logger.warn(TAG, `重复视频跳过: ${videoEntity?.title}`);
@@ -150,7 +162,7 @@ export class VideosService extends BaseService {
       videoEntity = null;
     }
   }
-  
+
   /**
    * 清理视频数据
    */
@@ -159,16 +171,23 @@ export class VideosService extends BaseService {
     if (videoEntity.sort === undefined || videoEntity.sort === null) {
       videoEntity.sort = 0;
     }
-    
+
     // 清理可能为null的字符串字段
-    const stringFields = ['video_class', 'video_tag', 'sub_title', 'directors', 'actors', 'introduce'];
+    const stringFields = [
+      'video_class',
+      'video_tag',
+      'sub_title',
+      'directors',
+      'actors',
+      'introduce',
+    ];
     stringFields.forEach(field => {
       if (videoEntity[field] === null || videoEntity[field] === undefined) {
         videoEntity[field] = '';
       }
     });
   }
-  
+
   /**
    * 截断过长的数据
    */
@@ -179,33 +198,39 @@ export class VideosService extends BaseService {
       sub_title: 191,
       video_tag: 191,
       video_class: 191,
-      collection_name: 256
+      collection_name: 256,
     };
-    
+
     Object.keys(fieldLimits).forEach(field => {
       if (videoEntity[field] && typeof videoEntity[field] === 'string') {
         const limit = fieldLimits[field];
         if (videoEntity[field].length > limit) {
-          videoEntity[field] = videoEntity[field].substring(0, limit - 3) + '...';
+          videoEntity[field] =
+            videoEntity[field].substring(0, limit - 3) + '...';
           this.logger.warn(TAG, `字段 ${field} 已截断至 ${limit} 字符`);
         }
       }
     });
   }
-  
+
   /**
    * 准备插入数据（移除id字段）
    */
-  private prepareVideoForInsert(videoEntity: VideoEntity): Partial<VideoEntity> {
+  private prepareVideoForInsert(
+    videoEntity: VideoEntity
+  ): Partial<VideoEntity> {
     const { id, ...insertData } = videoEntity;
     return insertData;
   }
-  
+
   /**
    * 准备更新数据（移除id字段和时间戳字段）
    */
-  private prepareVideoForUpdate(videoEntity: VideoEntity): Partial<VideoEntity> {
-    const { id, createTime, updateTime, createUserId, ...updateData } = videoEntity;
+  private prepareVideoForUpdate(
+    videoEntity: VideoEntity
+  ): Partial<VideoEntity> {
+    const { id, createTime, updateTime, createUserId, ...updateData } =
+      videoEntity;
     return updateData;
   }
 
@@ -213,10 +238,10 @@ export class VideosService extends BaseService {
    * 根据视频ID获取视频信息和线路资源
    * @param id 视频ID
    */
-  async getVideoDetail(id: number): Promise<any> {
+  async getVideoDetail(id: number, createUserId?: number): Promise<any> {
     // 获取视频基本信息
     const video = await this.videoEntity.findOne({
-      where: { id }
+      where: { id },
     });
 
     if (!video) {
@@ -225,7 +250,7 @@ export class VideosService extends BaseService {
 
     // 获取视频线路信息
     const videoLines = await this.VideoLineService.videoLineEntity.find({
-      where: { video_id: id }
+      where: { video_id: id },
     });
 
     // 获取每个线路下的播放资源
@@ -233,18 +258,50 @@ export class VideosService extends BaseService {
     for (const line of videoLines) {
       const playLines = await this.playLineService.playLineEntity.find({
         where: { video_line_id: line.id },
-        order: { sort: 'ASC' }
+        order: { sort: 'ASC' },
       });
 
       linesWithSources.push({
         ...line,
-        playLines
+        playLines,
       });
     }
+    const shouldReturnLines =
+      !video.vip ||
+      (createUserId && (await this.memberService.isValidMember(createUserId)));
 
     return {
       video,
-      lines: linesWithSources
+      lines: shouldReturnLines ? linesWithSources : [],
     };
+  }
+
+  //获取视频VideoEntity字段信息
+  async getVideoEntityFields(): Promise<{ label: string; value: string }[]> {
+    const metadata = this.videoEntity.metadata;
+    return metadata.columns
+      .map(column => {
+        //设置白名单不返回指定字段
+        if (
+          !(
+            column.propertyName === 'id' ||
+            column.propertyName === 'createTime' ||
+            column.propertyName === 'updateTime' ||
+            column.propertyName === 'createUserId' ||
+            column.propertyName === 'updateUserId' ||
+            column.propertyName === 'tenantId' ||
+            column.propertyName === 'title' ||
+            column.propertyName === 'vip'
+          )
+        ) {
+          return {
+            value: column.propertyName,
+            label: column.comment,
+          };
+        }
+      })
+      .filter(item => {
+        return item !== undefined;
+      });
   }
 }

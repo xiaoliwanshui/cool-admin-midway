@@ -1,8 +1,9 @@
 import { BaseController, CoolController, CoolTag, CoolUrlTag, TagTypes } from '@cool-midway/core';
-import { VideoEntity } from '../../entity/videos';
-
-import { VideosService } from '../../service/videos';
 import { Body, Get, Inject, Post, Query } from '@midwayjs/core';
+import {Context} from '@midwayjs/koa';
+import { VideoEntity } from '../../entity/videos';
+import { VideosService } from '../../service/videos';
+
 
 /**
  * 商品
@@ -59,6 +60,9 @@ export class AppVideoController extends BaseController {
   @Inject()
   videosService: VideosService;
 
+    @Inject()
+  ctx: Context;
+
   @CoolTag(TagTypes.IGNORE_TOKEN)
   @Post('/sort')
   async sort(@Body() body): Promise<unknown> {
@@ -87,9 +91,24 @@ export class AppVideoController extends BaseController {
   @Get('/detail',{summary:'获取视频详情'})
   async detail(@Query('id') id: number): Promise<unknown> {
     try {
-      return this.ok(await this.videosService.getVideoDetail(id));
+      const createUserId = this.ctx.state.user?.id;
+      return this.ok(await this.videosService.getVideoDetail(id,createUserId));
     } catch (error) {
       return this.fail(error);
     }
   }
+
+  /**
+   * 获取视频VideoEntity字段信息
+   */
+  @CoolTag(TagTypes.IGNORE_TOKEN)
+  @Get('/videoEntity',{summary:'获取视频字段信息'})
+  async videoEntity(): Promise<unknown> {
+    try {
+      return this.ok(await this.videosService.getVideoEntityFields());
+    } catch (error) {
+      return this.fail(error);
+    }
+  }
+
 }
