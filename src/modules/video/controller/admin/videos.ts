@@ -1,7 +1,7 @@
 import { BaseController, CoolController, CoolTag, TagTypes } from '@cool-midway/core';
 import { VideoEntity } from '../../entity/videos';
 import { VideosService } from '../../service/videos';
-import { Body, Inject, Post } from '@midwayjs/core';
+import { Body, Get, Inject, Post } from '@midwayjs/core';
 
 /**
  * 商品
@@ -54,4 +54,14 @@ export class AdminVideoController extends BaseController {
       return this.fail(error);
     }
   }
+
+    @CoolTag(TagTypes.IGNORE_TOKEN)
+    @Post('/videoEntity',{summary:'获取视频字段信息'})
+    async videoEntity(): Promise<unknown> {
+      try {
+        return this.ok(await this.videosService.getVideoEntityFields());
+      } catch (error) {
+        return this.fail(error);
+      }
+    }
 }
