@@ -82,16 +82,13 @@ export class CollectionService extends BaseService {
     const data = await this.entityRenderPage(find, { page: 1, size: 10 });
 
     // 分批处理播放线路检查，避免内存溢出
-    const batchSize = 50; // 每批处理50条记录
+    const batchSize = 20; // 减小批次大小以降低内存占用
     let offset = 0;
     let hasMore = true;
 
     while (hasMore) {
       // 分批获取播放线路
       const playLines = await this.playLineService.playLineEntity.find({
-        where: {
-          status: 1, // 只检查状态为启用的线路
-        },
         skip: offset,
         take: batchSize,
       });
@@ -104,23 +101,49 @@ export class CollectionService extends BaseService {
 
       // 检查每个播放线路的链接是否可访问
       for (const playLine of playLines) {
-        const isAccessible = await this.playLineService.isUrlAccessible(
-          playLine.file
-        );
-        if (!isAccessible) {
-          // 如果链接不可访问，更新状态为禁用
+        try {
+          const isAccessible = await this.playLineService.isUrlAccessible(
+            playLine.file
+          );
+          
+          // 根据访问结果更新状态
+          if (!isAccessible) {
+            // 如果链接不可访问，更新状态为禁用
+            await this.playLineService.playLineEntity.update(
+              { id: playLine.id },
+              { status: 0 }
+            );
+            this.logger.warn(
+              TAG,
+              `播放线路 ${playLine.name} 的链接 ${playLine.file} 无法访问，已禁用`
+            );
+          } else {
+            // 如果链接可访问，确保状态为启用
+            await this.playLineService.playLineEntity.update(
+              { id: playLine.id },
+              { status: 1 }
+            );
+            this.logger.info(
+              TAG,
+              `播放线路 ${playLine.name} 的链接 ${playLine.file} 访问正常`
+            );
+          }
+        } catch (error) {
+          this.logger.error(
+            TAG,
+            `检查播放线路 ${playLine.name} 时发生错误:`,
+            error
+          );
+          
+          // 发生错误时也禁用线路
           await this.playLineService.playLineEntity.update(
             { id: playLine.id },
             { status: 0 }
           );
-          this.logger.warn(
-            TAG,
-            `播放线路 ${playLine.name} 的链接 ${playLine.file} 无法访问，已禁用`
-          );
         }
 
         // 每处理一条记录后稍微延迟，避免请求过于频繁
-        await new Promise(resolve => setTimeout(resolve, 10));
+        await new Promise(resolve => setTimeout(resolve, 50));
       }
 
       // 更新偏移量
@@ -134,23 +157,36 @@ export class CollectionService extends BaseService {
       // 每处理完一批后，主动触发垃圾回收（如果内存使用过高）
       if (global.gc) {
         const used = process.memoryUsage().heapUsed / 1024 / 1024;
-        if (used > 500) {
-          // 如果内存使用超过500MB
+        if (used > 300) { // 降低内存阈值
+          // 如果内存使用超过300MB
           this.logger.info(
             TAG,
             `当前内存使用 ${used.toFixed(2)} MB，触发垃圾回收`
           );
           global.gc();
+          
+          // 短暂延迟让GC完成
+          await new Promise(resolve => setTimeout(resolve, 100));
         }
       }
+      
+      // 每批处理完成后添加延迟，减轻系统压力
+      await new Promise(resolve => setTimeout(resolve, 200));
     }
 
-    // 原有的处理逻辑
+    // 原有的处理逻辑 - 也进行内存优化
     for (const videoEntity of data.list) {
       let collectionEntity = await this.collectionEntity.findOneBy({
         id: videoEntity.collection_id,
       });
-      await this.VideoLineService.insert(videoEntity, collectionEntity);
+      
+      // 只有当collectionEntity存在时才执行插入操作
+      if (collectionEntity) {
+        await this.VideoLineService.insert(videoEntity, collectionEntity);
+      }
+      
+      // 每处理一个视频后稍微延迟
+      await new Promise(resolve => setTimeout(resolve, 10));
     }
   }
 
@@ -181,6 +217,7 @@ export class CollectionService extends BaseService {
       const limit: number = result.data.limit;
       const total: number = result.data.total;
       result = null; // 显式释放引用
+      
       let page = 0;
       let op = 'all';
       let h = 0;
@@ -193,6 +230,11 @@ export class CollectionService extends BaseService {
           h = params.h;
         }
       }
+      
+      // 分批处理，避免一次性将所有数据推送到Redis
+      const batchPushSize = 100; // 每批推送100个任务到Redis
+      let batchCount = 0;
+      
       for (page; page <= pagecount; page++) {
         let videoParams: VideoParams = new VideoParams({});
         videoParams.setPg(page);
@@ -206,6 +248,8 @@ export class CollectionService extends BaseService {
           videoParams.setH(h);
         }
         videoParams.setTotal(total);
+        
+        // 推送到Redis
         this.redisService.lpush(
           'video:collection',
           JSON.stringify({
@@ -213,9 +257,40 @@ export class CollectionService extends BaseService {
             collectionEntity,
           })
         );
-        this.redisService.expire('video:collection', 60 * 60 * 2);
+        
         videoParams = null; // 显式释放引用
+        batchCount++;
+        
+        // 每批推送完成后添加延迟并检查是否需要刷新
+        if (batchCount >= batchPushSize) {
+          // 设置过期时间（只在第一批设置即可）
+          if (page < batchPushSize) {
+            this.redisService.expire('video:collection', 60 * 60 * 2);
+          }
+          
+          // 批量推送后添加延迟，减轻系统压力
+          await new Promise(resolve => setTimeout(resolve, 100));
+          batchCount = 0;
+          
+          // 检查内存使用情况并触发垃圾回收
+          if (global.gc) {
+            const used = process.memoryUsage().heapUsed / 1024 / 1024;
+            if (used > 300) { // 降低内存阈值
+              this.logger.info(
+                TAG,
+                `当前内存使用 ${used.toFixed(2)} MB，触发垃圾回收`
+              );
+              global.gc();
+              
+              // 短暂延迟让GC完成
+              await new Promise(resolve => setTimeout(resolve, 100));
+            }
+          }
+        }
       }
+      
+      // 确保设置过期时间
+      this.redisService.expire('video:collection', 60 * 60 * 2);
       await this.startCollection();
     } catch (error) {
       if (this.networkErrorHandler.isNetworkError(error)) {
@@ -245,12 +320,29 @@ export class CollectionService extends BaseService {
       if (data) {
         this.logger.info(TAG, 'Redis中存在采集数据，开始处理');
         await this.concurrencyService.syncVideoPageList();
+        
+        // 处理完成后检查内存使用情况
+        if (global.gc) {
+          const used = process.memoryUsage().heapUsed / 1024 / 1024;
+          if (used > 300) { // 降低内存阈值
+            this.logger.info(
+              TAG,
+              `当前内存使用 ${used.toFixed(2)} MB，触发垃圾回收`
+            );
+            global.gc();
+          }
+        }
       } else {
         // 使用debug级别日志，减少在没有数据时的日志输出
         this.logger.debug(TAG, 'Redis中没有采集数据');
       }
     } catch (error) {
       this.logger.error(TAG, 'Redis查询失败', error);
+      
+      // 发生错误时也尝试触发垃圾回收
+      if (global.gc) {
+        global.gc();
+      }
     }
   }
 
@@ -262,12 +354,33 @@ export class CollectionService extends BaseService {
   async modifyAfter(data: any, type: "delete" | "update" | "add") {
     this.logger.debug(TAG, '插入数据成功');
     if (type == "add") {
-      const fields = await this.videosService.getVideoEntityFields();
-      this.videoRulesEntity.insert({
-        collection_id: data.id,
-        sort: 0,
-        updateRules: fields.map(item => item.value ?? "")
-      })
+      try {
+        const fields = await this.videosService.getVideoEntityFields();
+        await this.videoRulesEntity.insert({
+          collection_id: data.id,
+          sort: 0,
+          updateRules: fields.map(item => item.value ?? "")
+        });
+        
+        // 检查内存使用情况并在需要时触发垃圾回收
+        if (global.gc) {
+          const used = process.memoryUsage().heapUsed / 1024 / 1024;
+          if (used > 300) { // 降低内存阈值
+            this.logger.info(
+              TAG,
+              `当前内存使用 ${used.toFixed(2)} MB，触发垃圾回收`
+            );
+            global.gc();
+          }
+        }
+      } catch (error) {
+        this.logger.error(TAG, 'modifyAfter方法执行失败:', error);
+        
+        // 发生错误时也尝试触发垃圾回收
+        if (global.gc) {
+          global.gc();
+        }
+      }
     }
   }
 }
