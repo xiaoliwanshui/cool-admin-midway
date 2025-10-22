@@ -19,7 +19,7 @@ import { VideosService } from '../../service/videos';
     };
   },
   pageQueryOp: {
-    keyWordLikeFields: ['title'],
+    keyWordLikeFields: ['title','sub_title','directors','actors'],
     fieldEq: [
       'category_id',
       'cycle',
