@@ -3,7 +3,10 @@ import { InjectEntityModel } from '@midwayjs/typeorm';
 import { Repository } from 'typeorm';
 import { ScoreEntity } from '../entity/score';
 import { BaseService } from '@cool-midway/core';
-
+  enum ScoreType {
+    ADD = 1,
+    REDUCE = 0
+  }
 /**
  * 积分服务类
  */
@@ -11,6 +14,9 @@ import { BaseService } from '@cool-midway/core';
 export class ScoreService extends BaseService {
   @InjectEntityModel(ScoreEntity)
   scoreEntity: Repository<ScoreEntity>;
+
+  //定义增减的枚举值
+
 
   /**
    * 增加积分
@@ -31,7 +37,7 @@ export class ScoreService extends BaseService {
     record.createUserId = createUserId;
     record.score = score;
     record.reason = reason;
-    record.type = 1; // 增加
+    record.type = ScoreType.ADD; // 增加
     record.businessId = businessId;
     record.businessType = businessType;
     return await this.scoreEntity.save(record);
@@ -56,7 +62,7 @@ export class ScoreService extends BaseService {
     record.createUserId = createUserId;
     record.score = score;
     record.reason = reason;
-    record.type = 2; // 减少
+    record.type = ScoreType.REDUCE; // 减少
     record.businessId = businessId;
     record.businessType = businessType;
     return await this.scoreEntity.save(record);
