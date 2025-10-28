@@ -16,7 +16,7 @@ export class MemberExchangeConfigService {
    * 获取兑换配置信息
    * @param id 配置ID
    */
-  async info(id: number) {
+  async info(id: number):Promise<MemberExchangeConfigEntity> {
     return await this.memberExchangeConfigEntity.findOne({ where: { id } });
   }
 }

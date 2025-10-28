@@ -1,10 +1,10 @@
-import {ILogger, Inject, Provide} from '@midwayjs/core';
-import {MemberEntity} from '../entity/member';
-import {InjectEntityModel} from '@midwayjs/typeorm';
-import {Repository} from 'typeorm';
-import {CoolCommException} from '@cool-midway/core';
-import {ScoreService} from "./score";
-import {MemberExchangeConfigService} from "./memberExchangeConfig";
+import { ILogger, Inject, Provide } from '@midwayjs/core';
+import { MemberEntity } from '../entity/member';
+import { InjectEntityModel } from '@midwayjs/typeorm';
+import { Repository } from 'typeorm';
+import { CoolCommException } from '@cool-midway/core';
+import { BusinessType, ScoreService } from './score';
+import { MemberExchangeConfigService } from './memberExchangeConfig';
 
 /**
  * 会员服务类
@@ -17,8 +17,8 @@ export class MemberService {
   @Inject()
   memberExchangeConfigService: MemberExchangeConfigService;
 
-    @Inject()
-    logger: ILogger;
+  @Inject()
+  logger: ILogger;
 
   @InjectEntityModel(MemberEntity)
   memberEntity: Repository<MemberEntity>;
@@ -30,19 +30,17 @@ export class MemberService {
    * @param days 兑换天数
    */
   async exchangeByScore(createUserId: number, userMmemberExchangeId: number) {
-
     // 获取兑换配置信息
     const exchangeConfig = await this.memberExchangeConfigService.info(
       userMmemberExchangeId
     );
     this.logger.info('兑换会员配置信息', exchangeConfig);
-    
+
     if (!exchangeConfig) {
       throw new CoolCommException('无效的兑换配置');
     }
-    
-    const { days, requiredScore } = exchangeConfig;
 
+    const { days, requiredScore } = exchangeConfig;
 
     // 检查用户积分是否足够
     const userScore = await this.scoreService.getUserTotalScore(createUserId);
@@ -53,14 +51,15 @@ export class MemberService {
     // 扣除积分
     await this.scoreService.reduceScore(
       createUserId,
-      requiredScore,
-      `兑换会员${days}天`,
-      null,
-      'exchange_member'
+      exchangeConfig.id,
+      BusinessType.EXCHANGE,
+      exchangeConfig.exchangeName
     );
 
     // 获取用户当前会员信息
-    let member = await this.memberEntity.findOne({where: {createUserId: createUserId}});
+    let member = await this.memberEntity.findOne({
+      where: { createUserId: createUserId },
+    });
 
     const now = new Date();
     // 如果用户还没有会员记录，则创建新记录
@@ -81,7 +80,7 @@ export class MemberService {
       newEndTime.setDate(newEndTime.getDate() + days);
       member.endTime = newEndTime;
     }
-      member.score = requiredScore;
+    member.score = requiredScore;
 
     // 保存会员信息
     await this.memberEntity.save(member);
@@ -92,8 +91,8 @@ export class MemberService {
       member,
       exchangeInfo: {
         scoreUsed: requiredScore,
-        daysAdded: days
-      }
+        daysAdded: days,
+      },
     };
   }
 
@@ -103,7 +102,9 @@ export class MemberService {
    * @returns 是否为有效会员
    */
   async isValidMember(createUserId: number): Promise<boolean> {
-    const member = await this.memberEntity.findOne({where: {createUserId: createUserId}});
+    const member = await this.memberEntity.findOne({
+      where: { createUserId: createUserId },
+    });
     if (!member || !member.endTime) {
       return false;
     }
@@ -116,16 +117,18 @@ export class MemberService {
    * @returns 剩余天数，如果不是会员则返回0
    */
   async getRemainingDays(createUserId: number): Promise<number> {
-    const member = await this.memberEntity.findOne({where: {createUserId: createUserId}});
+    const member = await this.memberEntity.findOne({
+      where: { createUserId: createUserId },
+    });
     if (!member || !member.endTime) {
       return 0;
     }
-    
+
     const now = new Date();
     if (member.endTime <= now) {
       return 0;
     }
-    
+
     const diffTime = member.endTime.getTime() - now.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     return diffDays;

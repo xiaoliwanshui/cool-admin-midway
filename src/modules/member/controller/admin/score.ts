@@ -1,7 +1,7 @@
 import { Body, Get, Inject, Post, Query } from '@midwayjs/core';
 import { BaseController, CoolController } from '@cool-midway/core';
 import { ScoreEntity } from '../../entity/score';
-import { ScoreService } from '../../service/score';
+import { BusinessType, ScoreService } from '../../service/score';
 
 /**
  * 积分管理控制器
@@ -9,10 +9,10 @@ import { ScoreService } from '../../service/score';
 @CoolController({
   api: ['add', 'delete', 'update', 'info', 'list', 'page'],
   entity: ScoreEntity,
-   insertParam: ctx => {
+  insertParam: ctx => {
     return {
       // 获得当前登录的后台用户ID，需要请求头传Authorization参数
-      createUserId: ctx.admin.userId
+      createUserId: ctx.admin.userId,
     };
   },
 })
@@ -44,27 +44,21 @@ export class ScoreController extends BaseController {
   @Post('/addScore')
   async addScore(
     @Body('createUserId') createUserId: number,
-    @Body('score') score: number,
     @Body('reason') reason: string,
     @Body('businessId') businessId?: number,
-    @Body('businessType') businessType?: string
+    @Body('businessType') businessType?: BusinessType
   ) {
-    await this.scoreService.addScore(createUserId, score, reason, businessId, businessType);
-    return this.ok();
-  }
-
-  /**
-   * 减少积分
-   */
-  @Post('/reduceScore')
-  async reduceScore(
-    @Body('createUserId') createUserId: number,
-    @Body('score') score: number,
-    @Body('reason') reason: string,
-    @Body('businessId') businessId?: number,
-    @Body('businessType') businessType?: string
-  ) {
-    await this.scoreService.reduceScore(createUserId, score, reason, businessId, businessType);
-    return this.ok();
+    try {
+      return this.ok(
+        await this.scoreService.addScore(
+          createUserId,
+          reason,
+          businessId,
+          businessType
+        )
+      );
+    } catch (e) {
+      return this.fail(e);
+    }
   }
 }
