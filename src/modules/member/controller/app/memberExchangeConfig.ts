@@ -1,5 +1,4 @@
 import { BaseController, CoolController, CoolUrlTag, TagTypes } from '@cool-midway/core';
-import { Inject, Post, Body } from '@midwayjs/core';
 import { MemberExchangeConfigEntity } from '../../entity/memberExchangeConfig';
 
 /**

@@ -2,7 +2,6 @@ import {BaseController, CoolController} from '@cool-midway/core';
 import {Body, Inject, Post} from '@midwayjs/core';
 import {MemberEntity} from '../../entity/member';
 import {MemberService} from '../../service/member';
-import {CoolCommException} from '@cool-midway/core';
 
 /**
  * 会员控制器

@@ -19,5 +19,5 @@ export class ScoreEntity extends BaseEntity {
   businessId: number;
 
   @Column({ comment: '关联业务类型', nullable: true })
-  businessType: string;
+  businessType: number;
 }
