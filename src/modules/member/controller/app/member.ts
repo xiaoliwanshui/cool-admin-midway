@@ -7,7 +7,7 @@ import {MemberService} from '../../service/member';
  * 会员控制器
  */
 @CoolController({
-  api: ['add', 'delete', 'update', 'info', 'list', 'page'],
+  api: [ 'info', 'list', 'page'],
   entity: MemberEntity,
   insertParam: ctx => {
     return {
@@ -29,8 +29,7 @@ export class AppUserMemberController extends BaseController {
 
   /**
    * 积分兑换会员（简化版）
-   * @param score 所需积分
-   * @param days 兑换天数
+   * @param userMmemberExchangeId
    */
   @Post('/exchangeByScore', {summary: '积分兑换会员'})
   async exchangeByScore(

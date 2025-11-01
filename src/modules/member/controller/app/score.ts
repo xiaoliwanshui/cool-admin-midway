@@ -1,7 +1,7 @@
-import {Inject, Post, Provide} from '@midwayjs/core';
+import {Body, Inject, Post, Provide} from '@midwayjs/core';
 import {BaseController, CoolController,CoolUrlTag,
   TagTypes, CoolTag} from '@cool-midway/core';
-import {ScoreService} from '../../service/score';
+import {BusinessType, ScoreService} from '../../service/score';
 import {Context} from '@midwayjs/koa';
 import {ScoreEntity} from "../../entity/score";
 
@@ -14,7 +14,7 @@ import {ScoreEntity} from "../../entity/score";
   value: ['total', 'records'],
 })
 @CoolController({
-  api: ['add', 'delete', 'update', 'info', 'list', 'page'],
+  api: [ 'info', 'list', 'page'],
   entity: ScoreEntity,
   insertParam: ctx => {
     return {
@@ -37,7 +37,7 @@ export class ScoreAppController extends BaseController {
   /**
    * 获取当前用户积分总和
    */
-  @Post('/total')
+  @Post('/total',{summary: '获取当前用户积分总和'})
   async getTotal() {
     const total = await this.scoreService.getUserTotalScore(this.ctx.user.id);
     return this.ok(total);
@@ -46,8 +46,7 @@ export class ScoreAppController extends BaseController {
   /**
    * 获取当前用户积分记录
    */
-  @CoolTag(TagTypes.IGNORE_TOKEN)
-  @Post('/records')
+  @Post('/records',{summary: '获取当前用户积分记录'})
   async getRecords() {
     // 从上下文中获取当前用户ID
     const createUserId = this.ctx.state.user?.id;
@@ -68,4 +67,25 @@ export class ScoreAppController extends BaseController {
     return this.ok(records);
   }
 
+
+  @Post('/addScore', {summary: '添加积分'})
+  async addScore(
+    @Body('reason') reason: string,
+    @Body('businessId') businessId: number,
+    @Body('businessType') businessType?: BusinessType
+  ) {
+    try {
+     const createUserId = this.ctx.user.id;
+      return this.ok(
+        await this.scoreService.addScore(
+          createUserId,
+          businessId,
+          businessType,
+          reason
+        )
+      );
+    } catch (e) {
+      return this.fail(e);
+    }
+  }
 }

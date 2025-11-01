@@ -1,10 +1,10 @@
-import { ILogger, Inject, Provide } from '@midwayjs/core';
-import { MemberEntity } from '../entity/member';
-import { InjectEntityModel } from '@midwayjs/typeorm';
-import { Repository } from 'typeorm';
-import { CoolCommException } from '@cool-midway/core';
-import { BusinessType, ScoreService } from './score';
-import { MemberExchangeConfigService } from './memberExchangeConfig';
+import {ILogger, Inject, Provide} from '@midwayjs/core';
+import {MemberEntity} from '../entity/member';
+import {InjectEntityModel} from '@midwayjs/typeorm';
+import {Repository} from 'typeorm';
+import {CoolCommException} from '@cool-midway/core';
+import {BusinessType, ScoreService} from './score';
+import {MemberExchangeConfigService} from './memberExchangeConfig';
 
 /**
  * 会员服务类
@@ -26,8 +26,7 @@ export class MemberService {
   /**
    * 积分兑换会员（简化版）
    * @param createUserId 用户ID
-   * @param score 所需积分
-   * @param days 兑换天数
+   * @param userMmemberExchangeId
    */
   async exchangeByScore(createUserId: number, userMmemberExchangeId: number) {
     // 获取兑换配置信息
@@ -130,7 +129,6 @@ export class MemberService {
     }
 
     const diffTime = member.endTime.getTime() - now.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays;
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   }
 }

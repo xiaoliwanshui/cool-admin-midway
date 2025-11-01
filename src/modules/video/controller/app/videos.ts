@@ -91,7 +91,8 @@ export class AppVideoController extends BaseController {
   @Get('/detail',{summary:'获取视频详情'})
   async detail(@Query('id') id: number): Promise<unknown> {
     try {
-      const createUserId = this.ctx.state.user?.id;
+      const createUserId = this.ctx.user?.id;
+      console.log(this.ctx.user)
       return this.ok(await this.videosService.getVideoDetail(id,createUserId));
     } catch (error) {
       return this.fail(error);

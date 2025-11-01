@@ -266,13 +266,21 @@ export class VideosService extends BaseService {
         playLines,
       });
     }
-    const shouldReturnLines =
-      !video.vip ||
-      (createUserId && (await this.memberService.isValidMember(createUserId)));
+    if (video.vip) {
+      const shouldReturnLines =(await this.memberService.isValidMember(createUserId));
+      this.logger.warn(TAG, `shouldReturnLines: ${shouldReturnLines}`);
+      if ((!createUserId)|| !shouldReturnLines) {
+        linesWithSources.forEach(item => {
+          item.playLines.forEach(items => {
+            items.file = '';
+          });
+        });
+      }
+    }
 
     return {
       video,
-      lines: shouldReturnLines ? linesWithSources : [],
+      lines: linesWithSources,
     };
   }
 

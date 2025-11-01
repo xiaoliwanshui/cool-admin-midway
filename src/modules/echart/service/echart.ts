@@ -235,7 +235,7 @@ export class EChartService extends BaseService {
       await this.redisService.del('video:echarts');
     }
     this.redisService.lpush('video:echarts', JSON.stringify(data));
-    this.redisService.expire('video:collection', 60 * 60 * 2);
+    this.redisService.expire('video:echarts', 60 * 60);
     return data;
   }
 
