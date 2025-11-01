@@ -1,11 +1,12 @@
-import { Provide, Inject } from '@midwayjs/core';
+import { Provide, Inject, ILogger } from '@midwayjs/core';
 import { InjectEntityModel } from '@midwayjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, Between } from 'typeorm';
 import { ScoreEntity } from '../entity/score';
 import { BaseService, CoolCommException } from '@cool-midway/core';
 import { AdsEntity } from '../../application/entity/ads';
 import { MemberExchangeConfigEntity } from '../entity/memberExchangeConfig';
-import {MonthlyCheckinConfigEntity} from "../entity/monthlyCheckinConfig";
+import { MonthlyCheckinConfigEntity } from '../entity/monthlyCheckinConfig';
+import * as moment from 'moment';
 //修改类型枚举
 export enum ScoreType {
   ADD = 1,
@@ -19,6 +20,8 @@ export enum BusinessType {
   SIGN = 1,
   //积分兑换
   EXCHANGE = 2,
+  //权限
+  PERMISSION = 3,
 }
 /**
  * 积分服务类
@@ -27,6 +30,9 @@ export enum BusinessType {
 export class ScoreService extends BaseService {
   @Inject()
   ctx;
+
+  @Inject()
+  logger: ILogger;
 
   @InjectEntityModel(ScoreEntity)
   scoreEntity: Repository<ScoreEntity>;
@@ -51,11 +57,12 @@ export class ScoreService extends BaseService {
    */
   async addScore(
     createUserId: number,
-    reason?: string,
-    businessId?: number,
-    businessType?: BusinessType
+    businessId: number,
+    businessType: BusinessType,
+    reason?: string
   ): Promise<ScoreEntity | CoolCommException> {
     if (businessType === BusinessType.ADVERTISEMENT) {
+      this.logger.info('增加广告积分');
       const ads = await this.adsEntity.findOneBy({
         id: businessId,
         status: 1,
@@ -64,7 +71,7 @@ export class ScoreService extends BaseService {
         return await this.scoreEntity.save({
           createUserId,
           score: ads.score,
-          reason: reason||'广告',
+          reason: reason || '广告',
           type: ScoreType.ADD,
           businessId: businessId,
           businessType: BusinessType.ADVERTISEMENT,
@@ -73,7 +80,9 @@ export class ScoreService extends BaseService {
         throw new CoolCommException('无效广告ID');
       }
     } else if (businessType === BusinessType.SIGN) {
+      this.logger.info('增加签到积分');
       const UserSignScore = await this.getUserSignScore(businessId);
+      this.logger.info('用户签到积分信息', UserSignScore);
       if (UserSignScore) {
         return await this.scoreEntity.save({
           createUserId,
@@ -86,6 +95,15 @@ export class ScoreService extends BaseService {
       } else {
         throw new CoolCommException('今日已签到');
       }
+    } else if (businessType === BusinessType.PERMISSION) {
+      return await this.scoreEntity.save({
+        createUserId,
+        score: 20,
+        reason: reason || '权限获取',
+        type: ScoreType.ADD,
+        businessId: businessId,
+        businessType: BusinessType.SIGN,
+      });
     }
   }
 
@@ -125,16 +143,26 @@ export class ScoreService extends BaseService {
    * @param createUserId 用户ID
    */
   async getUserTotalScore(createUserId: number): Promise<number> {
-    const result = await this.scoreEntity
+    // 计算type=1的记录score总和
+    const addResult = await this.scoreEntity
       .createQueryBuilder('score')
-      .select(
-        'SUM(CASE WHEN score.type = 1 THEN score.score ELSE -score.score END)',
-        'total'
-      )
+      .select('SUM(score.score)', 'total')
       .where('score.createUserId = :createUserId', { createUserId })
+      .andWhere('score.type = 1')
       .getRawOne();
 
-    return result?.total ? parseInt(result.total) : 0;
+    // 计算type=0的记录score总和
+    const reduceResult = await this.scoreEntity
+      .createQueryBuilder('score')
+      .select('SUM(score.score)', 'total')
+      .where('score.createUserId = :createUserId', { createUserId })
+      .andWhere('score.type = 0')
+      .getRawOne();
+
+    const addTotal = addResult?.total ? parseInt(addResult.total) : 0;
+    const reduceTotal = reduceResult?.total ? parseInt(reduceResult.total) : 0;
+    this.logger.info('用户签到积分信息', addTotal,reduceTotal);
+    return addTotal + reduceTotal;
   }
 
   /**
@@ -145,16 +173,22 @@ export class ScoreService extends BaseService {
    * type 是ScoreType.ADD
    * businessId 作为入参
    */
-  async getUserSignScore(businessId: number): Promise<MonthlyCheckinConfigEntity | null> {
+  async getUserSignScore(
+    businessId: number
+  ): Promise<MonthlyCheckinConfigEntity | null> {
+    //获取今天的开始时间
+    const startTime = moment().startOf('day').toDate();
+    //获取今天的结束时间
+    const endTime = moment().endOf('day').toDate();
     const result = await this.scoreEntity.findOneBy({
       businessId,
       businessType: BusinessType.SIGN,
       type: ScoreType.ADD,
-      createTime: this.ctx.helper.dayjs().format('YYYY-MM-DD'),
+      createTime: Between(startTime, endTime),
     });
     if (result === null) {
       return this.monthlyCheckinConfigEntity.findOneBy({
-       id: businessId
+        id: businessId,
       });
     } else {
       return null;

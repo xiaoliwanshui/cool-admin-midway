@@ -13,7 +13,6 @@ import { MemberEntity } from '../../entity/member';
       createUserId: ctx.admin.userId
     };
   },
-  pageQueryOp: {}
 })
 export class AdminUserMemberController extends BaseController {
 }

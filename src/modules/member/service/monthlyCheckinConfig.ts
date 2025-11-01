@@ -1,10 +1,12 @@
-import { Provide, Inject } from '@midwayjs/core';
-import { InjectEntityModel } from '@midwayjs/typeorm';
+import {Provide, Inject, ILogger} from '@midwayjs/core';
+import { InjectEntityModel } from '@midwayjs/typeorm'
+import { Between } from 'typeorm';
 import { Repository } from 'typeorm';
 import { MonthlyCheckinConfigEntity } from '../entity/monthlyCheckinConfig';
 import { BaseService } from '@cool-midway/core';
 import { BusinessType, ScoreService, ScoreType } from './score';
 import { ScoreEntity } from '../entity/score';
+import * as moment from "moment/moment";
 
 // 定义返回类型接口
 interface InitDefaultConfigResult {
@@ -26,6 +28,13 @@ interface MonthlyCheckinConfigWithStatus {
   updateUserId?: number;
 }
 
+//定义枚举
+export enum SignStatus {
+  UNSIGNED = 0, // 未签到
+  SIGNED = 1, // 已签到
+  NOT_SIGN_IN_YET_TODAY = 3, // 当天可签到
+}
+
 /**
  * 月签到配置服务类
  */
@@ -38,54 +47,84 @@ export class MonthlyCheckinConfigService extends BaseService {
   @Inject()
   ctx;
 
+  @Inject()
+  logger: ILogger;
+
   /**
    * 获取指定月份的所有签到配置
    * @param month 月份 (1-12)
    */
   async getConfigByMonth(month: number): Promise<MonthlyCheckinConfigWithStatus[]> {
+    month = month || new Date().getMonth()+ 1;
+    //获取当前月份的开始时间startTime
+    const startTime = moment().month(month - 1).startOf('month').toDate();
+    const endTime = moment().month(month - 1).endOf('month').toDate();
+    // 获取当前日期
+    const currentDay = new Date().getDate();
     const monthlyCheckinConfigs = await this.monthlyCheckinConfigEntity.find({
       where: {
-        month,
+        month: month,
       },
       order: {
         day: 'ASC',
       },
     });
-    if (this.ctx.user.id) {
+
+    if (this.ctx.user && this.ctx.user.id) {
       // 查询积分签到表中该用户有哪些签到记录
       const scores = await this.scoreEntity.find({
         where: {
           createUserId: this.ctx.user.id,
           businessType: BusinessType.SIGN,
           type: ScoreType.ADD,
-          // createTime 是当前月份的
-          createTime: this.ctx.helper.dayjs().format('YYYY-MM'),
+          createTime: Between(startTime, endTime),
         },
       });
 
       // 将已签到的businessId（对应monthlyCheckinConfigEntity的id）提取到集合中
       const signedConfigIds = new Set(scores.map(score => score.businessId));
 
+
       // 为未签到的配置项设置remark为"未签到"
       return monthlyCheckinConfigs.map(config => {
-        // 如果该配置项没有对应的签到记录，则标记为未签到
+        // 如果该配置项没有对应的签到记录
         if (!signedConfigIds.has(config.id)) {
-          return {
-            ...config,
-            remark: '未签到',
-          };
+          // 判断是否为当天可签到
+          if (config.day === currentDay) {
+            return {
+              ...config,
+              isSigned: SignStatus.NOT_SIGN_IN_YET_TODAY, // 当天可签到设置为3
+            };
+          } else {
+            return {
+              ...config,
+              isSigned: SignStatus.UNSIGNED, // 当天未签到
+            };
+          }
         }
         return {
           ...config,
-          remark: config.remark || ''
+          isSigned: SignStatus.SIGNED, // 已签到
         };
       });
     }
-    return monthlyCheckinConfigs.map(config => ({
-      ...config,
-      remark: config.remark || ''
-    }));
+
+    // 如果没有用户信息，直接返回未签到状态
+    return monthlyCheckinConfigs.map(config => {
+      if (config.day === currentDay) {
+        return {
+          ...config,
+          isSigned: SignStatus.NOT_SIGN_IN_YET_TODAY, // 当天可签到设置为3
+        };
+      } else {
+        return {
+          ...config,
+          isSigned: SignStatus.UNSIGNED, // 当天未签到
+        };
+      }
+    });
   }
+
 
   /**
    * 获取指定月份和日期的签到配置
@@ -139,40 +178,42 @@ export class MonthlyCheckinConfigService extends BaseService {
   }
 
   /**
-   * 初始化默认配置（当前月份每天默认10积分）
-   * 先查询如果数据库没有当前月份的数据就初始化，如果有就不初始化
+   * 初始化默认配置（所有月份每天默认10积分）
+   * 先查询如果数据库没有任何月份的数据就初始化，如果有就不初始化
    */
   async initDefaultConfig(): Promise<InitDefaultConfigResult> {
-    const currentMonth = new Date().getMonth() + 1;
-    const daysInMonth = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]; // 包含闰年2月的最大天数
+    // 每个月份的天数（非闰年）
+    const daysInMonth = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 
-    // 检查是否已经存在当前月份的配置数据
-    const existingCount = await this.monthlyCheckinConfigEntity.count({
-      where: {
-        month: currentMonth,
-      },
-    });
+    // 初始化所有12个月的数据
+    for (let month = 1; month <= 12; month++) {
+      const days = daysInMonth[month - 1];
+      for (let day = 1; day <= days; day++) {
+        const config = new MonthlyCheckinConfigEntity();
+        config.month = month;
+        config.day = day;
+        config.score = 10*day; // 默认10积分
+        config.enabled = 1; // 默认启用
+        if (this.ctx.admin && this.ctx.admin.userId) {
+          config.createUserId = this.ctx.admin.userId;
+        }
+        //判断当前记录是否存在，如果存在就更新，不存在就插入
+        const existConfig = await this.monthlyCheckinConfigEntity.findOne({
+          where: {
+            month,
+            day,
+          },
+        });
 
-    // 如果当前月份已经存在数据，则不进行初始化
-    if (existingCount > 0) {
-      return {
-        status: 0,
-      };
-    }
-
-    // 如果当前月份没有数据，则进行初始化
-    const days = daysInMonth[currentMonth - 1];
-    for (let day = 1; day <= days; day++) {
-      const config = new MonthlyCheckinConfigEntity();
-      config.month = currentMonth;
-      config.day = day;
-      config.score = 10; // 默认10积分
-      config.enabled = 1; // 默认启用
-      config.createUserId = this.ctx.admin.userId;
-      await this.monthlyCheckinConfigEntity.save(config);
+        if (existConfig) {
+          await this.monthlyCheckinConfigEntity.update(existConfig.id, config);
+        }else{
+          await this.monthlyCheckinConfigEntity.insert(config);
+        }
+      }
     }
     return {
-      status: 1,
+      status: 1, // 成功初始化
     };
   }
 }

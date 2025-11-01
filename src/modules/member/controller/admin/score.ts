@@ -52,9 +52,9 @@ export class ScoreController extends BaseController {
       return this.ok(
         await this.scoreService.addScore(
           createUserId,
-          reason,
           businessId,
-          businessType
+          businessType,
+          reason,
         )
       );
     } catch (e) {
