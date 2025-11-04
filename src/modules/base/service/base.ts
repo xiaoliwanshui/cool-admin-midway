@@ -13,7 +13,12 @@ export class BaseService extends CoolBaseService {
    */
   async modifyBefore(data: any, type: 'delete' | 'update' | 'add') {
     if (type == 'update') {
-      data.updateUserId = this.ctx.user.id || this.ctx.admin.userId;
+      if(this.ctx.admin){
+        data.updateUserId = this.ctx.admin.userId;
+      }
+      if(this.ctx.user){
+        data.updateUserId = this.ctx.user.id;
+      }
     }
   }
 

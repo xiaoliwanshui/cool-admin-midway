@@ -1,4 +1,3 @@
-import { BaseService } from '@cool-midway/core';
 import { InjectEntityModel } from '@midwayjs/typeorm';
 import { Repository } from 'typeorm';
 import { VideoEntity } from '../entity/videos';
@@ -10,10 +9,10 @@ import { ILogger, Inject, Provide } from '@midwayjs/core';
 import { CollectionEntity } from '../entity/collection';
 import { VideoLineService } from './videoLine';
 import { PlayLineService } from './play_line';
-import { VideoLineEntity } from '../entity/video_line';
 import { PlayLineEntity } from '../entity/play_line';
 import { DuplicateKeyHandler } from './duplicateKeyHandler';
 import { MemberService } from '../../member/service/member';
+import { BaseService } from '../../base/service/base';
 
 const TAG = 'VideosService';
 
@@ -51,6 +50,24 @@ export class VideosService extends BaseService {
 
   @Inject()
   duplicateKeyHandler: DuplicateKeyHandler;
+
+
+
+    /**
+   * 修改之前
+   * @param data
+   * @param type
+   */
+  async modifyAfter(data: any, type: "delete" | "update" | "add") {
+      if(type === 'update'){
+        if(data.vip&&data.vipNumber){
+          this.playLineService.startVip(data.id,data.vipNumber-1)
+        }
+        if(!data.vip){
+           this.playLineService.cancelVip(data.id)
+        }
+      }
+    }
 
   /**
    * 排序查询

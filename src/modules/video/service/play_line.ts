@@ -20,19 +20,19 @@ export class PlayLineService extends BaseService {
     try {
       // 插入或更新数据
       await this.playLineEntity.save(data);
-      // this.logger.info(
-      //   TAG,
-      //   `insert ${data.collection_name} ${data.video_name} ${data.name} success`
-      // );
+      this.logger.info(
+        TAG,
+        `insert ${data.collection_name} ${data.video_name} ${data.name} success`
+      );
       // 显式释放对象引用
       data = null;
     } catch (error) {
       // 更新数据
       await this.playLineEntity.update({ file: data.file }, data);
-      // this.logger.info(
-      //   TAG,
-      //   `update ${data.collection_name} ${data.video_name} ${data.name} success`
-      // );
+      this.logger.info(
+        TAG,
+        `update ${data.collection_name} ${data.video_name} ${data.name} success`
+      );
       // 显式释放对象引用
       data = null;
     }
@@ -59,5 +59,37 @@ export class PlayLineService extends BaseService {
       this.logger.error(TAG, `链接 ${url} 无法访问:`, error.message);
       return false;
     }
+  }
+
+  //根据 传入的  video_id 查询出所有的播放线路  并按照 sort 排序 按照collection_id 进行分组
+  async startVip(video_id: number,vipNumber:number): Promise<{[collection_id: number]: PlayLineEntity[]}> {
+    const playLines = await this.playLineEntity.find({
+      where: { video_id },
+      order: { sort: 'ASC' },
+    });
+    const groupedPlayLines = playLines.reduce((acc, playLine) => {
+      if (!acc[playLine.collection_id]) {
+        acc[playLine.collection_id] = [];
+      }
+      acc[playLine.collection_id].push(playLine);
+      return acc;
+    }, {} as {[collection_id: number]: PlayLineEntity[]});
+    //将每一组的数据以vipNumber为起始index 将后续所有的数据的 vip字段设置为1
+    Object.values(groupedPlayLines).forEach((playLines) => {
+      // 添加安全检查，确保vipNumber不小于0且不大于数组长度
+      if (vipNumber >= 0 && vipNumber < playLines.length) {
+        for (let i = vipNumber; i < playLines.length; i++) {
+          playLines[i].vip = 1;
+        }
+      }
+    });
+    //将数据更新到数据库
+    await this.playLineEntity.save(playLines);
+    return groupedPlayLines;
+  }
+
+  //取消vip
+  async cancelVip(video_id: number): Promise<void> {
+    await this.playLineEntity.update({ video_id: video_id }, { vip: 0 });
   }
 }

@@ -51,4 +51,7 @@ export class PlayLineEntity extends BaseEntity {
 
   @Column({ comment: '标识', nullable: true, length: 191 })
   tag: string;
+
+  @Column({ comment: 'VIP标识', nullable: true, default:0})
+  vip: number;
 }

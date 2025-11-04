@@ -1,7 +1,7 @@
 import { BaseController, CoolController, CoolTag, TagTypes } from '@cool-midway/core';
 import { VideoEntity } from '../../entity/videos';
 import { VideosService } from '../../service/videos';
-import { Body, Get, Inject, Post } from '@midwayjs/core';
+import { Body,  Inject, Post } from '@midwayjs/core';
 
 /**
  * 商品
@@ -9,6 +9,7 @@ import { Body, Get, Inject, Post } from '@midwayjs/core';
 @CoolController({
   api: ['add', 'delete', 'info', 'list', 'page', 'update'],
   entity: VideoEntity,
+  service: VideosService,
   insertParam: ctx => {
     return {
       // 获得当前登录的后台用户ID，需要请求头传Authorization参数
@@ -34,6 +35,8 @@ import { Body, Get, Inject, Post } from '@midwayjs/core';
 export class AdminVideoController extends BaseController {
   @Inject()
   videosService: VideosService;
+
+  
 
   @CoolTag(TagTypes.IGNORE_TOKEN)
   @Post('/sort', { summary: '排序' })

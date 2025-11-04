@@ -241,6 +241,10 @@ export class VideoEntity extends BaseEntity {
   @Column({ comment: '踩数', nullable: true })
   down: number;
 
+  @Index()
+  @Column({ comment: 'VIP集数', default:0})
+  vipNumber: number;
+
   @Column({ comment: '资源名称', nullable: true, length: 256 })
   collection_name: string;
 
