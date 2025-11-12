@@ -1,7 +1,6 @@
 import { ILogger, Inject, Provide } from '@midwayjs/core';
 import { CollectionEntity } from '../entity/collection';
 import { VideoParams } from '../bean/VideoParams';
-import axios from 'axios';
 import { VideoBean } from '../bean/VideoBean';
 import { CollectionCategoryEntity } from '../entity/collection_category';
 import { InjectEntityModel } from '@midwayjs/typeorm';
@@ -45,6 +44,8 @@ export class ConcurrencyService {
   networkErrorHandler: NetworkErrorHandler;
 
   private collectionTaskTaskEntityId = 0;
+  private readonly yieldThreshold = 5;
+  private readonly listYieldThreshold = 50;
 
   async getRedisData() {
     try {
@@ -96,8 +97,9 @@ export class ConcurrencyService {
           
           const {
             collectionCategoryEntityList,
-            areaEntityList,
-            languageEntityList,
+            categoryMap,
+            areaMap,
+            languageMap,
           } = await this.fetchCategoryAndDictData(
             data.collectionEntity as CollectionEntity
           );
@@ -105,9 +107,9 @@ export class ConcurrencyService {
           await this.processVideoParamsItems(
             new VideoParams(data.videoParams),
             data.collectionEntity as CollectionEntity,
-            collectionCategoryEntityList,
-            areaEntityList,
-            languageEntityList
+            categoryMap,
+            areaMap,
+            languageMap
           );
           
           processedCount++;
@@ -115,6 +117,9 @@ export class ConcurrencyService {
           
           // 防止内存溢出，每处理一条数据后添加小延时
           await new Promise(resolve => setTimeout(resolve, 100));
+          if (processedCount % this.yieldThreshold === 0) {
+            await this.yieldToEventLoop();
+          }
           
         } catch (error) {
           this.logger.error(TAG, `处理第${processedCount + 1}条数据失败`, error);
@@ -173,46 +178,6 @@ export class ConcurrencyService {
   }
 
   //过滤分类
-  filterCategory(
-    category_id: number,
-    collectionCategoryEntityList: CollectionCategoryEntity[]
-  ): { category_id: number; category_pid: number } | null {
-    try {
-      const result = collectionCategoryEntityList.filter(item => {
-        if (item.class_id == category_id) {
-          return item;
-        }
-      });
-      if (result.length) {
-        //根据 result[0]的parentId 过滤出父分类
-        const parentCategory = collectionCategoryEntityList.find(
-          item => item.id === result[0].parentId
-        );
-        return {
-          category_id: result[0].sys_category_id,
-          category_pid: parentCategory?.sys_category_id
-            ? parentCategory.sys_category_id
-            : 0,
-        };
-      }
-    } catch (error) {
-      return null;
-    }
-  }
-
-  filterDict(name: string, DictInfoEntityList: DictInfoEntity[]) {
-    try {
-      const result = DictInfoEntityList.filter(item => item.name === name);
-      if (result.length) {
-        return result[0];
-      } else {
-        return DictInfoEntityList[DictInfoEntityList.length - 1];
-      }
-    } catch (error) {
-      this.logger.error(TAG, error);
-    }
-  }
-
   async syncVideoPage(
     collectionEntity: CollectionEntity,
     params: VideoParams
@@ -382,10 +347,15 @@ export class ConcurrencyService {
       throw new CoolCommException(`采集源 "${collectionEntity.name}" 未匹配系统分类，无法入库`);
     }
 
+    const categoryMap = this.buildCategoryMap(collectionCategoryEntityList);
+    const areaMap = this.buildDictMap((areaEntityList['area'] ?? []) as DictInfoEntity[]);
+    const languageMap = this.buildDictMap((languageEntityList['language'] ?? []) as DictInfoEntity[]);
+
     return {
       collectionCategoryEntityList,
-      areaEntityList: areaEntityList['area'],
-      languageEntityList: languageEntityList['language'],
+      categoryMap,
+      areaMap,
+      languageMap,
     };
   }
 
@@ -393,17 +363,20 @@ export class ConcurrencyService {
   private async processVideoParamsItems(
     item: VideoParams,
     collectionEntity: CollectionEntity,
-    collectionCategoryEntityList: CollectionCategoryEntity[],
-    areaEntityList: DictInfoEntity[],
-    languageEntityList: DictInfoEntity[]
+    categoryMap: Map<
+      number,
+      { categoryId: number; categoryPid: number }
+    >,
+    areaMap: Map<string, number>,
+    languageMap: Map<string, number>
   ) {
     const result = await this.processSingleVideoItem(item, collectionEntity);
-    this.handleResultsAndSaves(
+    await this.handleResultsAndSaves(
       result,
       collectionEntity,
-      collectionCategoryEntityList,
-      areaEntityList,
-      languageEntityList
+      categoryMap,
+      areaMap,
+      languageMap
     );
   }
 
@@ -426,12 +399,15 @@ export class ConcurrencyService {
   }
 
   // 新增：解耦结果处理逻辑
-  private handleResultsAndSaves(
+  private async handleResultsAndSaves(
     result: any,
     collectionEntity: CollectionEntity,
-    collectionCategoryEntityList: CollectionCategoryEntity[],
-    areaEntityList: DictInfoEntity[],
-    languageEntityList: DictInfoEntity[]
+    categoryMap: Map<
+      number,
+      { categoryId: number; categoryPid: number }
+    >,
+    areaMap: Map<string, number>,
+    languageMap: Map<string, number>
   ) {
     if (!result) {
       this.logger.warn(TAG, '无效的API响应结果');
@@ -447,12 +423,16 @@ export class ConcurrencyService {
         let item = result.data.list.shift();
         this.processVideoItem(
           item,
-          collectionCategoryEntityList,
-          areaEntityList,
-          languageEntityList,
+          collectionEntity,
+          categoryMap,
+          areaMap,
+          languageMap,
           videoList
         );
         processedCount++;
+        if (processedCount % this.listYieldThreshold === 0) {
+          await this.yieldToEventLoop();
+        }
       }
       
       this.logger.info(TAG, `视频数据处理完成，处理${processedCount}条，有效${videoList.length}条`);
@@ -476,9 +456,12 @@ export class ConcurrencyService {
   private handleResultsAndSave(
     results: any[],
     collectionEntity: CollectionEntity,
-    collectionCategoryEntityList: CollectionCategoryEntity[],
-    areaEntityList: DictInfoEntity[],
-    languageEntityList: DictInfoEntity[]
+    categoryMap: Map<
+      number,
+      { categoryId: number; categoryPid: number }
+    >,
+    areaMap: Map<string, number>,
+    languageMap: Map<string, number>
   ) {
     if (!results.length) return;
     const videoList: VideoBean[] = [];
@@ -489,9 +472,10 @@ export class ConcurrencyService {
           let item = result.data.list.shift();
           this.processVideoItem(
             item,
-            collectionCategoryEntityList,
-            areaEntityList,
-            languageEntityList,
+            collectionEntity,
+            categoryMap,
+            areaMap,
+            languageMap,
             videoList
           );
         }
@@ -503,44 +487,32 @@ export class ConcurrencyService {
   // 新增：解耦视频项处理逻辑
   private processVideoItem(
     item: any,
-    collectionCategoryEntityList: CollectionCategoryEntity[],
-    areaEntityList: DictInfoEntity[],
-    languageEntityList: DictInfoEntity[],
+    collectionEntity: CollectionEntity,
+    categoryMap: Map<number, { categoryId: number; categoryPid: number }>,
+    areaMap: Map<string, number>,
+    languageMap: Map<string, number>,
     videoList: VideoBean[]
   ) {
-    const category = this.filterCategory(
-      item.type_id,
-      collectionCategoryEntityList
-    );
+    const category = categoryMap.get(this.safeNumber(item.type_id) ?? -1);
     if (!category) {
       this.logger.warn(TAG, `分类不存在：${item.type_name} ${item.type_id}，跳过该视频: ${item.vod_name || item.name}`);
       return;
     }
-    item.categoryId = category.category_id;
-    item.categoryPid = category.category_pid;
-    item.collectionName = collectionCategoryEntityList[0].collection_name;
-    item.collectionId = collectionCategoryEntityList[0].collection_id;
-    const language = this.filterDict(
+    item.categoryId = category.categoryId;
+    item.categoryPid = category.categoryPid;
+    item.collectionName = collectionEntity.name;
+    item.collectionId = collectionEntity.id;
+
+    item.language = this.resolveDictId(
       item.vod_lang || item.language || item.lang,
-      languageEntityList
+      languageMap,
+      611
     );
-    if (language) {
-      item.language = this.filterDict(
-        item.vod_lang || item.language || item.lang,
-        languageEntityList
-      ).id;
-    } else {
-      item.language = 611;
-    }
-    const area = this.filterDict(item.vod_area || item.area, areaEntityList);
-    if (area) {
-      item.area = this.filterDict(
-        item.vod_area || item.area,
-        areaEntityList
-      ).id;
-    } else {
-      item.area = 570;
-    }
+    item.area = this.resolveDictId(
+      item.vod_area || item.area,
+      areaMap,
+      570
+    );
     
     try {
       const videoBean = new VideoBean(item);
@@ -549,5 +521,68 @@ export class ConcurrencyService {
     } catch (error) {
       this.logger.error(TAG, `创建 VideoBean 失败: ${item.vod_name || item.name}`, error);
     }
+  }
+
+  private buildCategoryMap(
+    collectionCategoryEntityList: CollectionCategoryEntity[]
+  ): Map<number, { categoryId: number; categoryPid: number }> {
+    const entityById = new Map<number, CollectionCategoryEntity>();
+    collectionCategoryEntityList.forEach(item => {
+      if (item?.id) {
+        entityById.set(item.id, item);
+      }
+    });
+
+    const categoryMap = new Map<
+      number,
+      { categoryId: number; categoryPid: number }
+    >();
+
+    collectionCategoryEntityList.forEach(item => {
+      const classId = item?.class_id;
+      if (!classId) {
+        return;
+      }
+      const parentEntity = item.parentId ? entityById.get(item.parentId) : null;
+      categoryMap.set(classId, {
+        categoryId: item.sys_category_id ?? 0,
+        categoryPid: parentEntity?.sys_category_id ?? 0,
+      });
+    });
+
+    return categoryMap;
+  }
+
+  private buildDictMap(list: DictInfoEntity[]): Map<string, number> {
+    const map = new Map<string, number>();
+    list.forEach(item => {
+      if (item?.name && item?.id) {
+        map.set(item.name, item.id);
+      }
+    });
+    return map;
+  }
+
+  private resolveDictId(
+    value: string,
+    map: Map<string, number>,
+    fallback: number
+  ): number {
+    if (!value) {
+      return fallback;
+    }
+    return map.get(value) ?? fallback;
+  }
+
+  private safeNumber(value: any): number | null {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) {
+      return null;
+    }
+    return Math.trunc(parsed);
+  }
+
+  private async yieldToEventLoop() {
+    return new Promise(resolve => setTimeout(resolve, 0));
   }
 }

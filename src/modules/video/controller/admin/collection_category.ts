@@ -25,7 +25,16 @@ export class AdminCollectionCategoryController extends BaseController {
   @Inject()
   categoryService: CategoryService;
 
-  @CoolTag(TagTypes.IGNORE_TOKEN)
+  //导入分类
+  @Post('/import_category', { summary: '导入分类' })
+  async importCategory(@Body() body): Promise<unknown> {
+    try {
+      return this.ok(await this.categoryService.handleCategoryList(body.classList, body.query));
+    } catch (error) {
+      return this.fail(error);
+    }
+  }
+
   @Post('/sync_category', { summary: '同步分类' })
   async sort(@Body() body): Promise<unknown> {
     try {

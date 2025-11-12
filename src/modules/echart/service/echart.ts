@@ -106,7 +106,8 @@ export class EChartService extends BaseService {
       .select('MAX(sysLog.params)', 'params') // 使用 MAX 聚合函数处理非分组字段
       .addSelect('COUNT(sysLog.id)', 'count')
       .where('sysLog.params IS NOT NULL')
-      .andWhere('JSON_EXTRACT(sysLog.params, \'$.keyWord\') IS NOT NULL') // 修改 JSON 路径表达式
+      .andWhere('JSON_EXTRACT(sysLog.params, \'$.keyWord\') IS NOT NULL')
+      .andWhere('JSON_EXTRACT(sysLog.params, \'$.keyWord\') != \'\'') // 过滤掉keyword为空字符串的数据
       .groupBy('JSON_EXTRACT(sysLog.params, \'$.keyWord\')') // 修改 GROUP BY 中的 JSON 路径表达式
       .orderBy('count', 'DESC')
       .limit(12)

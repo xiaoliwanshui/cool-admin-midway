@@ -1,5 +1,5 @@
-import { ILogger, Inject, Provide } from '@midwayjs/core';
-import axios, { AxiosError, AxiosRequestConfig } from 'axios';
+import { App, ILogger, Inject, IMidwayApplication, Provide } from '@midwayjs/core';
+import axios, { AxiosError, AxiosInstance, AxiosRequestConfig } from 'axios';
 
 const TAG = 'NetworkErrorHandler';
 
@@ -7,6 +7,14 @@ const TAG = 'NetworkErrorHandler';
 export class NetworkErrorHandler {
   @Inject()
   logger: ILogger;
+
+  @App()
+  app: IMidwayApplication;
+
+  private readonly maxConcurrentRequests = 4;
+  private pendingRequests = 0;
+  private readonly requestQueue: Array<() => void> = [];
+  private axiosClient: AxiosInstance = axios.create();
 
   /**
    * 判断是否为网络相关错误
@@ -58,61 +66,67 @@ export class NetworkErrorHandler {
    * 带重试的网络请求
    */
   async requestWithRetry(
-    config: AxiosRequestConfig, 
+    config: AxiosRequestConfig,
     maxRetries: number = 3,
     retryDelay: number = 1000
   ): Promise<any> {
-    let lastError: any;
-    
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        this.logger.debug(TAG, `尝试请求 ${config.url}, 第${attempt}次`);
-        const response = await axios(config);
-        this.logger.debug(TAG, `请求成功: ${config.url}`);
-        return response;
-      } catch (error) {
-        lastError = error;
-        
-        if (this.isNetworkError(error)) {
-          if (this.isDnsError(error)) {
-            this.logger.warn(TAG, `DNS解析失败 ${config.url}: ${error.message}, 第${attempt}次尝试`);
-          } else if (this.isTimeoutError(error)) {
-            this.logger.warn(TAG, `请求超时 ${config.url}: ${error.message}, 第${attempt}次尝试`);
-          } else {
-            this.logger.warn(TAG, `网络错误 ${config.url}: ${error.message}, 第${attempt}次尝试`);
+    return new Promise((resolve, reject) => {
+      const task = () => {
+        this.runInBackground(async () => {
+          try {
+            const response = await this.executeRequest(config, maxRetries, retryDelay);
+            resolve(response);
+          } catch (error) {
+            reject(error);
+          } finally {
+            this.pendingRequests--;
+            this.processQueue();
           }
-          
-          // 如果不是最后一次尝试，则等待后重试
-          if (attempt < maxRetries) {
-            const delay = retryDelay * Math.pow(2, attempt - 1); // 指数退避
-            this.logger.info(TAG, `等待${delay}ms后重试...`);
-            await this.sleep(delay);
-            continue;
-          }
-        } else {
-          // 非网络错误，直接抛出
-          this.logger.error(TAG, `非网络错误，不重试: ${error.message}`);
-          throw error;
-        }
+        });
+      };
+
+      if (this.pendingRequests < this.maxConcurrentRequests) {
+        this.pendingRequests++;
+        task();
+      } else {
+        this.requestQueue.push(() => {
+          this.pendingRequests++;
+          task();
+        });
       }
-    }
-    
-    // 所有重试都失败了
-    this.logger.error(TAG, `请求最终失败 ${config.url}, 已重试${maxRetries}次: ${lastError.message}`);
-    throw lastError;
+    });
   }
 
   /**
    * 检查URL是否可访问
    */
   async checkUrlAvailability(url: string): Promise<boolean> {
-    try {
-      await axios.head(url, { timeout: 5000 });
-      return true;
-    } catch (error) {
-      this.logger.warn(TAG, `URL不可访问: ${url} - ${error.message}`);
-      return false;
-    }
+    return new Promise(resolve => {
+      const task = () => {
+        this.runInBackground(async () => {
+          try {
+            await this.axiosClient.head(url, { timeout: 5000 });
+            resolve(true);
+          } catch (error) {
+            this.logger.warn(TAG, `URL不可访问: ${url} - ${error.message}`);
+            resolve(false);
+          } finally {
+            this.pendingRequests--;
+            this.processQueue();
+          }
+        });
+      };
+
+      if (this.pendingRequests < this.maxConcurrentRequests) {
+        this.pendingRequests++;
+        task();
+      } else {
+        this.requestQueue.push(() => {
+          this.pendingRequests++;
+          task();
+        });
+      }
+    });
   }
 
   /**
@@ -166,5 +180,66 @@ export class NetworkErrorHandler {
       maxRedirects: 5,
       validateStatus: (status) => status >= 200 && status < 300,
     };
+  }
+
+  private async executeRequest(
+    config: AxiosRequestConfig,
+    maxRetries: number,
+    retryDelay: number
+  ) {
+    let lastError: any;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        this.logger.debug(TAG, `尝试请求 ${config.url}, 第${attempt}次`);
+        const response = await this.axiosClient.request(config);
+        this.logger.debug(TAG, `请求成功: ${config.url}`);
+        return response;
+      } catch (error) {
+        lastError = error;
+
+        if (this.isNetworkError(error)) {
+          if (this.isDnsError(error)) {
+            this.logger.warn(TAG, `DNS解析失败 ${config.url}: ${error.message}, 第${attempt}次尝试`);
+          } else if (this.isTimeoutError(error)) {
+            this.logger.warn(TAG, `请求超时 ${config.url}: ${error.message}, 第${attempt}次尝试`);
+          } else {
+            this.logger.warn(TAG, `网络错误 ${config.url}: ${error.message}, 第${attempt}次尝试`);
+          }
+
+          if (attempt < maxRetries) {
+            const delay = retryDelay * Math.pow(2, attempt - 1);
+            this.logger.info(TAG, `等待${delay}ms后重试...`);
+            await this.sleep(delay);
+            continue;
+          }
+        } else {
+          this.logger.error(TAG, `非网络错误，不重试: ${error.message}`);
+          throw error;
+        }
+      }
+    }
+
+    this.logger.error(TAG, `请求最终失败 ${config.url}, 已重试${maxRetries}次: ${lastError?.message}`);
+    throw lastError;
+  }
+
+  private processQueue() {
+    if (this.pendingRequests >= this.maxConcurrentRequests) {
+      return;
+    }
+    const next = this.requestQueue.shift();
+    if (next) {
+      next();
+    }
+  }
+
+  private runInBackground(task: () => Promise<void>) {
+    const runner = this.app as unknown as { runInBackground?: (fn: () => Promise<void>) => void };
+    const runBackground =
+      typeof runner?.runInBackground === 'function'
+        ? runner.runInBackground.bind(runner)
+        : (fn: () => Promise<void>) => setImmediate(fn);
+    runBackground(task);
   }
 }

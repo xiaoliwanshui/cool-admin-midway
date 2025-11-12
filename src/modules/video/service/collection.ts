@@ -1,6 +1,6 @@
+import { App, ILogger, Inject, IMidwayApplication, Provide } from '@midwayjs/core';
 import { InjectEntityModel } from '@midwayjs/typeorm';
 import { Repository } from 'typeorm';
-import { ILogger, Inject, Provide } from '@midwayjs/core';
 import { RedisService } from '@midwayjs/redis';
 import { CollectionEntity } from '../entity/collection';
 import { CollectionCategoryEntity } from '../entity/collection_category';
@@ -51,6 +51,16 @@ export class CollectionService extends BaseService {
 
   @InjectEntityModel(VideoRulesEntity)
   videoRulesEntity: Repository<VideoRulesEntity>;
+
+  @App()
+  app: IMidwayApplication;
+
+  // 是否正在处理采集队列
+  private collectionProcessing = false;
+
+  private async sleep(ms = 0) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
 
   /**
    * 处理按天同步视频的业务逻辑
@@ -252,7 +262,7 @@ export class CollectionService extends BaseService {
         videoParams.setTotal(total);
 
         // 推送到Redis
-        this.redisService.lpush(
+        await this.redisService.lpush(
           'video:collection',
           JSON.stringify({
             videoParams,
@@ -271,7 +281,7 @@ export class CollectionService extends BaseService {
           }
 
           // 批量推送后添加延迟，减轻系统压力
-          await new Promise(resolve => setTimeout(resolve, 100));
+          await this.sleep(100);
           batchCount = 0;
 
           // 检查内存使用情况并触发垃圾回收
@@ -286,7 +296,7 @@ export class CollectionService extends BaseService {
               global.gc();
 
               // 短暂延迟让GC完成
-              await new Promise(resolve => setTimeout(resolve, 100));
+              await this.sleep(100);
             }
           }
         }
@@ -318,36 +328,7 @@ export class CollectionService extends BaseService {
   }
 
   async startCollection() {
-    try {
-      const data = await this.redisService.exists('video:collection');
-      if (data) {
-        this.logger.info(TAG, 'Redis中存在采集数据，开始处理');
-        await this.concurrencyService.syncVideoPageList();
-
-        // 处理完成后检查内存使用情况
-        if (global.gc) {
-          const used = process.memoryUsage().heapUsed / 1024 / 1024;
-          if (used > 300) {
-            // 降低内存阈值
-            this.logger.info(
-              TAG,
-              `当前内存使用 ${used.toFixed(2)} MB，触发垃圾回收`
-            );
-            global.gc();
-          }
-        }
-      } else {
-        // 使用debug级别日志，减少在没有数据时的日志输出
-        this.logger.debug(TAG, 'Redis中没有采集数据');
-      }
-    } catch (error) {
-      this.logger.error(TAG, 'Redis查询失败', error);
-
-      // 发生错误时也尝试触发垃圾回收
-      if (global.gc) {
-        global.gc();
-      }
-    }
+    await this.triggerCollectionProcessing();
   }
 
   /**
@@ -389,5 +370,67 @@ export class CollectionService extends BaseService {
         }
       }
     }
+  }
+
+  /**
+   * 检查是否有采集任务，如有则在后台处理
+   */
+  private async triggerCollectionProcessing() {
+    try {
+      const hasData = await this.redisService.exists('video:collection');
+      if (hasData) {
+        this.logger.info(TAG, '检测到采集任务，准备后台处理');
+        this.scheduleBackgroundCollection();
+      } else {
+        this.logger.debug(TAG, 'Redis中没有采集任务');
+      }
+    } catch (error) {
+      this.logger.error(TAG, '检测采集任务失败', error);
+      if (global.gc) {
+        global.gc();
+      }
+    }
+  }
+
+  /**
+   * 将采集业务放入后台线程执行，避免阻塞请求处理
+   */
+  private scheduleBackgroundCollection() {
+    if (this.collectionProcessing) {
+      this.logger.debug(TAG, '采集后台任务正在执行，跳过本次调度');
+      return;
+    }
+    this.collectionProcessing = true;
+
+    const runner = this.app as unknown as { runInBackground?: (fn: () => Promise<void>) => void };
+    const runBackground =
+      typeof runner?.runInBackground === 'function'
+        ? runner.runInBackground.bind(runner)
+        : (fn: () => Promise<void>) => setImmediate(fn);
+
+    runBackground(async () => {
+      try {
+        this.logger.info(TAG, '后台采集任务开始执行');
+        do {
+          await this.concurrencyService.syncVideoPageList();
+          await this.sleep(50);
+        } while (await this.redisService.exists('video:collection'));
+
+        if (global.gc) {
+          const used = process.memoryUsage().heapUsed / 1024 / 1024;
+          if (used > 300) {
+            this.logger.info(
+              TAG,
+              `后台采集完成，触发垃圾回收，当前内存 ${used.toFixed(2)} MB`
+            );
+            global.gc();
+          }
+        }
+      } catch (error) {
+        this.logger.error(TAG, '后台采集任务异常', error);
+      } finally {
+        this.collectionProcessing = false;
+      }
+    });
   }
 }

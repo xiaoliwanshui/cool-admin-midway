@@ -49,24 +49,8 @@ export class CategoryService {
         3, // 最大重试3次
         2000 // 初始延迟2秒
       );
-      
-      const savePromises = result.data.class.map(async item => {
-        await this.saveCategory({
-          parentId: item.type_pid,
-          class_id: item.type_id,
-          class_name: item.type_name,
-          collection_id: query.id,
-          collection_name: query.name,
-        });
-      });
 
-      await Promise.all(savePromises);
-      let data: CollectionCategoryEntity[] =
-        await this.collectionCategoryEntity.findBy({
-          collection_id: query.id,
-        });
-      list = this.updateParentId(data);
-
+      list = await this.handleCategoryList(result.data.class, query);
       return { list };
     } catch (error) {
       if (this.networkErrorHandler.isNetworkError(error)) {
@@ -81,6 +65,47 @@ export class CategoryService {
       }
       throw error;
     }
+  }
+
+  /**
+   * 处理分类列表数据
+   *
+   * @param classList - 分类数据数组
+   * @param query - 同步参数，包含集合信息
+   */
+  async handleCategoryList(classList: any[] | string, query: any) {
+    let parsedClassList = classList;
+
+    if (typeof classList === 'string') {
+      try {
+        parsedClassList = JSON.parse(classList);
+      } catch (error) {
+        this.logger.error(TAG, '分类数据格式错误: JSON 解析失败');
+        return [];
+      }
+    }
+
+    if (!Array.isArray(parsedClassList)) {
+      this.logger.error(TAG, '分类数据格式错误: 非数组结构');
+      return [];
+    }
+
+    const savePromises = parsedClassList.map(async item => {
+      await this.saveCategory({
+        parentId: item.type_pid,
+        class_id: item.type_id,
+        class_name: item.type_name,
+        collection_id: query.id,
+        collection_name: query.name,
+      });
+    });
+
+    await Promise.all(savePromises);
+    const data: CollectionCategoryEntity[] =
+      await this.collectionCategoryEntity.findBy({
+        collection_id: query.id,
+      });
+    return this.updateParentId(data);
   }
 
   /**
