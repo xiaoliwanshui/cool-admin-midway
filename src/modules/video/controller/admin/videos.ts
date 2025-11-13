@@ -19,6 +19,7 @@ import { Body,  Inject, Post } from '@midwayjs/core';
   pageQueryOp: {
     keyWordLikeFields: ['title'],
     fieldEq: [
+      'id',
       'category_id',
       'year',
       'language',
