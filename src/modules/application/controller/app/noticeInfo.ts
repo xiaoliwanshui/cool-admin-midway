@@ -9,6 +9,7 @@ import { NoticeInfoEntity } from '../../entity/noticeInfo';
   entity: NoticeInfoEntity,
   pageQueryOp: {
     keyWordLikeFields: ['title'],
+    fieldEq: ['type', 'status'],
     addOrderBy: {
       createTime: 'desc'
     }

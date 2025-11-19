@@ -324,6 +324,15 @@ export class UserLoginService extends BaseService {
     if (!check) {
       throw new CoolCommException('图片验证码错误');
     }
+
+    const userStatus = await this.userInfoEntity.findOneBy({
+      phone: phone,
+      status: 1,
+    });
+    if (!userStatus) {
+      throw new CoolCommException('用户不存在或已被禁用');
+    }
+
     const user = await this.userInfoEntity.findOneBy({ phone });
     if (user) {
       return this.password(phone, password);
