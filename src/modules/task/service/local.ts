@@ -134,6 +134,19 @@ export class TaskLocalService extends BaseService {
   }
 
   /**
+   * 重建定时任务
+   */
+  async restartCronJob(task) {
+    const job = this.cronJobs.get(task.jobId);
+    if (job) {
+      job.stop();
+      this.cronJobs.delete(task.jobId);
+      this.coolEventManager.emit('onLocalTaskStop', task.jobId);
+    }
+    this.createCronJob(task);
+  }
+
+  /**
    * 执行任务
    */
   private async executeJob(task) {
@@ -148,6 +161,8 @@ export class TaskLocalService extends BaseService {
       params.jobId = uuidv4();
     }
 
+    const shouldStartJob = params.status === 1;
+
     await this.getOrmManager().transaction(async transactionalEntityManager => {
       if (params.taskType === 0) {
         params.limit = null;
@@ -156,20 +171,10 @@ export class TaskLocalService extends BaseService {
         params.cron = null;
       }
       await transactionalEntityManager.save(TaskInfoEntity, params);
-
-      if (params.status === 1) {
-        const exist = await this.exist(params.jobId);
-        if (exist) {
-          const job = this.cronJobs.get(params.jobId);
-          job.stop();
-          this.cronJobs.delete(params.jobId);
-          this.coolEventManager.emit('onLocalTaskStop', params.jobId);
-        }
-        this.createCronJob(params);
-      }
     });
 
-    if (params.status === 1) {
+    if (shouldStartJob) {
+      await this.restartCronJob(params);
       await this.updateNextRunTime(params.jobId);
     }
   }
