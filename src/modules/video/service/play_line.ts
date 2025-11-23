@@ -18,23 +18,55 @@ export class PlayLineService extends BaseService {
 
   async insert(data: Line): Promise<void> {
     try {
-      // 插入或更新数据
-      await this.playLineEntity.save(data);
-      this.logger.info(
-        TAG,
-        `insert ${data.collection_name} ${data.video_name} ${data.name} success`
-      );
-      // 显式释放对象引用
-      data = null;
+      // 先检查是否存在相同 file 的记录
+      const existing = await this.playLineEntity.findOne({
+        where: { file: data.file },
+      });
+
+      if (existing) {
+        // 如果存在，更新记录
+        await this.playLineEntity.update({ file: data.file }, data);
+        this.logger.info(
+          TAG,
+          `update ${data.collection_name} ${data.video_name} ${data.name} success`
+        );
+      } else {
+        // 如果不存在，插入新记录
+        await this.playLineEntity.save(data);
+        this.logger.info(
+          TAG,
+          `insert ${data.collection_name} ${data.video_name} ${data.name} success`
+        );
+      }
     } catch (error) {
-      // 更新数据
-      await this.playLineEntity.update({ file: data.file }, data);
-      this.logger.info(
-        TAG,
-        `update ${data.collection_name} ${data.video_name} ${data.name} success`
-      );
-      // 显式释放对象引用
-      data = null;
+      // 如果仍然出现重复键错误，尝试更新
+      if (
+        error.code === 'ER_DUP_ENTRY' ||
+        error.errno === 1062 ||
+        (error.message && error.message.includes('Duplicate entry'))
+      ) {
+        try {
+          await this.playLineEntity.update({ file: data.file }, data);
+          this.logger.info(
+            TAG,
+            `update (duplicate key) ${data.collection_name} ${data.video_name} ${data.name} success`
+          );
+        } catch (updateError) {
+          this.logger.error(
+            TAG,
+            `update failed for ${data.collection_name} ${data.video_name} ${data.name}:`,
+            updateError.message
+          );
+          throw updateError;
+        }
+      } else {
+        this.logger.error(
+          TAG,
+          `insert failed for ${data.collection_name} ${data.video_name} ${data.name}:`,
+          error.message
+        );
+        throw error;
+      }
     }
   }
 
