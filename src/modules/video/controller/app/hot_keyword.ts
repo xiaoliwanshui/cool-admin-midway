@@ -1,6 +1,8 @@
-import { BaseController, CoolController, CoolUrlTag, TagTypes } from '@cool-midway/core';
+import { BaseController, CoolController, CoolTag, CoolUrlTag, TagTypes } from '@cool-midway/core';
+import { Body, Get, Inject, Post, Query } from '@midwayjs/core';
+import {Context} from '@midwayjs/koa';
 import { VideoHostKeyWordEntity } from '../../entity/hot_keyword';
-
+import { HotKeywordService } from '../../service/hot_keyword';
 /**
  * 轮播图
  */
@@ -21,5 +23,22 @@ import { VideoHostKeyWordEntity } from '../../entity/hot_keyword';
   value: ['page', 'info']
 })
 
+/**
+ * 视频热词控制器
+ */
 export class AppHotKeyWordController extends BaseController {
+  @Inject()
+  hotKeywordService: HotKeywordService;
+  /**
+   * 获取视频热词
+   */
+  @CoolTag(TagTypes.IGNORE_TOKEN)
+  @Get('/videoHotWords', { summary: '获取视频热词' })
+  async videoHotWords(): Promise<unknown> {
+    try {
+      return this.ok(await this.hotKeywordService.getVideoHotWords());
+    } catch (error) {
+      return this.fail(error);
+    }
+  }
 }

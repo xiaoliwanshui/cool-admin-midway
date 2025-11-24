@@ -13,6 +13,8 @@ import { PlayLineEntity } from '../entity/play_line';
 import { DuplicateKeyHandler } from './duplicateKeyHandler';
 import { MemberService } from '../../member/service/member';
 import { BaseService } from '../../base/service/base';
+import { DictInfoEntity } from '../../dict/entity/info';
+import { DictInfoService } from '../../dict/service/info';
 
 const TAG = 'VideosService';
 
@@ -51,6 +53,8 @@ export class VideosService extends BaseService {
   @Inject()
   duplicateKeyHandler: DuplicateKeyHandler;
 
+  @Inject()
+  dictInfoService: DictInfoService;
 
 
     /**
@@ -328,5 +332,33 @@ export class VideosService extends BaseService {
       .filter(item => {
         return item !== undefined;
       });
+  }
+
+  async getVideoRank(): Promise<any> {
+    //获取字典数据
+    let videoCategoryEntityList: DictInfoEntity[] = (
+      await this.dictInfoService.data(['search_type'])
+    )['search_type'];
+
+    let videoRankList = [];
+    for (const item of videoCategoryEntityList) {
+      const video = await this.videoEntity.find({
+        where: {
+          searchRecommendType: item.id,
+        },
+        take: 7,
+        order: {
+          sort: 'DESC',
+        },
+      });
+      if(video.length > 0) {
+        videoRankList.push({
+          ...item,
+          list: video,
+        });
+      }
+    }
+
+    return {list: videoRankList};
   }
 }

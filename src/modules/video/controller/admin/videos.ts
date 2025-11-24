@@ -17,19 +17,36 @@ import { Body,  Inject, Post } from '@midwayjs/core';
     };
   },
   pageQueryOp: {
-    keyWordLikeFields: ['title'],
+    keyWordLikeFields: ['title','sub_title','directors','actors'],
     fieldEq: [
-      'id',
       'category_id',
+      'cycle',
       'year',
       'language',
       'region',
-      'play_url_put_in',
       'category_pid',
       'searchRecommendType'
     ],
+    where: ctx => {
+      const { directors, actors, video_tag } = ctx.request.body;
+      //获取请求头
+      const { aldult } = ctx.request.headers;
+      const where = [
+        [
+          'directors like :directors',
+          { directors: `%${directors}%` },
+          directors
+        ],
+        ['actors like :actors', { actors: `%${actors}%` }, actors],
+        ['video_tag like :video_tag', { video_tag: `%${video_tag}%` }, video_tag]
+      ];
+      if (aldult === '0') {
+        where.push(['category_pid != :category_pid', { category_pid: 643 }]);
+      }
+      return where;
+    },
     addOrderBy: {
-      updateTime: 'desc'
+      year: 'desc'
     }
   }
 })
