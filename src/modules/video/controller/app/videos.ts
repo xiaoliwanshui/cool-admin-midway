@@ -54,7 +54,7 @@ import { VideosService } from '../../service/videos';
 })
 @CoolUrlTag({
   key: TagTypes.IGNORE_TOKEN,
-  value: ['page', 'info', 'update']
+  value: ['page', 'info', 'update', 'rank', 'sort', 'week', 'detail', 'videoEntity']
 })
 export class AppVideoController extends BaseController {
   @Inject()
