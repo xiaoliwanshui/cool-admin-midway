@@ -113,7 +113,7 @@ export class AppVideoController extends BaseController {
   }
 
   @CoolTag(TagTypes.IGNORE_TOKEN)
-  @Get('/videoRank',{summary:'获取视频排行信息'})
+  @Get('/video_rank',{summary:'获取视频排行信息'})
   async videoRank(): Promise<unknown> {
     try {
       return this.ok(await this.videosService.getVideoRank());

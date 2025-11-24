@@ -335,30 +335,37 @@ export class VideosService extends BaseService {
   }
 
   async getVideoRank(): Promise<any> {
-    //获取字典数据
-    let videoCategoryEntityList: DictInfoEntity[] = (
-      await this.dictInfoService.data(['search_type'])
-    )['search_type'];
+    try {
+      //获取字典数据
+      let videoCategoryEntityList: DictInfoEntity[] = (
+        await this.dictInfoService.data(['search_type'])
+      )['search_type'];
 
-    let videoRankList = [];
-    for (const item of videoCategoryEntityList) {
-      const video = await this.videoEntity.find({
-        where: {
-          searchRecommendType: item.id,
-        },
-        take: 7,
-        order: {
-          sort: 'DESC',
-        },
-      });
-      if(video.length > 0) {
-        videoRankList.push({
-          ...item,
-          list: video,
+      let videoRankList = [];
+      for (const item of videoCategoryEntityList) {
+        const video = await this.videoEntity.find({
+          where: {
+            searchRecommendType: item.id,
+          },
+          take: 7,
+          order: {
+            sort: 'DESC',
+          },
         });
+        if(video.length > 0) {
+          videoRankList.push({
+            ...item,
+            list: video,
+          });
+        }
       }
-    }
 
-    return {list: videoRankList};
+      return {list: videoRankList};
+    } catch (error) {
+      // 记录错误日志
+      this.logger.error(TAG, '获取视频排行信息失败', error);
+      // 抛出错误，让controller层处理并返回给前台
+      throw new Error(error?.message || '获取视频排行信息失败');
+    }
   }
 }
