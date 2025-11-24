@@ -99,6 +99,16 @@ export class AppVideoController extends BaseController {
     }
   }
 
+  @CoolTag(TagTypes.IGNORE_TOKEN)
+  @Get('/rank',{summary:'获取视频排行信息'})
+  async videoRank(): Promise<unknown> {
+    try {
+      return this.ok(await this.videosService.getVideoRank());
+    } catch (error) {
+      return this.fail(error);
+    }
+  }
+
   /**
    * 获取视频VideoEntity字段信息
    */
@@ -112,14 +122,6 @@ export class AppVideoController extends BaseController {
     }
   }
 
-  @CoolTag(TagTypes.IGNORE_TOKEN)
-  @Get('/video_rank',{summary:'获取视频排行信息'})
-  async videoRank(): Promise<unknown> {
-    try {
-      return this.ok(await this.videosService.getVideoRank());
-    } catch (error) {
-      return this.fail(error);
-    }
-  }
+
 
 }
