@@ -1,4 +1,4 @@
-import { BaseController, CoolController, CoolTag, CoolUrlTag, TagTypes } from '@cool-midway/core';
+import { BaseController, CoolController, CoolTag, CoolUrlTag, CoolUrlTagData, TagTypes } from '@cool-midway/core';
 import { Body, Get, Inject, Post, Query } from '@midwayjs/core';
 import {Context} from '@midwayjs/koa';
 import { VideoEntity } from '../../entity/videos';
@@ -65,6 +65,9 @@ export class AppVideoController extends BaseController {
     @Inject()
   ctx: Context;
 
+  @Inject()
+  tag: CoolUrlTagData;
+
   @CoolTag(TagTypes.IGNORE_TOKEN)
   @Post('/sort')
   async sort(@Body() body): Promise<unknown> {
@@ -118,7 +121,8 @@ export class AppVideoController extends BaseController {
   @Get('/videoEntity',{summary:'获取视频字段信息'})
   async videoEntity(): Promise<unknown> {
     try {
-      return this.ok(await this.videosService.getVideoEntityFields());
+      // return this.ok(await this.videosService.getVideoEntityFields());
+      return this.ok(this.tag.byKey(TagTypes.IGNORE_TOKEN));
     } catch (error) {
       return this.fail(error);
     }
