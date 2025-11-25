@@ -49,7 +49,7 @@ export class UserMiddleware implements IMiddleware<Context, NextFunction> {
           ctx.user = jwt.verify(token, this.jwtConfig.secret);
 
           if (ctx.user.isRefresh) {
-            throw new CoolCommException('登录失效~');
+            throw new CoolCommException(`${JSON.stringify(this.ignoreUrls)}`);
           }
         } catch (error) {}
         // 使用matchUrl方法来检查URL是否应该被忽略
