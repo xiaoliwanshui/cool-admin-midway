@@ -5,6 +5,7 @@ import {
   Init,
   Inject,
   Middleware,
+  ILogger,
 } from '@midwayjs/core';
 import { Context, NextFunction } from '@midwayjs/koa';
 import * as jwt from 'jsonwebtoken';
@@ -34,9 +35,14 @@ export class UserMiddleware implements IMiddleware<Context, NextFunction> {
   @Inject()
   utils: Utils;
 
+  @Inject()
+  logger: ILogger;
+
   @Init()
   async init() {
     this.ignoreUrls = this.coolUrlTagData.byKey(TagTypes.IGNORE_TOKEN, 'app');
+    // 打印所有忽略的URL列表
+    this.logger.info('UserMiddleware', `忽略token的URL列表: ${JSON.stringify(this.ignoreUrls)}`);
   }
 
   resolve() {
@@ -56,6 +62,14 @@ export class UserMiddleware implements IMiddleware<Context, NextFunction> {
         const isIgnored = this.ignoreUrls.some(pattern =>
           this.utils.matchUrl(pattern, url)
         );
+        
+        // 打印调试信息
+        this.logger.info('UserMiddleware', `请求URL: ${url}`);
+        this.logger.info('UserMiddleware', `是否匹配忽略列表: ${isIgnored}`);
+        if (!isIgnored) {
+          this.logger.info('UserMiddleware', `忽略列表: ${JSON.stringify(this.ignoreUrls)}`);
+        }
+        
         if (isIgnored) {
           await next();
           return;

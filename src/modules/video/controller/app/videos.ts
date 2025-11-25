@@ -56,6 +56,7 @@ import { VideosService } from '../../service/videos';
   key: TagTypes.IGNORE_TOKEN,
   value: ['page', 'info', 'update', 'rank', 'sort', 'week', 'detail', 'videoEntity']
 })
+
 @CoolUrlTag()
 export class AppVideoController extends BaseController {
   @Inject()
@@ -101,7 +102,7 @@ export class AppVideoController extends BaseController {
   }
 
   @CoolTag(TagTypes.IGNORE_TOKEN)
-  @Get('/rank',{summary:'获取视频排行信息'})
+  @Post('/rank',{summary:'获取视频排行信息'})
   async videoRank(): Promise<unknown> {
     try {
       return this.ok(await this.videosService.getVideoRank());
