@@ -21,7 +21,7 @@ import { Get, Inject } from '@midwayjs/core';
   key: TagTypes.IGNORE_TOKEN,
   value: ['page', 'info']
 })
-
+@CoolUrlTag()
 /**
  * 视频热词控制器
  */
