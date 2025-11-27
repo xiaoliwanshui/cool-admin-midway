@@ -7,6 +7,9 @@ import { BaseEntity } from '../../base/entity/base';
 @Entity('video_play_line')
 @Unique(['file'])
 export class PlayLineEntity extends BaseEntity {
+  forEach(arg0: (line: any) => Promise<void>) {
+    throw new Error('Method not implemented.');
+  }
   @Index()
   @Column({ comment: '影视ID', nullable: true, type: 'bigint' })
   video_id: number;

@@ -14,6 +14,7 @@ import { VideoLineEntity } from '../../entity/video_line';
     };
   },
   pageQueryOp: {
+    keyWordLikeFields: ['video_name','collection_name'],
     fieldEq: [
       'tag',
       'site_id',

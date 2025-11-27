@@ -88,11 +88,26 @@ export class EChartService extends BaseService {
 
   // 统计访问的总数量和今日新增数量
   async visit() {
+    // 统计不重复的IP数量
+    const totalResult = await this.sysLogEntity
+      .createQueryBuilder('log')
+      .select('COUNT(DISTINCT log.ip)', 'count')
+      .where('log.ip IS NOT NULL')
+      .getRawOne();
+    
+    // 统计今日不重复的IP数量
+    const todayResult = await this.sysLogEntity
+      .createQueryBuilder('log')
+      .select('COUNT(DISTINCT log.ip)', 'count')
+      .where('log.ip IS NOT NULL')
+      .andWhere('DATE(log.createTime) = DATE(:today)', {
+        today: new Date()
+      })
+      .getRawOne();
+    
     return {
-      total: await this.sysLogEntity.count(),
-      today: await this.sysLogEntity.countBy({
-        createTime: new Date()
-      }),
+      total: Number(totalResult?.count || 0),
+      today: Number(todayResult?.count || 0),
       data: await this.getUserViewsByHourIntervals()
     };
   }

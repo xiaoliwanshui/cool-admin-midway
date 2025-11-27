@@ -1,10 +1,11 @@
 import { BaseService } from '@cool-midway/core';
 import { InjectEntityModel } from '@midwayjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { ILogger, Inject, Provide } from '@midwayjs/core';
 import { PlayLineEntity } from '../entity/play_line';
 import { Line } from '../bean/SourceVideo';
 import axios from 'axios';
+import { VideoLineEntity } from '../entity/video_line';
 
 const TAG = 'PlayLineService';
 
@@ -12,6 +13,9 @@ const TAG = 'PlayLineService';
 export class PlayLineService extends BaseService {
   @InjectEntityModel(PlayLineEntity)
   playLineEntity: Repository<PlayLineEntity>;
+
+  @InjectEntityModel(VideoLineEntity)
+  videoLineEntity: Repository<VideoLineEntity>;
 
   @Inject()
   logger: ILogger;
@@ -124,4 +128,15 @@ export class PlayLineService extends BaseService {
   async cancelVip(video_id: number): Promise<void> {
     await this.playLineEntity.update({ video_id: video_id }, { vip: 0 });
   }
+
+  //实现一个删除接口删除异常的播放线路 status: 0 的线路 并且video_id相同的线路都删除
+  async delete(ids: number[]): Promise<void> {
+    const playLine = await this.playLineEntity.findBy( { id: In(ids) } );
+    playLine.forEach(async (line) => {
+      await this.playLineEntity.delete(line.id);
+      await this.videoLineEntity.delete(line.video_line_id);
+    });
+  }
 }
+
+
