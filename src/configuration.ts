@@ -70,5 +70,56 @@ export class MainConfiguration {
   @Inject()
   logger: ILogger;
 
-  async onReady() {}
+  async onReady() {
+    // 处理未捕获的 Promise rejection
+    process.on('unhandledRejection', (reason: any, promise: Promise<any>) => {
+      this.logger.error(
+        '未处理的 Promise Rejection',
+        {
+          reason: reason?.message || reason,
+          stack: reason?.stack,
+          promise: promise.toString(),
+        }
+      );
+
+      // 如果是数据库连接错误，记录详细信息
+      if (reason?.code === 'ER_NET_READ_INTERRUPTED' || reason?.code === 'ETIMEDOUT') {
+        this.logger.error(
+          '数据库连接错误',
+          {
+            code: reason.code,
+            errno: reason.errno,
+            sqlState: reason.sqlState,
+            sqlMessage: reason.sqlMessage,
+          }
+        );
+      }
+
+      // 不退出进程，让应用继续运行
+      // 生产环境可以考虑记录到监控系统
+    });
+
+    // 处理未捕获的异常
+    process.on('uncaughtException', (error: Error) => {
+      this.logger.error('未捕获的异常', {
+        message: error.message,
+        stack: error.stack,
+        name: error.name,
+      });
+
+      // 对于数据库连接错误，不退出进程
+      if (
+        error.message?.includes('timeout') ||
+        error.message?.includes('ETIMEDOUT') ||
+        error.message?.includes('ER_NET_READ_INTERRUPTED')
+      ) {
+        this.logger.warn('数据库连接超时，应用将继续运行');
+        return;
+      }
+
+      // 其他严重错误，记录后退出
+      this.logger.error('严重错误，进程将退出');
+      process.exit(1);
+    });
+  }
 }

@@ -37,4 +37,18 @@ export class AdminCollectionController extends BaseController {
       return this.fail(error);
     }
   }
+
+  @CoolTag(TagTypes.IGNORE_TOKEN)
+  @Post('/collection_keyword', { summary: '根据关键字采集' })
+  async keyWord(
+    @Body('keyWord') keyWord: string
+  ): Promise<unknown> {
+    try {
+      return this.ok({
+        data: await this.collectionService.asyncKeyWord(keyWord),
+      });
+    } catch (error) {
+      return this.fail(error);
+    }
+  }
 }

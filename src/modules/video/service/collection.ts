@@ -1,4 +1,10 @@
-import { App, ILogger, Inject, IMidwayApplication, Provide } from '@midwayjs/core';
+import {
+  App,
+  ILogger,
+  IMidwayApplication,
+  Inject,
+  Provide,
+} from '@midwayjs/core';
 import { InjectEntityModel } from '@midwayjs/typeorm';
 import { Repository } from 'typeorm';
 import { RedisService } from '@midwayjs/redis';
@@ -58,10 +64,6 @@ export class CollectionService extends BaseService {
   // 是否正在处理采集队列
   private collectionProcessing = false;
 
-  private async sleep(ms = 0) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-  }
-
   /**
    * 处理按天同步视频的业务逻辑
    *
@@ -83,6 +85,15 @@ export class CollectionService extends BaseService {
     await this.syncVideo(collectionEntity, {
       op: 'week',
       h: 24 * 7,
+    });
+  }
+
+  async asyncKeyWord(keyWord: string) {
+    const collectionEntityList = await this.collectionEntity.find();
+    collectionEntityList.forEach(item => {
+      this.syncVideo(item, {
+        wd: keyWord,
+      });
     });
   }
 
@@ -214,7 +225,7 @@ export class CollectionService extends BaseService {
         collectionEntity.address + '?' + defaultParams.getQueryString();
 
       // 使用网络错误处理器进行请求
-      this.logger.info(TAG, `开始采集: ${requestUrl}`);
+      // this.logger.info(TAG, `开始采集: ${requestUrl}`);
       let result = await this.networkErrorHandler.requestWithRetry(
         {
           url: requestUrl,
@@ -231,15 +242,12 @@ export class CollectionService extends BaseService {
       result = null; // 显式释放引用
 
       let page = 0;
-      let op = 'all';
-      let h = 0;
+      // 从 params 中提取参数，保留所有原始参数
+      const baseParams: VIDEOPARAMS = params ? { ...params } : {};
+
       if (params) {
         if (params.page) {
           page = params.page;
-        }
-        if (params.op) {
-          op = params.op;
-          h = params.h;
         }
       }
 
@@ -248,24 +256,25 @@ export class CollectionService extends BaseService {
       let batchCount = 0;
 
       for (page; page <= pagecount; page++) {
-        let videoParams: VideoParams = new VideoParams({});
-        videoParams.setPg(page);
-        videoParams.setPage(page);
-        videoParams.setPs(limit);
-        videoParams.setPagesize(limit);
+        // 创建 VideoParams 时传入原始 params，确保 op、h、wd 等参数都被保留
+        let videoParams: VideoParams = new VideoParams({
+          ...baseParams,
+          page: page,
+          pg: page,
+          ps: limit,
+          pagesize: limit,
+          limit: limit,
+          ac: 'detail',
+          total: total,
+        });
         videoParams.setPagecount(pagecount);
-        videoParams.setAc('detail');
-        videoParams.setOp(op);
-        if (h) {
-          videoParams.setH(h);
-        }
-        videoParams.setTotal(total);
 
         // 推送到Redis
+        // 使用 getObject() 方法获取可序列化的参数对象，确保 op、h、wd 等参数都被正确存储
         await this.redisService.lpush(
           'video:collection',
           JSON.stringify({
-            videoParams,
+            videoParams: videoParams.getObject(),
             collectionEntity,
           })
         );
@@ -289,10 +298,10 @@ export class CollectionService extends BaseService {
             const used = process.memoryUsage().heapUsed / 1024 / 1024;
             if (used > 300) {
               // 降低内存阈值
-              this.logger.info(
-                TAG,
-                `当前内存使用 ${used.toFixed(2)} MB，触发垃圾回收`
-              );
+              // this.logger.info(
+              //   TAG,
+              //   `当前内存使用 ${used.toFixed(2)} MB，触发垃圾回收`
+              // );
               global.gc();
 
               // 短暂延迟让GC完成
@@ -372,6 +381,10 @@ export class CollectionService extends BaseService {
     }
   }
 
+  private async sleep(ms = 0) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
   /**
    * 检查是否有采集任务，如有则在后台处理
    */
@@ -402,7 +415,9 @@ export class CollectionService extends BaseService {
     }
     this.collectionProcessing = true;
 
-    const runner = this.app as unknown as { runInBackground?: (fn: () => Promise<void>) => void };
+    const runner = this.app as unknown as {
+      runInBackground?: (fn: () => Promise<void>) => void;
+    };
     const runBackground =
       typeof runner?.runInBackground === 'function'
         ? runner.runInBackground.bind(runner)

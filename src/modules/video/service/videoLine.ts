@@ -1,12 +1,12 @@
-import { BaseService } from '@cool-midway/core';
-import { InjectEntityModel } from '@midwayjs/typeorm';
-import { Repository } from 'typeorm';
-import { VideoEntity } from '../entity/videos';
-import { VideoLineEntity } from '../entity/video_line';
-import { ILogger, Inject, Provide } from '@midwayjs/core';
-import { CollectionEntity } from '../entity/collection';
-import { Line } from '../bean/SourceVideo';
-import { PlayLineService } from './play_line';
+import {BaseService} from '@cool-midway/core';
+import {InjectEntityModel} from '@midwayjs/typeorm';
+import {Repository} from 'typeorm';
+import {VideoEntity} from '../entity/videos';
+import {VideoLineEntity} from '../entity/video_line';
+import {ILogger, Inject, Provide} from '@midwayjs/core';
+import {CollectionEntity} from '../entity/collection';
+import {Line} from '../bean/SourceVideo';
+import {PlayLineService} from './play_line';
 
 const TAG = 'VideoLineService';
 
@@ -71,7 +71,7 @@ export class VideoLineService extends BaseService {
       });
       return result;
     } catch (error) {
-    //  this.logger.error(TAG, error);
+      //  this.logger.error(TAG, error);
       return [];
     }
   }
@@ -82,28 +82,43 @@ export class VideoLineService extends BaseService {
   ): Promise<void> {
     try {
       // 插入或更新数据
-     const data= await this.videoLineEntity.upsert({
+      await this.videoLineEntity.upsert({
         collection_name: collectionEntity.name,
         tag: collectionEntity.param,
         video_id: videoEntity.id,
         video_name: videoEntity.title,
         collection_id: collectionEntity.id,
       }, ['collection_id', 'video_id']);
+
+      // 查询获取实际的 videoLineEntity id
+      const videoLineEntity = await this.videoLineEntity.findOne({
+        where: {
+          video_id: videoEntity.id,
+          collection_id: collectionEntity.id,
+        },
+      });
+
+      if (!videoLineEntity || !videoLineEntity.id) {
+        this.logger.error(TAG, `无法获取 videoLineEntity id: ${videoEntity.title}`);
+        return;
+      }
+
       let parseVideoList = this.parseVideoList(
         videoEntity,
         collectionEntity,
-        data.raw.insertId
+        videoLineEntity.id
       );
-      parseVideoList.forEach(item => {
-        this.playLineService.insert(item);
-      });
-     this.logger.info(TAG, `insert ${videoEntity.title} success`);
+      // 使用 Promise.all 等待所有插入操作完成，确保 video_line_id 正确设置
+      await Promise.all(
+        parseVideoList.map(item => this.playLineService.insert(item))
+      );
+      this.logger.info(TAG, `insert ${videoEntity.title} videoLineEntityId ${videoLineEntity.id} success`);
       // 显式释放对象引用
       videoEntity = null;
       parseVideoList = null;
     } catch (error) {
       // 更新数据
-    const data=  await this.videoLineEntity.update(
+      await this.videoLineEntity.update(
         {
           video_id: videoEntity.id,
           collection_id: collectionEntity.id,
@@ -116,19 +131,32 @@ export class VideoLineService extends BaseService {
           collection_id: collectionEntity.id,
         }
       );
-        let parseVideoList = this.parseVideoList(
-          videoEntity,
-          collectionEntity,
-          data.raw.insertId
-        );
-        parseVideoList.forEach(item => {
-          this.playLineService.insert(item);
-        });
-       this.logger.info(TAG, `update ${videoEntity.title} success`);
-        // 显式释放对象引用
-        videoEntity = null;
-        parseVideoList = null;
+      //查询
+      const videoLineEntity = await this.videoLineEntity.findOne({
+        where: {
+          video_id: videoEntity.id,
+          collection_id: collectionEntity.id,
+        },
+      });
 
+      if (!videoLineEntity || !videoLineEntity.id) {
+        this.logger.error(TAG, `无法获取 videoLineEntity id: ${videoEntity.title}`);
+        return;
+      }
+
+      let parseVideoList = this.parseVideoList(
+        videoEntity,
+        collectionEntity,
+        videoLineEntity.id
+      );
+      // 使用 Promise.all 等待所有插入操作完成，确保 video_line_id 正确设置
+      await Promise.all(
+        parseVideoList.map(item => this.playLineService.insert(item))
+      );
+      this.logger.info(TAG, `update ${videoEntity.title} videoLineEntityId ${videoLineEntity.id}  success`);
+      // 显式释放对象引用
+      videoEntity = null;
+      parseVideoList = null;
     }
   }
 
