@@ -88,11 +88,13 @@ export class CollectionService extends BaseService {
     });
   }
 
-  async asyncKeyWord(keyWord: string) {
+  async asyncKeyWord(keyWord: string[]) {
     const collectionEntityList = await this.collectionEntity.find();
-    collectionEntityList.forEach(item => {
-      this.syncVideo(item, {
-        wd: keyWord,
+    keyWord.forEach(item => {
+      collectionEntityList.forEach(collectionEntity => {
+        this.syncVideo(collectionEntity, {
+          wd: item,
+        });
       });
     });
   }

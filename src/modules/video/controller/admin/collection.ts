@@ -41,7 +41,7 @@ export class AdminCollectionController extends BaseController {
   @CoolTag(TagTypes.IGNORE_TOKEN)
   @Post('/collection_keyword', { summary: '根据关键字采集' })
   async keyWord(
-    @Body('keyWord') keyWord: string
+    @Body('keyWord') keyWord: string[]
   ): Promise<unknown> {
     try {
       return this.ok({
