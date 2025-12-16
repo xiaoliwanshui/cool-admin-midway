@@ -1,5 +1,5 @@
 import { InjectEntityModel } from '@midwayjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { VideoEntity } from '../entity/videos';
 import { VideoAlbumEntity } from '../entity/album';
 import { VideoAlbumRelationship } from '../entity/video_album_relationship';
@@ -56,22 +56,21 @@ export class VideosService extends BaseService {
   @Inject()
   dictInfoService: DictInfoService;
 
-
-    /**
+  /**
    * 修改之前
    * @param data
    * @param type
    */
-  async modifyAfter(data: any, type: "delete" | "update" | "add") {
-      if(type === 'update'){
-        if(data.vip&&data.vipNumber){
-          this.playLineService.startVip(data.id,data.vipNumber-1)
-        }
-        if(!data.vip){
-           this.playLineService.cancelVip(data.id)
-        }
+  async modifyAfter(data: any, type: 'delete' | 'update' | 'add') {
+    if (type === 'update') {
+      if (data.vip && data.vipNumber) {
+        this.playLineService.startVip(data.id, data.vipNumber - 1);
+      }
+      if (!data.vip) {
+        this.playLineService.cancelVip(data.id);
       }
     }
+  }
 
   /**
    * 排序查询
@@ -245,6 +244,21 @@ export class VideosService extends BaseService {
   }
 
   /**
+   * 批量更新 searchRecommendType
+   * @param ids 视频ID数组
+   * @param searchRecommendType 目标 searchRecommendType 值
+   */
+  async updateSearchRecommendType(
+    ids: number[],
+    searchRecommendType: number
+  ): Promise<void> {
+    if (!ids || ids.length === 0) {
+      throw new Error('ids 不能为空');
+    }
+    await this.videoEntity.update({ id: In(ids) }, { searchRecommendType });
+  }
+
+  /**
    * 准备更新数据（移除id字段和时间戳字段）
    */
   private prepareVideoForUpdate(
@@ -288,9 +302,11 @@ export class VideosService extends BaseService {
       });
     }
     if (video.vip) {
-      const shouldReturnLines =(await this.memberService.isValidMember(createUserId));
+      const shouldReturnLines = await this.memberService.isValidMember(
+        createUserId
+      );
       this.logger.warn(TAG, `shouldReturnLines: ${shouldReturnLines}`);
-      if ((!createUserId)|| !shouldReturnLines) {
+      if (!createUserId || !shouldReturnLines) {
         linesWithSources.forEach(item => {
           item.playLines.forEach(items => {
             items.file = '';
@@ -352,7 +368,7 @@ export class VideosService extends BaseService {
             sort: 'DESC',
           },
         });
-        if(video.length > 0) {
+        if (video.length > 0) {
           videoRankList.push({
             ...item,
             list: video,
@@ -360,7 +376,7 @@ export class VideosService extends BaseService {
         }
       }
 
-      return {list: videoRankList};
+      return { list: videoRankList };
     } catch (error) {
       // 记录错误日志
       this.logger.error(TAG, '获取视频排行信息失败', error);

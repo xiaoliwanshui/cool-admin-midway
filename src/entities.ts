@@ -10,7 +10,6 @@ import * as entity7 from './modules/video/entity/play_line';
 import * as entity8 from './modules/video/entity/player';
 import * as entity9 from './modules/video/entity/live';
 import * as entity10 from './modules/video/entity/hot_keyword';
-import * as entity11 from './modules/video/entity/collection_task';
 import * as entity12 from './modules/video/entity/collection_category';
 import * as entity13 from './modules/video/entity/collection';
 import * as entity14 from './modules/video/entity/category';
@@ -63,7 +62,6 @@ export const entities = [
   ...Object.values(entity8),
   ...Object.values(entity9),
   ...Object.values(entity10),
-  ...Object.values(entity11),
   ...Object.values(entity12),
   ...Object.values(entity13),
   ...Object.values(entity14),

@@ -13,7 +13,6 @@ import { CollectionCategoryEntity } from '../entity/collection_category';
 import { VIDEOPARAMS, VideoParams } from '../bean/VideoParams';
 import { ConcurrencyService } from '../service/concurrencyService';
 import { CategoryService } from '../service/categoryService';
-import { CollectionTaskTaskEntity } from '../entity/collection_task';
 import { VideoEntity } from '../entity/videos';
 import { VideoLineService } from './videoLine';
 import { NetworkErrorHandler } from './networkErrorHandler';
@@ -42,9 +41,6 @@ export class CollectionService extends BaseService {
   videoEntity: Repository<VideoEntity>;
   @Inject()
   VideoLineService: VideoLineService;
-
-  @InjectEntityModel(CollectionTaskTaskEntity)
-  collectionTaskTaskEntity: Repository<CollectionTaskTaskEntity>;
 
   @Inject()
   redisService: RedisService;

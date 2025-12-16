@@ -6,6 +6,7 @@ import {PlayLineEntity} from '../entity/play_line';
 import {Line} from '../bean/SourceVideo';
 import axios from 'axios';
 import {VideoLineEntity} from '../entity/video_line';
+import {playFileMergeSQL} from "./play_file_merge";
 
 const TAG = 'PlayLineService';
 
@@ -168,6 +169,17 @@ export class PlayLineService extends BaseService {
       await this.playLineEntity.delete(line.id);
       await this.videoLineEntity.delete(line.video_line_id);
     });
+  }
+
+  //实现一个合并接口
+  async merge(): Promise<string> {
+    try {
+      await this.nativeQuery(playFileMergeSQL);
+      return '任务执行成功';
+    } catch (error) {
+      this.logger.error(TAG, 'Error occurred during merge operation:', error.message);
+      throw error;
+    }
   }
 }
 

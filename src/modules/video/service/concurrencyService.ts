@@ -10,7 +10,6 @@ import { VideosService } from './videos';
 import { CoolCommException } from '@cool-midway/core';
 import { DictInfoService } from '../../dict/service/info';
 import { DictInfoEntity } from '../../dict/entity/info';
-import { CollectionTaskTaskEntity } from '../entity/collection_task';
 import * as moment from 'moment';
 import { RedisService } from '@midwayjs/redis';
 import { VIDEO_RESPONSE } from '../bean/video_response';
@@ -28,9 +27,6 @@ export class ConcurrencyService {
   @InjectEntityModel(VideoEntity)
   videoEntity: Repository<VideoEntity>;
 
-  @InjectEntityModel(CollectionTaskTaskEntity)
-  collectionTaskTaskEntity: Repository<CollectionTaskTaskEntity>;
-
   @Inject()
   videosService: VideosService;
 
@@ -43,7 +39,6 @@ export class ConcurrencyService {
   @Inject()
   networkErrorHandler: NetworkErrorHandler;
 
-  private collectionTaskTaskEntityId = 0;
   private readonly yieldThreshold = 5;
   private readonly listYieldThreshold = 50;
 
@@ -91,9 +86,6 @@ export class ConcurrencyService {
         
         try {
           // this.logger.debug(TAG, `开始处理第${processedCount + 1}条数据`);
-          
-          // 解耦任务记录创建逻辑
-          await this.createTaskRecord(data.collectionEntity as CollectionEntity);
           
           const {
             collectionCategoryEntityList,
@@ -201,18 +193,6 @@ export class ConcurrencyService {
         1500 // 初始延迟1.5秒
       );
       
-      if (params.getPagecount() === params.getPage()) {
-        await this.collectionTaskTaskEntity.update(
-          this.collectionTaskTaskEntityId,
-          {
-            taskStatus: 2,
-            execResult: JSON.stringify(result.data),
-            execParams: JSON.stringify(params.getObject()),
-            endDate: moment().format('YYYY-MM-DD HH:mm:ss'),
-          }
-        );
-        // this.logger.info(TAG, 'request page task finished');
-      }
       return result.data;
     } catch (error) {
       // 网络错误详细信息记录
@@ -234,20 +214,6 @@ export class ConcurrencyService {
       //   `request error ${uri || 'unknown URL'} - ${errorMessage}`
       // );
       
-      await this.collectionTaskTaskEntity.update(
-        this.collectionTaskTaskEntityId,
-        {
-          taskStatus: 3,
-          execResult: JSON.stringify({
-            error: errorMessage,
-            code: error.code || 'UNKNOWN',
-            isNetworkError: this.networkErrorHandler.isNetworkError(error)
-          }),
-          execParams: JSON.stringify(params.getObject()),
-          endDate: moment().format('YYYY-MM-DD HH:mm:ss'),
-          errorMessage: errorMessage,
-        }
-      );
       return {};
     }
   }
@@ -310,21 +276,6 @@ export class ConcurrencyService {
     return error.code === 'ER_DUP_ENTRY' || 
            error.errno === 1062 ||
            (error.message && error.message.includes('Duplicate entry'));
-  }
-
-  // 新增：解耦任务记录创建
-  private async createTaskRecord(collectionEntity: CollectionEntity) {
-    this.collectionTaskTaskEntityId = (
-      await this.collectionTaskTaskEntity.insert({
-        taskName: collectionEntity.name as string,
-        taskType: 1,
-        taskStatus: 1,
-        collectionSource: JSON.stringify(collectionEntity),
-        startDate: moment().format('YYYY-MM-DD HH:mm:ss'),
-        endDate: moment().format('YYYY-MM-DD HH:mm:ss'),
-        remark: '采集任务开始',
-      })
-    )['identifiers'][0].id;
   }
 
   // 新增：解耦数据获取逻辑

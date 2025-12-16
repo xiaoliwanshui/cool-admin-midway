@@ -117,7 +117,6 @@ export class TaskCollectService extends BaseService {
         redisStatus: null,
         collectionSources: [],
         categoryMappings: [],
-        recentTasks: [],
         systemHealth: {}
       };
       
@@ -160,20 +159,7 @@ export class TaskCollectService extends BaseService {
         }
       });
       
-      // 3. 检查最近的采集任务
-      const taskSql = `
-        SELECT 
-          id, taskName, taskStatus, 
-          startDate, endDate, errorMessage
-        FROM collection_task
-        ORDER BY id DESC
-        LIMIT 10
-      `;
-      
-      const recentTasks = await this.nativeQuery(taskSql);
-      diagnosis.recentTasks = recentTasks;
-      
-      // 4. 系统健康检查
+      // 3. 系统健康检查
       const memoryUsage = process.memoryUsage();
       diagnosis.systemHealth = {
         memory: {
