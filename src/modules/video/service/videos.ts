@@ -1,20 +1,20 @@
-import { InjectEntityModel } from '@midwayjs/typeorm';
-import { In, Repository } from 'typeorm';
-import { VideoEntity } from '../entity/videos';
-import { VideoAlbumEntity } from '../entity/album';
-import { VideoAlbumRelationship } from '../entity/video_album_relationship';
-import { VideoWeekEntity } from '../entity/week_video';
-import { WeekEntity } from '../entity/week';
-import { ILogger, Inject, Provide } from '@midwayjs/core';
-import { CollectionEntity } from '../entity/collection';
-import { VideoLineService } from './videoLine';
-import { PlayLineService } from './play_line';
-import { PlayLineEntity } from '../entity/play_line';
-import { DuplicateKeyHandler } from './duplicateKeyHandler';
-import { MemberService } from '../../member/service/member';
-import { BaseService } from '../../base/service/base';
-import { DictInfoEntity } from '../../dict/entity/info';
-import { DictInfoService } from '../../dict/service/info';
+import {InjectEntityModel} from '@midwayjs/typeorm';
+import {In, Repository} from 'typeorm';
+import {VideoEntity} from '../entity/videos';
+import {VideoAlbumEntity} from '../entity/album';
+import {VideoAlbumRelationship} from '../entity/video_album_relationship';
+import {VideoWeekEntity} from '../entity/week_video';
+import {WeekEntity} from '../entity/week';
+import {ILogger, Inject, Provide} from '@midwayjs/core';
+import {CollectionEntity} from '../entity/collection';
+import {VideoLineService} from './videoLine';
+import {PlayLineService} from './play_line';
+import {PlayLineEntity} from '../entity/play_line';
+import {DuplicateKeyHandler} from './duplicateKeyHandler';
+import {MemberService} from '../../member/service/member';
+import {BaseService} from '../../base/service/base';
+import {DictInfoEntity} from '../../dict/entity/info';
+import {DictInfoService} from '../../dict/service/info';
 
 const TAG = 'VideosService';
 
@@ -90,11 +90,11 @@ export class VideosService extends BaseService {
       skip: query.page * (query.page - 1),
       take: query.size,
     });
-    return { list: data, pagination: { page: query.page, size: query.size } };
+    return {list: data, pagination: {page: query.page, size: query.size}};
   }
 
   async week(query: any): Promise<any> {
-    let { list } = await this.videoWeekPage(query);
+    let {list} = await this.videoWeekPage(query);
     return await this.videoWeekVideoPage(list, query);
   }
 
@@ -112,7 +112,7 @@ export class VideosService extends BaseService {
     for (const item of list) {
       let video = [];
       let data = await this.videoWeekEntity.find({
-        where: { week_id: item.id },
+        where: {week_id: item.id},
         take: query.videoSize || 4,
       });
       for (const dataItem of data) {
@@ -124,7 +124,7 @@ export class VideosService extends BaseService {
       }
       item['list'] = video;
     }
-    return { list: list };
+    return {list: list};
   }
 
   //批量插入
@@ -184,66 +184,6 @@ export class VideosService extends BaseService {
   }
 
   /**
-   * 清理视频数据
-   */
-  private cleanVideoData(videoEntity: VideoEntity): void {
-    // 确保sort字段有默认值
-    if (videoEntity.sort === undefined || videoEntity.sort === null) {
-      videoEntity.sort = 0;
-    }
-
-    // 清理可能为null的字符串字段
-    const stringFields = [
-      'video_class',
-      'video_tag',
-      'sub_title',
-      'directors',
-      'actors',
-      'introduce',
-    ];
-    stringFields.forEach(field => {
-      if (videoEntity[field] === null || videoEntity[field] === undefined) {
-        videoEntity[field] = '';
-      }
-    });
-  }
-
-  /**
-   * 截断过长的数据
-   */
-  private truncateVideoData(videoEntity: VideoEntity): void {
-    // 字段长度限制映射
-    const fieldLimits = {
-      title: 191,
-      sub_title: 191,
-      video_tag: 191,
-      video_class: 191,
-      collection_name: 256,
-    };
-
-    Object.keys(fieldLimits).forEach(field => {
-      if (videoEntity[field] && typeof videoEntity[field] === 'string') {
-        const limit = fieldLimits[field];
-        if (videoEntity[field].length > limit) {
-          videoEntity[field] =
-            videoEntity[field].substring(0, limit - 3) + '...';
-          this.logger.warn(TAG, `字段 ${field} 已截断至 ${limit} 字符`);
-        }
-      }
-    });
-  }
-
-  /**
-   * 准备插入数据（移除id字段）
-   */
-  private prepareVideoForInsert(
-    videoEntity: VideoEntity
-  ): Partial<VideoEntity> {
-    const { id, ...insertData } = videoEntity;
-    return insertData;
-  }
-
-  /**
    * 批量更新 searchRecommendType
    * @param ids 视频ID数组
    * @param searchRecommendType 目标 searchRecommendType 值
@@ -255,18 +195,7 @@ export class VideosService extends BaseService {
     if (!ids || ids.length === 0) {
       throw new Error('ids 不能为空');
     }
-    await this.videoEntity.update({ id: In(ids) }, { searchRecommendType });
-  }
-
-  /**
-   * 准备更新数据（移除id字段和时间戳字段）
-   */
-  private prepareVideoForUpdate(
-    videoEntity: VideoEntity
-  ): Partial<VideoEntity> {
-    const { id, createTime, updateTime, createUserId, ...updateData } =
-      videoEntity;
-    return updateData;
+    await this.videoEntity.update({id: In(ids)}, {searchRecommendType});
   }
 
   /**
@@ -276,7 +205,7 @@ export class VideosService extends BaseService {
   async getVideoDetail(id: number, createUserId?: number): Promise<any> {
     // 获取视频基本信息
     const video = await this.videoEntity.findOne({
-      where: { id },
+      where: {id},
     });
 
     if (!video) {
@@ -285,15 +214,16 @@ export class VideosService extends BaseService {
 
     // 获取视频线路信息
     const videoLines = await this.VideoLineService.videoLineEntity.find({
-      where: { video_id: id },
+      where: {video_id: id},
+      order: {sort: 'DESC'},
     });
 
     // 获取每个线路下的播放资源
     const linesWithSources = [];
     for (const line of videoLines) {
       const playLines = await this.playLineService.playLineEntity.find({
-        where: { video_line_id: line.id },
-        order: { sort: 'ASC' },
+        where: {video_line_id: line.id},
+        order: {sort: 'ASC'},
       });
 
       linesWithSources.push({
@@ -314,7 +244,7 @@ export class VideosService extends BaseService {
         });
       }
     }
-
+    
     return {
       video,
       lines: linesWithSources,
@@ -376,12 +306,83 @@ export class VideosService extends BaseService {
         }
       }
 
-      return { list: videoRankList };
+      return {list: videoRankList};
     } catch (error) {
       // 记录错误日志
       this.logger.error(TAG, '获取视频排行信息失败', error);
       // 抛出错误，让controller层处理并返回给前台
       throw new Error(error?.message || '获取视频排行信息失败');
     }
+  }
+
+  /**
+   * 清理视频数据
+   */
+  private cleanVideoData(videoEntity: VideoEntity): void {
+    // 确保sort字段有默认值
+    if (videoEntity.sort === undefined || videoEntity.sort === null) {
+      videoEntity.sort = 0;
+    }
+
+    // 清理可能为null的字符串字段
+    const stringFields = [
+      'video_class',
+      'video_tag',
+      'sub_title',
+      'directors',
+      'actors',
+      'introduce',
+    ];
+    stringFields.forEach(field => {
+      if (videoEntity[field] === null || videoEntity[field] === undefined) {
+        videoEntity[field] = '';
+      }
+    });
+  }
+
+  /**
+   * 截断过长的数据
+   */
+  private truncateVideoData(videoEntity: VideoEntity): void {
+    // 字段长度限制映射
+    const fieldLimits = {
+      title: 191,
+      sub_title: 191,
+      video_tag: 191,
+      video_class: 191,
+      collection_name: 256,
+    };
+
+    Object.keys(fieldLimits).forEach(field => {
+      if (videoEntity[field] && typeof videoEntity[field] === 'string') {
+        const limit = fieldLimits[field];
+        if (videoEntity[field].length > limit) {
+          videoEntity[field] =
+            videoEntity[field].substring(0, limit - 3) + '...';
+          this.logger.warn(TAG, `字段 ${field} 已截断至 ${limit} 字符`);
+        }
+      }
+    });
+  }
+
+  /**
+   * 准备插入数据（移除id字段）
+   */
+  private prepareVideoForInsert(
+    videoEntity: VideoEntity
+  ): Partial<VideoEntity> {
+    const {id, ...insertData} = videoEntity;
+    return insertData;
+  }
+
+  /**
+   * 准备更新数据（移除id字段和时间戳字段）
+   */
+  private prepareVideoForUpdate(
+    videoEntity: VideoEntity
+  ): Partial<VideoEntity> {
+    const {id, createTime, updateTime, createUserId, ...updateData} =
+      videoEntity;
+    return updateData;
   }
 }

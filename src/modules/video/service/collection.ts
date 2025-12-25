@@ -1,25 +1,19 @@
-import {
-  App,
-  ILogger,
-  IMidwayApplication,
-  Inject,
-  Provide,
-} from '@midwayjs/core';
-import { InjectEntityModel } from '@midwayjs/typeorm';
-import { Repository } from 'typeorm';
-import { RedisService } from '@midwayjs/redis';
-import { CollectionEntity } from '../entity/collection';
-import { CollectionCategoryEntity } from '../entity/collection_category';
-import { VIDEOPARAMS, VideoParams } from '../bean/VideoParams';
-import { ConcurrencyService } from '../service/concurrencyService';
-import { CategoryService } from '../service/categoryService';
-import { VideoEntity } from '../entity/videos';
-import { VideoLineService } from './videoLine';
-import { NetworkErrorHandler } from './networkErrorHandler';
-import { PlayLineService } from './play_line';
-import { VideoRulesEntity } from '../entity/video_rules';
-import { VideosService } from './videos';
-import { BaseService } from '../../base/service/base';
+import {App, ILogger, IMidwayApplication, Inject, Provide,} from '@midwayjs/core';
+import {InjectEntityModel} from '@midwayjs/typeorm';
+import {Repository} from 'typeorm';
+import {RedisService} from '@midwayjs/redis';
+import {CollectionEntity} from '../entity/collection';
+import {CollectionCategoryEntity} from '../entity/collection_category';
+import {VIDEOPARAMS, VideoParams} from '../bean/VideoParams';
+import {ConcurrencyService} from '../service/concurrencyService';
+import {CategoryService} from '../service/categoryService';
+import {VideoEntity} from '../entity/videos';
+import {VideoLineService} from './videoLine';
+import {NetworkErrorHandler} from './networkErrorHandler';
+import {PlayLineService} from './play_line';
+import {VideoRulesEntity} from '../entity/video_rules';
+import {VideosService} from './videos';
+import {BaseService} from '../../base/service/base';
 
 const TAG = 'CollectionService';
 
@@ -27,20 +21,26 @@ const TAG = 'CollectionService';
 export class CollectionService extends BaseService {
   @InjectEntityModel(CollectionEntity)
   collectionEntity: Repository<CollectionEntity>;
+
   @InjectEntityModel(CollectionCategoryEntity)
   collectionCategoryEntity: Repository<CollectionCategoryEntity>;
+
   @Inject()
   logger: ILogger;
+
   @Inject()
   concurrencyService: ConcurrencyService;
+
   @Inject()
   categoryService: CategoryService;
   @Inject()
   videosService: VideosService;
+
   @InjectEntityModel(VideoEntity)
   videoEntity: Repository<VideoEntity>;
+
   @Inject()
-  VideoLineService: VideoLineService;
+  videoLineService: VideoLineService;
 
   @Inject()
   redisService: RedisService;
@@ -69,7 +69,7 @@ export class CollectionService extends BaseService {
    * 然后调用syncVideo方法，并传入操作类型'day'和小时数24。
    */
   async day(id: number) {
-    const collectionEntity = await this.collectionEntity.findOneBy({ id });
+    const collectionEntity = await this.collectionEntity.findOneBy({id});
     await this.syncVideo(collectionEntity, {
       op: 'day',
       h: 24,
@@ -77,7 +77,7 @@ export class CollectionService extends BaseService {
   }
 
   async week(id: number) {
-    const collectionEntity = await this.collectionEntity.findOneBy({ id });
+    const collectionEntity = await this.collectionEntity.findOneBy({id});
     await this.syncVideo(collectionEntity, {
       op: 'week',
       h: 24 * 7,
@@ -97,8 +97,8 @@ export class CollectionService extends BaseService {
 
   async checkVideoLine() {
     const find = this.videoEntity.createQueryBuilder();
-    find.where('play_url_put_in = :play_url_put_in', { play_url_put_in: 0 });
-    const data = await this.entityRenderPage(find, { page: 1, size: 10 });
+    find.where('play_url_put_in = :play_url_put_in', {play_url_put_in: 0});
+    const data = await this.entityRenderPage(find, {page: 1, size: 10});
 
     // 分批处理播放线路检查，避免内存溢出
     const batchSize = 20; // 减小批次大小以降低内存占用
@@ -130,8 +130,8 @@ export class CollectionService extends BaseService {
             if (!isAccessible) {
               // 如果链接不可访问，更新状态为禁用
               await this.playLineService.playLineEntity.update(
-                { id: playLine.id },
-                { status: 0 }
+                {id: playLine.id},
+                {status: 0}
               );
               this.logger.warn(
                 TAG,
@@ -140,8 +140,8 @@ export class CollectionService extends BaseService {
             } else {
               // 如果链接可访问，确保状态为启用
               await this.playLineService.playLineEntity.update(
-                { id: playLine.id },
-                { status: 1 }
+                {id: playLine.id},
+                {status: 1}
               );
               this.logger.info(
                 TAG,
@@ -157,8 +157,8 @@ export class CollectionService extends BaseService {
 
             // 发生错误时也禁用线路
             await this.playLineService.playLineEntity.update(
-              { id: playLine.id },
-              { status: 0 }
+              {id: playLine.id},
+              {status: 0}
             );
           }
         }
@@ -203,7 +203,7 @@ export class CollectionService extends BaseService {
 
       // 只有当collectionEntity存在时才执行插入操作
       if (collectionEntity) {
-        await this.VideoLineService.insert(videoEntity, collectionEntity);
+        await this.videoLineService.insert(videoEntity, collectionEntity);
       }
 
       // 每处理一个视频后稍微延迟
@@ -241,7 +241,7 @@ export class CollectionService extends BaseService {
 
       let page = 0;
       // 从 params 中提取参数，保留所有原始参数
-      const baseParams: VIDEOPARAMS = params ? { ...params } : {};
+      const baseParams: VIDEOPARAMS = params ? {...params} : {};
 
       if (params) {
         if (params.page) {
@@ -345,7 +345,7 @@ export class CollectionService extends BaseService {
    */
   async modifyAfter(data: any, type: 'delete' | 'update' | 'add') {
     this.logger.debug(TAG, '插入数据成功');
-    if (type == 'add') {
+    if (type === 'add') {
       try {
         if (data.id) {
           const fields = await this.videosService.getVideoEntityFields();
@@ -376,6 +376,12 @@ export class CollectionService extends BaseService {
           global.gc();
         }
       }
+    }
+    if (type === 'update') {
+      this.videoLineService.updateSort(data.id, data.sort);
+    }
+    if (type === 'delete') {
+      
     }
   }
 

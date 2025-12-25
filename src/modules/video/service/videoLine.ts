@@ -88,6 +88,7 @@ export class VideoLineService extends BaseService {
         video_id: videoEntity.id,
         video_name: videoEntity.title,
         collection_id: collectionEntity.id,
+        sort: collectionEntity.sort,
       }, ['collection_id', 'video_id']);
 
       // 查询获取实际的 videoLineEntity id
@@ -129,6 +130,7 @@ export class VideoLineService extends BaseService {
           video_id: videoEntity.id,
           video_name: videoEntity.title,
           collection_id: collectionEntity.id,
+          sort: collectionEntity.sort,
         }
       );
       //查询
@@ -160,4 +162,11 @@ export class VideoLineService extends BaseService {
     }
   }
 
+  updateSort(id: number, sort: number) {
+    this.videoLineEntity.update({
+      collection_id: id
+    }, {
+      sort: sort
+    });
+  }
 }
