@@ -112,14 +112,14 @@ export class TaskCollectService extends BaseService {
   async diagnosisCollection() {
     try {
       this.logger.info(TAG, '开始诊断视频采集问题');
-      
+
       const diagnosis = {
         redisStatus: null,
         collectionSources: [],
         categoryMappings: [],
         systemHealth: {}
       };
-      
+
       // 1. 检查Redis状态
       try {
         const redisExists = await this.redisService.exists('video:collection');
@@ -134,10 +134,10 @@ export class TaskCollectService extends BaseService {
         diagnosis.redisStatus = { connected: false, error: error.message };
         this.logger.error(TAG, 'Redis连接失败', error);
       }
-      
+
       // 2. 检查采集源和分类映射
       const sql = `
-        SELECT 
+        SELECT
           c.id as collection_id,
           c.name as collection_name,
           c.address,
@@ -148,17 +148,17 @@ export class TaskCollectService extends BaseService {
         GROUP BY c.id
         ORDER BY c.id
       `;
-      
+
       const collections = await this.nativeQuery(sql);
       diagnosis.collectionSources = collections;
-      
+
       this.logger.info(TAG, `找到 ${collections.length} 个采集源`);
       collections.forEach(col => {
         if (col.category_count === 0) {
           this.logger.warn(TAG, `采集源 "${col.collection_name}" (ID: ${col.collection_id}) 未配置分类映射`);
         }
       });
-      
+
       // 3. 系统健康检查
       const memoryUsage = process.memoryUsage();
       diagnosis.systemHealth = {
@@ -168,10 +168,10 @@ export class TaskCollectService extends BaseService {
         },
         uptime: Math.round(process.uptime()) + 's'
       };
-      
+
       this.logger.info(TAG, '诊断完成', diagnosis);
       return diagnosis;
-      
+
     } catch (error) {
       this.logger.error(TAG, '诊断过程失败', error);
       throw error;

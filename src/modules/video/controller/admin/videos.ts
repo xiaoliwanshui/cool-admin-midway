@@ -1,12 +1,7 @@
-import {
-  BaseController,
-  CoolController,
-  CoolTag,
-  TagTypes,
-} from '@cool-midway/core';
-import { VideoEntity } from '../../entity/videos';
-import { VideosService } from '../../service/videos';
-import { Body, Inject, Post } from '@midwayjs/core';
+import {BaseController, CoolController,} from '@cool-midway/core';
+import {VideoEntity} from '../../entity/videos';
+import {VideosService} from '../../service/videos';
+import {Body, Inject, Post} from '@midwayjs/core';
 
 /**
  * 商品
@@ -31,26 +26,27 @@ import { Body, Inject, Post } from '@midwayjs/core';
       'region',
       'category_pid',
       'searchRecommendType',
+      'play_url_put_in'
     ],
     where: ctx => {
-      const { directors, actors, video_tag } = ctx.request.body;
+      const {directors, actors, video_tag} = ctx.request.body;
       //获取请求头
-      const { aldult } = ctx.request.headers;
+      const {aldult} = ctx.request.headers;
       const where = [
         [
           'directors like :directors',
-          { directors: `%${directors}%` },
+          {directors: `%${directors}%`},
           directors,
         ],
-        ['actors like :actors', { actors: `%${actors}%` }, actors],
+        ['actors like :actors', {actors: `%${actors}%`}, actors],
         [
           'video_tag like :video_tag',
-          { video_tag: `%${video_tag}%` },
+          {video_tag: `%${video_tag}%`},
           video_tag,
         ],
       ];
       if (aldult === '0') {
-        where.push(['category_pid != :category_pid', { category_pid: 643 }]);
+        where.push(['category_pid != :category_pid', {category_pid: 643}]);
       }
       return where;
     },
@@ -63,7 +59,7 @@ export class AdminVideoController extends BaseController {
   @Inject()
   videosService: VideosService;
 
-  @Post('/sort', { summary: '排序' })
+  @Post('/sort', {summary: '排序'})
   async sort(@Body() body): Promise<unknown> {
     try {
       return this.ok(await this.videosService.sort(body));
@@ -72,7 +68,7 @@ export class AdminVideoController extends BaseController {
     }
   }
 
-  @Post('/week', { summary: '周数据' })
+  @Post('/week', {summary: '周数据'})
   async week(@Body() body): Promise<unknown> {
     try {
       return this.ok(await this.videosService.week(body));
@@ -81,7 +77,7 @@ export class AdminVideoController extends BaseController {
     }
   }
 
-  @Post('/videoEntity', { summary: '获取视频字段信息' })
+  @Post('/videoEntity', {summary: '获取视频字段信息'})
   async videoEntity(): Promise<unknown> {
     try {
       return this.ok(await this.videosService.getVideoEntityFields());
@@ -90,7 +86,7 @@ export class AdminVideoController extends BaseController {
     }
   }
 
-  @Post('/updateSearchRecommendType', { summary: '批量更新推荐类型' })
+  @Post('/updateSearchRecommendType', {summary: '批量更新推荐类型'})
   async updateSearchRecommendType(
     @Body() body: { ids: number[]; searchRecommendType: number }
   ): Promise<unknown> {
