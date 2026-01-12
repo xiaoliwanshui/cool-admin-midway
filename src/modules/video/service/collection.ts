@@ -1,19 +1,25 @@
-import {App, ILogger, IMidwayApplication, Inject, Provide,} from '@midwayjs/core';
-import {InjectEntityModel} from '@midwayjs/typeorm';
-import {Repository} from 'typeorm';
-import {RedisService} from '@midwayjs/redis';
-import {CollectionEntity} from '../entity/collection';
-import {CollectionCategoryEntity} from '../entity/collection_category';
-import {VIDEOPARAMS, VideoParams} from '../bean/VideoParams';
-import {ConcurrencyService} from '../service/concurrencyService';
-import {CategoryService} from '../service/categoryService';
-import {VideoEntity} from '../entity/videos';
-import {VideoLineService} from './videoLine';
-import {NetworkErrorHandler} from './networkErrorHandler';
-import {PlayLineService} from './play_line';
-import {VideoRulesEntity} from '../entity/video_rules';
-import {VideosService} from './videos';
-import {BaseService} from '../../base/service/base';
+import {
+  App,
+  ILogger,
+  IMidwayApplication,
+  Inject,
+  Provide,
+} from '@midwayjs/core';
+import { InjectEntityModel } from '@midwayjs/typeorm';
+import { Repository } from 'typeorm';
+import { RedisService } from '@midwayjs/redis';
+import { CollectionEntity } from '../entity/collection';
+import { CollectionCategoryEntity } from '../entity/collection_category';
+import { VIDEOPARAMS, VideoParams } from '../bean/VideoParams';
+import { ConcurrencyService } from '../service/concurrencyService';
+import { CategoryService } from '../service/categoryService';
+import { VideoEntity } from '../entity/videos';
+import { VideoLineService } from './videoLine';
+import { NetworkErrorHandler } from './networkErrorHandler';
+import { PlayLineService } from './play_line';
+import { VideoRulesEntity } from '../entity/video_rules';
+import { VideosService } from './videos';
+import { BaseService } from '../../base/service/base';
 
 const TAG = 'CollectionService';
 
@@ -69,7 +75,7 @@ export class CollectionService extends BaseService {
    * 然后调用syncVideo方法，并传入操作类型'day'和小时数24。
    */
   async day(id: number) {
-    const collectionEntity = await this.collectionEntity.findOneBy({id});
+    const collectionEntity = await this.collectionEntity.findOneBy({ id });
     await this.syncVideo(collectionEntity, {
       op: 'day',
       h: 24,
@@ -77,7 +83,7 @@ export class CollectionService extends BaseService {
   }
 
   async week(id: number) {
-    const collectionEntity = await this.collectionEntity.findOneBy({id});
+    const collectionEntity = await this.collectionEntity.findOneBy({ id });
     await this.syncVideo(collectionEntity, {
       op: 'week',
       h: 24 * 7,
@@ -97,8 +103,8 @@ export class CollectionService extends BaseService {
 
   async checkVideoLine() {
     const find = this.videoEntity.createQueryBuilder();
-    find.where('play_url_put_in = :play_url_put_in', {play_url_put_in: 0});
-    const data = await this.entityRenderPage(find, {page: 1, size: 10});
+    find.where('play_url_put_in = :play_url_put_in', { play_url_put_in: 0 });
+    const data = await this.entityRenderPage(find, { page: 1, size: 10 });
 
     // 分批处理播放线路检查，避免内存溢出
     const batchSize = 20; // 减小批次大小以降低内存占用
@@ -130,8 +136,8 @@ export class CollectionService extends BaseService {
             if (!isAccessible) {
               // 如果链接不可访问，更新状态为禁用
               await this.playLineService.playLineEntity.update(
-                {id: playLine.id},
-                {status: 0}
+                { id: playLine.id },
+                { status: 0 }
               );
               this.logger.warn(
                 TAG,
@@ -140,8 +146,8 @@ export class CollectionService extends BaseService {
             } else {
               // 如果链接可访问，确保状态为启用
               await this.playLineService.playLineEntity.update(
-                {id: playLine.id},
-                {status: 1}
+                { id: playLine.id },
+                { status: 1 }
               );
               this.logger.info(
                 TAG,
@@ -157,8 +163,8 @@ export class CollectionService extends BaseService {
 
             // 发生错误时也禁用线路
             await this.playLineService.playLineEntity.update(
-              {id: playLine.id},
-              {status: 0}
+              { id: playLine.id },
+              { status: 0 }
             );
           }
         }
@@ -241,7 +247,7 @@ export class CollectionService extends BaseService {
 
       let page = 0;
       // 从 params 中提取参数，保留所有原始参数
-      const baseParams: VIDEOPARAMS = params ? {...params} : {};
+      const baseParams: VIDEOPARAMS = params ? { ...params } : {};
 
       if (params) {
         if (params.page) {
@@ -249,68 +255,80 @@ export class CollectionService extends BaseService {
         }
       }
 
-      // 分批处理，避免一次性将所有数据推送到Redis
-      const batchPushSize = 100; // 每批推送100个任务到Redis
+      // 优化：批量收集数据后一次性推送到Redis，大幅提升性能
+      const batchPushSize = 500; // 增大批次大小，减少Redis操作次数
+      const batchData: string[] = []; // 批量收集待推送的数据
       let batchCount = 0;
 
+      // 预先构建基础参数对象，减少对象创建
+      const baseVideoParamsObj = {
+        ...baseParams,
+        ps: limit,
+        pagesize: limit,
+        limit: limit,
+        ac: 'detail',
+        total: total,
+      };
+
       for (page; page <= pagecount; page++) {
-        // 创建 VideoParams 时传入原始 params，确保 op、h、wd 等参数都被保留
-        let videoParams: VideoParams = new VideoParams({
-          ...baseParams,
+        // 直接构建参数对象，避免创建VideoParams实例
+        const videoParamsObj = {
+          ...baseVideoParamsObj,
           page: page,
           pg: page,
-          ps: limit,
-          pagesize: limit,
-          limit: limit,
-          ac: 'detail',
-          total: total,
-        });
-        videoParams.setPagecount(pagecount);
+        };
 
-        // 推送到Redis
-        // 使用 getObject() 方法获取可序列化的参数对象，确保 op、h、wd 等参数都被正确存储
-        await this.redisService.lpush(
-          'video:collection',
+        // 批量收集数据，不立即推送
+        batchData.push(
           JSON.stringify({
-            videoParams: videoParams.getObject(),
+            videoParams: videoParamsObj,
             collectionEntity,
           })
         );
 
-        videoParams = null; // 显式释放引用
         batchCount++;
 
-        // 每批推送完成后添加延迟并检查是否需要刷新
+        // 达到批次大小时，批量推送到Redis
         if (batchCount >= batchPushSize) {
+          // 批量推送：使用Promise.all并发推送，大幅提升性能
+          // 注意：虽然Redis的lpush支持多个值，但midwayjs/redis的lpush方法可能只支持单个值
+          // 使用Promise.all并发推送可以显著减少总耗时
+          const pushPromises = batchData.map(data =>
+            this.redisService.lpush('video:collection', data)
+          );
+          await Promise.all(pushPromises);
+
           // 设置过期时间（只在第一批设置即可）
           if (page < batchPushSize) {
-            this.redisService.expire('video:collection', 60 * 60 * 2);
+            await this.redisService.expire('video:collection', 60 * 60 * 2);
           }
 
-          // 批量推送后添加延迟，减轻系统压力
-          await this.sleep(100);
+          // 清空批次数据
+          batchData.length = 0;
           batchCount = 0;
 
           // 检查内存使用情况并触发垃圾回收
           if (global.gc) {
             const used = process.memoryUsage().heapUsed / 1024 / 1024;
             if (used > 300) {
-              // 降低内存阈值
-              // this.logger.info(
-              //   TAG,
-              //   `当前内存使用 ${used.toFixed(2)} MB，触发垃圾回收`
-              // );
               global.gc();
-
-              // 短暂延迟让GC完成
-              await this.sleep(100);
+              await this.sleep(50); // 减少延迟时间
             }
           }
         }
       }
 
+      // 推送剩余的数据
+      if (batchData.length > 0) {
+        const pushPromises = batchData.map(data =>
+          this.redisService.lpush('video:collection', data)
+        );
+        await Promise.all(pushPromises);
+        batchData.length = 0; // 清空引用
+      }
+
       // 确保设置过期时间
-      this.redisService.expire('video:collection', 60 * 60 * 2);
+      await this.redisService.expire('video:collection', 60 * 60 * 2);
       await this.startCollection();
     } catch (error) {
       if (this.networkErrorHandler.isNetworkError(error)) {
@@ -381,7 +399,6 @@ export class CollectionService extends BaseService {
       this.videoLineService.updateSort(data.id, data.sort);
     }
     if (type === 'delete') {
-      
     }
   }
 

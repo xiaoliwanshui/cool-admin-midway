@@ -37,78 +37,87 @@ export class EChartService extends BaseService {
   @Inject()
   dictInfoService: DictInfoService;
 
-
   @Inject()
   redisService: RedisService;
 
   // 统计user的总数量和今日新增数量
   async user() {
-    return {
-      total: await this.userInfoEntity.count(),
-      today: await this.userInfoEntity.countBy({
-        createTime: new Date()
-      })
-    };
+    // 并行执行两个查询，提升性能
+    const [total, today] = await Promise.all([
+      this.userInfoEntity.count(),
+      this.userInfoEntity.countBy({
+        createTime: new Date(),
+      }),
+    ]);
+
+    return { total, today };
   }
 
   //统计playLineEntity status =0的数量 和占比(百分比)
   async playLine() {
-    const fail: number = await this.playLineEntity.countBy({
-      status: 0
-    });
-    const success: number = await this.playLineEntity.countBy({
-      status: 1
-    });
+    // 并行执行两个查询，提升性能
+    const [fail, success] = await Promise.all([
+      this.playLineEntity.countBy({ status: 0 }),
+      this.playLineEntity.countBy({ status: 1 }),
+    ]);
+
     return {
       fail,
       success,
-      percent: (fail / (success + fail)) * 100
+      percent: (fail / (success + fail)) * 100,
     };
   }
 
   //统计feedbackInfoEntity feedbackType =0的数量 和占比(百分比)
   async feedback() {
     //计算feedbackInfoEntity 周同比 日同比
-    return {
-      week: await this.feedbackInfoEntity.countBy({
+    // 并行执行所有查询，提升性能
+    const [week, day, sum] = await Promise.all([
+      this.feedbackInfoEntity.countBy({
         createTime: Between(
           new Date(new Date().getTime() - 7 * 24 * 60 * 60 * 1000),
           new Date()
-        )
+        ),
       }),
-      day: await this.feedbackInfoEntity.countBy({
+      this.feedbackInfoEntity.countBy({
         createTime: Between(
           new Date(new Date().getTime() - 24 * 60 * 60 * 1000),
           new Date()
-        )
+        ),
       }),
-      sum: await this.feedbackInfoEntity.count()
-    };
+      this.feedbackInfoEntity.count(),
+    ]);
+
+    return { week, day, sum };
   }
 
   // 统计访问的总数量和今日新增数量
   async visit() {
-    // 统计不重复的IP数量
-    const totalResult = await this.sysLogEntity
-      .createQueryBuilder('log')
-      .select('COUNT(DISTINCT log.ip)', 'count')
-      .where('log.ip IS NOT NULL')
-      .getRawOne();
-    
-    // 统计今日不重复的IP数量
-    const todayResult = await this.sysLogEntity
-      .createQueryBuilder('log')
-      .select('COUNT(DISTINCT log.ip)', 'count')
-      .where('log.ip IS NOT NULL')
-      .andWhere('DATE(log.createTime) = DATE(:today)', {
-        today: new Date()
-      })
-      .getRawOne();
-    
+    // 并行执行所有查询，提升性能
+    const [totalResult, todayResult, hourData] = await Promise.all([
+      // 统计不重复的IP数量
+      this.sysLogEntity
+        .createQueryBuilder('log')
+        .select('COUNT(DISTINCT log.ip)', 'count')
+        .where('log.ip IS NOT NULL')
+        .getRawOne(),
+      // 统计今日不重复的IP数量
+      this.sysLogEntity
+        .createQueryBuilder('log')
+        .select('COUNT(DISTINCT log.ip)', 'count')
+        .where('log.ip IS NOT NULL')
+        .andWhere('DATE(log.createTime) = DATE(:today)', {
+          today: new Date(),
+        })
+        .getRawOne(),
+      // 获取按小时区间的数据
+      this.getUserViewsByHourIntervals(),
+    ]);
+
     return {
       total: Number(totalResult?.count || 0),
       today: Number(todayResult?.count || 0),
-      data: await this.getUserViewsByHourIntervals()
+      data: hourData,
     };
   }
 
@@ -121,9 +130,9 @@ export class EChartService extends BaseService {
       .select('MAX(sysLog.params)', 'params') // 使用 MAX 聚合函数处理非分组字段
       .addSelect('COUNT(sysLog.id)', 'count')
       .where('sysLog.params IS NOT NULL')
-      .andWhere('JSON_EXTRACT(sysLog.params, \'$.keyWord\') IS NOT NULL')
-      .andWhere('JSON_EXTRACT(sysLog.params, \'$.keyWord\') != \'\'') // 过滤掉keyword为空字符串的数据
-      .groupBy('JSON_EXTRACT(sysLog.params, \'$.keyWord\')') // 修改 GROUP BY 中的 JSON 路径表达式
+      .andWhere("JSON_EXTRACT(sysLog.params, '$.keyWord') IS NOT NULL")
+      .andWhere("JSON_EXTRACT(sysLog.params, '$.keyWord') != ''") // 过滤掉keyword为空字符串的数据
+      .groupBy("JSON_EXTRACT(sysLog.params, '$.keyWord')") // 修改 GROUP BY 中的 JSON 路径表达式
       .orderBy('count', 'DESC')
       .limit(12)
       .getRawMany();
@@ -152,7 +161,7 @@ export class EChartService extends BaseService {
         .addSelect('COUNT(view.title)', 'count')
         .where('view.createTime BETWEEN :startTime AND :endTime', {
           startTime,
-          endTime
+          endTime,
         })
         .groupBy('view.title')
         .orderBy('count', 'DESC')
@@ -160,12 +169,15 @@ export class EChartService extends BaseService {
         .getRawMany();
     };
 
-    return {
-      today: await getTopTitles(startOfToday, endOfToday),
-      week: await getTopTitles(startOfWeek, endOfWeek),
-      month: await getTopTitles(startOfMonth, endOfMonth),
-      year: await getTopTitles(startOfYear, endOfYear)
-    };
+    // 并行执行所有时间段的查询，提升性能
+    const [today, week, month, year] = await Promise.all([
+      getTopTitles(startOfToday, endOfToday),
+      getTopTitles(startOfWeek, endOfWeek),
+      getTopTitles(startOfMonth, endOfMonth),
+      getTopTitles(startOfYear, endOfYear),
+    ]);
+
+    return { today, week, month, year };
   }
 
   //根据视频category_pid分组统计数据并返回
@@ -175,7 +187,7 @@ export class EChartService extends BaseService {
     const list = await this.videoEntity
       .createQueryBuilder('video')
       .where({
-        category_pid: Not(0)
+        category_pid: Not(0),
       })
       .select('video.category_pid', 'category_pid')
       .addSelect('COUNT(video.id)', 'value')
@@ -195,26 +207,28 @@ export class EChartService extends BaseService {
     const now = new Date();
     const startDate = new Date(now);
     startDate.setDate(now.getDate() - 11); // 获取过去12天的起始日期
-    return {
-      update: await this.videoEntity
+
+    // 并行执行两个查询，提升性能
+    const [update, create] = await Promise.all([
+      this.videoEntity
         .createQueryBuilder('video')
         .select('DATE(video.updateTime)', 'date') // 按天分组日期格式化成年月日格式
         .addSelect('COUNT(video.id)', 'value') // 统计每天的数据量
         .where('video.updateTime BETWEEN :startDate AND :endDate', {
           startDate,
-          endDate: now
+          endDate: now,
         })
         .groupBy('DATE(video.updateTime)') // 按日期分组
         .orderBy('DATE(video.updateTime)', 'ASC') // 按日期升序排列
         .limit(12) // 限制返回最多12条数据
         .getRawMany(), // 返回原始数据
-      create: await this.videoEntity
+      this.videoEntity
         .createQueryBuilder('video')
         .select('DATE(video.createTime)', 'date') // 按天分组日期格式化成年月日格式
         .addSelect('COUNT(video.id)', 'value') // 统计每天的数据量
         .where('video.createTime BETWEEN :startDate AND :endDate', {
           startDate,
-          endDate: now
+          endDate: now,
         })
         .andWhere(
           'video.updateTime IS NULL OR video.updateTime = video.createTime'
@@ -222,42 +236,70 @@ export class EChartService extends BaseService {
         .groupBy('DATE(video.createTime)') // 按日期分组
         .orderBy('DATE(video.createTime)', 'ASC') // 按日期升序排列
         .limit(12) // 限制返回最多12条数据
-        .getRawMany() // 返回原始数据
-    };
+        .getRawMany(), // 返回原始数据
+    ]);
+
+    return { update, create };
   }
 
   //videoEntity play_url_put_in =0 的数量
   async videoPlayUrlPutInCount() {
     return await this.videoEntity.countBy({
-      play_url_put_in: 0
+      play_url_put_in: 0,
     });
   }
 
   //调用前面所有的方法并返回数据
   async getData() {
+    // 并行执行所有统计函数，大幅提升性能
+    const [
+      user,
+      visit,
+      statisticTitleCount,
+      videoCategory,
+      videoCreateTime,
+      keyWord,
+      playLine,
+      feedback,
+      videoPlayUrlPutInCount,
+    ] = await Promise.all([
+      this.user(),
+      this.visit(),
+      this.statisticTitleCount(),
+      this.videoCategoryPid(),
+      this.videoCreateTime(),
+      this.keyWord(),
+      this.playLine(),
+      this.feedback(),
+      this.videoPlayUrlPutInCount(),
+    ]);
+
     const data = {
-      user: await this.user(),
-      visit: await this.visit(),
-      statisticTitleCount: await this.statisticTitleCount(),
-      videoCategory: await this.videoCategoryPid(),
-      videoCreateTime: await this.videoCreateTime(),
-      keyWord: await this.keyWord(),
-      playLine: await this.playLine(),
-      feedback: await this.feedback(),
-      videoPlayUrlPutInCount: await this.videoPlayUrlPutInCount()
+      user,
+      visit,
+      statisticTitleCount,
+      videoCategory,
+      videoCreateTime,
+      keyWord,
+      playLine,
+      feedback,
+      videoPlayUrlPutInCount,
     };
-    //判断redis中是否有数据，有则删除 没有就插入
-    if (await this.redisService.exists('video:echarts')) {
-      await this.redisService.del('video:echarts');
-    }
-    this.redisService.lpush('video:echarts', JSON.stringify(data));
-    this.redisService.expire('video:echarts', 60 * 60);
+
+    // 使用 set 而不是 lpush，更高效且语义更清晰
+    await this.redisService.set(
+      'video:echarts',
+      JSON.stringify(data),
+      'EX',
+      60 * 60
+    );
     return data;
   }
 
   //将redis的数据返回出去
   async info() {
-    let data = await this.redisService.lpop('video:echarts');
+    // 使用 get 而不是 lpop，lpop 会删除数据，get 只读取不删除
+    const data = await this.redisService.get('video:echarts');
     if (data) {
       return JSON.parse(data);
     } else {
@@ -278,29 +320,39 @@ export class EChartService extends BaseService {
       '16:00',
       '18:00',
       '20:00',
-      '22:00'
+      '22:00',
     ];
 
     const now = new Date();
     const results = {};
 
-    for (let i = 0; i < hourIntervals.length; i++) {
+    // 优化：使用并行查询替代串行查询，大幅提升性能
+    const queries = hourIntervals.map(async interval => {
       const startTime = new Date(now);
       const endTime = new Date(now);
 
       // 设置当前小时区间的时间范围
-      const [hours] = hourIntervals[i].split(':');
+      const [hours] = interval.split(':');
       startTime.setHours(Number(hours), 0, 0, 0);
       endTime.setHours(Number(hours) + 2, 0, 0, 0);
 
       // 查询对应时间区间的浏览数
-      // 将结果存入对应的时间区间
-      results[hourIntervals[i]] = await this.sysLogEntity.count({
+      const count = await this.sysLogEntity.count({
         where: {
-          createTime: Between(startTime, endTime)
-        }
+          createTime: Between(startTime, endTime),
+        },
       });
-    }
+
+      return { interval, count };
+    });
+
+    // 并行执行所有查询
+    const queryResults = await Promise.all(queries);
+
+    // 将结果存入对应的时间区间
+    queryResults.forEach(({ interval, count }) => {
+      results[interval] = count;
+    });
 
     return results;
   }

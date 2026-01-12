@@ -1,9 +1,14 @@
-import { BaseController, CoolController, CoolTag, CoolUrlTag, TagTypes } from '@cool-midway/core';
+import {
+  BaseController,
+  CoolController,
+  CoolTag,
+  CoolUrlTag,
+  TagTypes,
+} from '@cool-midway/core';
 import { Body, Get, Inject, Post, Query } from '@midwayjs/core';
-import {Context} from '@midwayjs/koa';
+import { Context } from '@midwayjs/koa';
 import { VideoEntity } from '../../entity/videos';
 import { VideosService } from '../../service/videos';
-
 
 /**
  * 商品
@@ -15,11 +20,17 @@ import { VideosService } from '../../service/videos';
   insertParam: ctx => {
     return {
       // 获得当前登录的后台用户ID，需要请求头传Authorization参数
-      createUserId: ctx.user.id
+      createUserId: ctx.user.id,
     };
   },
   pageQueryOp: {
-    keyWordLikeFields: ['title','sub_title','directors','actors'],
+    keyWordLikeFields: [
+      'title',
+      'sub_title',
+      'directors',
+      'actors',
+      'video_tag',
+    ],
     fieldEq: [
       'category_id',
       'cycle',
@@ -27,7 +38,7 @@ import { VideosService } from '../../service/videos';
       'language',
       'region',
       'category_pid',
-      'searchRecommendType'
+      'searchRecommendType',
     ],
     where: ctx => {
       const { directors, actors, video_tag } = ctx.request.body;
@@ -37,10 +48,14 @@ import { VideosService } from '../../service/videos';
         [
           'directors like :directors',
           { directors: `%${directors}%` },
-          directors
+          directors,
         ],
         ['actors like :actors', { actors: `%${actors}%` }, actors],
-        ['video_tag like :video_tag', { video_tag: `%${video_tag}%` }, video_tag]
+        [
+          'video_tag like :video_tag',
+          { video_tag: `%${video_tag}%` },
+          video_tag,
+        ],
       ];
       if (aldult === '0') {
         where.push(['category_pid != :category_pid', { category_pid: 643 }]);
@@ -48,21 +63,29 @@ import { VideosService } from '../../service/videos';
       return where;
     },
     addOrderBy: {
-      year: 'desc'
-    }
-  }
+      year: 'desc',
+    },
+  },
 })
 @CoolUrlTag({
   key: TagTypes.IGNORE_TOKEN,
-  value: ['page', 'info', 'update', 'rank', 'sort', 'week', 'detail', 'videoEntity']
+  value: [
+    'page',
+    'info',
+    'update',
+    'rank',
+    'sort',
+    'week',
+    'detail',
+    'videoEntity',
+  ],
 })
-
 @CoolUrlTag()
 export class AppVideoController extends BaseController {
   @Inject()
   videosService: VideosService;
 
-    @Inject()
+  @Inject()
   ctx: Context;
 
   @CoolTag(TagTypes.IGNORE_TOKEN)
@@ -90,19 +113,19 @@ export class AppVideoController extends BaseController {
    * @param id 视频ID
    */
   @CoolTag(TagTypes.IGNORE_TOKEN)
-  @Get('/detail',{summary:'获取视频详情'})
+  @Get('/detail', { summary: '获取视频详情' })
   async detail(@Query('id') id: number): Promise<unknown> {
     try {
       const createUserId = this.ctx.user?.id;
-      console.log(this.ctx.user)
-      return this.ok(await this.videosService.getVideoDetail(id,createUserId));
+      console.log(this.ctx.user);
+      return this.ok(await this.videosService.getVideoDetail(id, createUserId));
     } catch (error) {
       return this.fail(error);
     }
   }
 
   @CoolTag(TagTypes.IGNORE_TOKEN)
-  @Get('/rank',{summary:'获取视频排行信息'})
+  @Get('/rank', { summary: '获取视频排行信息' })
   async videoRank(): Promise<unknown> {
     try {
       return this.ok(await this.videosService.getVideoRank());
@@ -115,7 +138,7 @@ export class AppVideoController extends BaseController {
    * 获取视频VideoEntity字段信息
    */
   @CoolTag(TagTypes.IGNORE_TOKEN)
-  @Get('/videoEntity',{summary:'获取视频字段信息'})
+  @Get('/videoEntity', { summary: '获取视频字段信息' })
   async videoEntity(): Promise<unknown> {
     try {
       return this.ok(await this.videosService.getVideoEntityFields());
@@ -123,7 +146,4 @@ export class AppVideoController extends BaseController {
       return this.fail(error);
     }
   }
-
-
-
 }
