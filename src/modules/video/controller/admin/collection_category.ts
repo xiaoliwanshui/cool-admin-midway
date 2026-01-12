@@ -1,9 +1,4 @@
-import {
-  BaseController,
-  CoolController,
-  CoolTag,
-  TagTypes,
-} from '@cool-midway/core';
+import { BaseController, CoolController } from '@cool-midway/core';
 import { CollectionCategoryEntity } from '../../entity/collection_category';
 import { Body, Inject, Post } from '@midwayjs/core';
 import { CategoryService } from '../../service/categoryService';
@@ -18,7 +13,10 @@ import { CategoryService } from '../../service/categoryService';
     };
   },
   pageQueryOp: {
-    fieldEq: ['resource_id'],
+    fieldEq: ['collection_id'],
+  },
+  listQueryOp: {
+    fieldEq: ['collection_id'],
   },
 })
 export class AdminCollectionCategoryController extends BaseController {
@@ -29,7 +27,12 @@ export class AdminCollectionCategoryController extends BaseController {
   @Post('/import_category', { summary: '导入分类' })
   async importCategory(@Body() body): Promise<unknown> {
     try {
-      return this.ok(await this.categoryService.handleCategoryList(body.classList, body.query));
+      return this.ok(
+        await this.categoryService.handleCategoryList(
+          body.classList,
+          body.query
+        )
+      );
     } catch (error) {
       return this.fail(error);
     }

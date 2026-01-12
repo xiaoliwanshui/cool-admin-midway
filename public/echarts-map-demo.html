@@ -1,0 +1,1343 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ECharts 2D 地图示例</title>
+  <!-- 引入 ECharts -->
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: 'Arial', sans-serif;
+      background-color: #003366;
+      color: #fff;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      border-radius: 8px;
+      padding: 20px;
+    }
+    
+    .header {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    
+    .header h1 {
+      color: #fff;
+      margin: 0;
+    }
+    
+    .controls {
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    
+    .controls button {
+      margin: 0 10px;
+      padding: 8px 16px;
+      background: #409EFF;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    
+    .controls button:hover {
+      background: #66b1ff;
+    }
+    
+    #map-container {
+      width: 100%;
+      height: 700px;
+      border-radius: 4px;
+    }
+    
+    .info-panel {
+      margin-top: 20px;
+      padding: 15px;
+      background: rgba(0, 2, 89, 0.8);
+      border-radius: 4px;
+    }
+    
+    .info-panel h3 {
+      margin-top: 0;
+      color: #fff;
+    }
+    
+    .legend {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      margin-top: 15px;
+      flex-wrap: wrap;
+    }
+    
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    
+    .legend-color {
+      width: 20px;
+      height: 20px;
+      border-radius: 3px;
+    }
+    
+    .ui-map-img {
+      padding: 10px;
+    }
+    
+    .ui-maptxt {
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+    
+    .video-container {
+      width: 200px;
+      height: auto;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>项目分布图</h1>
+      <p>展示中国各省份的项目分布情况</p>
+    </div>
+    
+    <div class="controls">
+      <button onclick="switchToChinaMap()">中国地图</button>
+      <button onclick="switchToWorldMap()">世界地图</button>
+      <button onclick="toggleDataView()">切换数据视图</button>
+      <button onclick="resetView()">重置视图</button>
+    </div>
+    
+    <div id="map-container"></div>
+    
+    <div class="info-panel">
+      <h3>地图信息</h3>
+      <p id="map-info">请将鼠标悬停在地图区域上查看详细信息</p>
+      
+      <div class="legend" id="legend">
+        <div class="legend-item">
+          <div class="legend-color" style="background-color: #FFEDA0;"></div>
+          <span>低密度/低GDP</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background-color: #FEB24C;"></div>
+          <span>中密度/中GDP</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background-color: #FC4E2A;"></div>
+          <span>高密度/高GDP</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 全局变量
+    let myChart;
+    let currentMapType = 'china'; // 'china' or 'world'
+    let currentDataView = 'projects'; // 'projects', 'population' or 'gdp'
+    let tooltipInterval = null;  // 定时器句柄
+    let isTooltipPaused = false; // 是否暂停状态
+    
+    // 中国省份数据
+    var data = [{
+       name: '北京',
+       value: 5
+    },
+    {
+       name: '天津',
+       value: 14
+    },
+    {
+       name: '河北',
+       value: 157
+    },
+    {
+       name: '山西',
+       value: 110
+    },
+    {
+       name: '内蒙古',
+       value: 40
+    },
+    {
+       name: '辽宁',
+       value: 40
+    },
+    {
+       name: '吉林',
+       value: 40
+    },
+    {
+       name: '黑龙江',
+       value: 60
+    },
+    {
+       name: '上海',
+       value: 10
+    },
+    {
+       name: '江苏',
+       value: 60
+    },
+    {
+       name: '浙江',
+       value: 50
+    },
+    {
+       name: '安徽',
+       value: 151
+    },
+    {
+       name: '福建',
+       value: 60
+    },
+    {
+       name: '江西',
+       value: 74
+    },
+    {
+       name: '山东',
+       value: 200
+    },
+    {
+       name: '河南',
+       value: 100
+    },
+    {
+       name: '湖北',
+       value: 40
+    },
+    {
+       name: '湖南',
+       value: 50
+    },
+    {
+       name: '重庆',
+       value: 40
+    },
+    {
+       name: '四川',
+       value: 120
+    },
+    {
+       name: '贵州',
+       value: 135
+    },
+    {
+       name: '云南',
+       value: 90
+    },
+    {
+       name: '西藏',
+       value: 25
+    },
+    {
+       name: '陕西',
+       value: 100
+    },
+    {
+       name: '甘肃',
+       value: 60
+    },
+    {
+       name: '青海',
+       value: 20
+    },
+    {
+       name: '宁夏',
+       value: 110
+    },
+    {
+       name: '新疆',
+       value: 32
+    },
+    {
+       name: '广东',
+       value: 10
+    },
+    {
+       name: '广西',
+       value: 100
+    },
+    {
+       name: '海南',
+       value: 40
+    }];
+    
+    // 工具提示数据
+    var toolTipData = [{
+       name: '湖南',
+       value: 5,
+       areas: ["长沙", "株洲", "益阳"]
+    },
+    {
+       name: '安徽',
+       value: 3,
+       areas: ["合肥", "芜湖"]
+    },
+    {
+       name: '山东',
+       value: 80,
+       areas: ["济南", "青岛", "淄博", "烟台", "威海", "临沂"]
+    },
+    {
+       name: '四川',
+       value: 35,
+       areas: ["成都", "攀枝花", "乐山", "泸州"]
+    },
+    {
+       name: '云南',
+       value: 27,
+       areas: ["昆明", "玉溪", "丽江", "普洱", "临沧"]
+    },
+    {
+       name: '黑龙江',
+       value: 13,
+       areas: ["哈尔滨", "鹤岗", "黑河", "绥化", "大庆", "佳木斯"]
+    },
+    {
+       name: '甘肃',
+       value: 42,
+       areas: ["兰州", "嘉峪关", "天水", "酒泉"]
+    },
+    {
+       name: '西藏',
+       value: 74,
+       areas: []
+    }];
+
+    // 地理坐标映射
+    var geoCoordMap = {
+       '北京': [116.4551, 40.2539],
+       '黑龙江': [127.9688, 45.368],
+       '内蒙古': [110.3467, 41.4899],
+       "吉林": [125.8154, 44.2584],
+       "辽宁": [123.1238, 42.1216],
+       "河北": [114.4995, 38.1006],
+       "天津": [117.4219, 39.4189],
+       "山西": [112.3352, 37.9413],
+       "陕西": [109.1162, 34.2004],
+       "甘肃": [103.5901, 36.3043],
+       "宁夏": [106.3586, 38.1775],
+       "青海": [101.4038, 36.8207],
+       "新疆": [87.611053, 43.828171],
+       "西藏": [91.117212, 29.646922],
+       "四川": [103.9526, 30.7617],
+       "重庆": [108.384366, 30.439702],
+       "山东": [117.1582, 36.8701],
+       "河南": [113.4668, 34.6234],
+       "江苏": [118.8062, 31.9208],
+       "安徽": [117.29, 32.0581],
+       "湖北": [114.3896, 30.6628],
+       "浙江": [119.5313, 29.8773],
+       "福建": [119.4543, 25.9222],
+       "江西": [116.0046, 28.6633],
+       "湖南": [113.0823, 28.2568],
+       "贵州": [106.6992, 26.7682],
+       "云南": [102.9199, 25.4663],
+       "广东": [113.12244, 23.009505],
+       "广西": [108.479, 23.1152],
+       "海南": [110.3893, 19.8516],
+       "台湾": [120.702967, 24.123621],
+       '上海': [121.4648, 31.2891]
+    };
+
+    // 视频资源映射
+    var geoCoordMapVideo = {
+       '北京': {
+          url: "beijing.png",
+          src: "beijing.mp4"
+       },
+       '黑龙江':
+       {
+          url: "heilongjiang.png",
+          src: "heilongjiang.mp4"
+       },
+       "吉林": {
+          url: "jilin.png",
+          src: "jilin.mp4"
+       },
+       "辽宁": {
+          url: "jilin.png",
+          src: "jilin.mp4"
+       },
+       '内蒙古': {
+          url: "jilin.png",
+          src: "jilin.mp4"
+       },
+       "河北": {
+          url: "jilin.png",
+          src: "jilin.mp4"
+       },
+       "天津": {
+          url: "jilin.png",
+          src: "jilin.mp4"
+       },
+       "山西": {
+          url: "jilin.png",
+          src: "jilin.mp4"
+       },
+       "陕西": {
+          url: "jilin.png",
+          src: "jilin.mp4"
+       },
+       "甘肃": {
+          url: "jilin.png",
+          src: "jilin.mp4"
+       },
+       "宁夏": {
+          url: "jilin.png",
+          src: "jilin.mp4"
+       },
+       "青海": {
+          url: "jilin.png",
+          src: "jilin.mp4"
+       },
+       "新疆": {
+          url: "jilin.png",
+          src: "jilin.mp4"
+       },
+       "西藏": {
+          url: "jilin.png",
+          src: "jilin.mp4"
+       },
+       "四川": {
+          url: "jilin.png",
+          src: "jilin.mp4"
+       },
+       "重庆": {
+          url: "jilin.png",
+          src: "jilin.mp4"
+       },
+       "山东": {
+          url: "jilin.png",
+          src: "jilin.mp4"
+       },
+       "河南": {
+          url: "jilin.png",
+          src: "jilin.mp4"
+       },
+       "江苏": {
+          url: "jilin.png",
+          src: "jilin.mp4"
+       },
+       "安徽": {
+          url: "jilin.png",
+          src: "jilin.mp4"
+       },
+       "湖北": {
+          url: "jilin.png",
+          src: "jilin.mp4"
+       },
+       "浙江": {
+          url: "jilin.png",
+          src: "jilin.mp4"
+       },
+       "福建": {
+          url: "jilin.png",
+          src: "jilin.mp4"
+       },
+       "江西": {
+          url: "jilin.png",
+          src: "jilin.mp4"
+       },
+       "湖南": {
+          url: "jilin.png",
+          src: "jilin.mp4"
+       },
+       "贵州": {
+          url: "jilin.png",
+          src: "jilin.mp4"
+       },
+       "云南": {
+          url: "jilin.png",
+          src: "jilin.mp4"
+       },
+       "广东": {
+          url: "jilin.png",
+          src: "jilin.mp4"
+       },
+       "广西": {
+          url: "jilin.png",
+          src: "jilin.mp4"
+       },
+       "海南": {
+          url: "jilin.png",
+          src: "jilin.mp4"
+       },
+       "台湾": {
+          url: "jilin.png",
+          src: "jilin.mp4"
+       },
+       '上海': {
+          url: "jilin.png",
+          src: "jilin.mp4"
+       },
+    };
+
+    // 将省份名称转换为数组以便循环
+    var provinces = Object.keys(geoCoordMap);
+    var currentIndex = 0;
+
+    // 转换坐标数据为ECharts需要的格式
+    var scatterData = [];
+    for (var name in geoCoordMap) {
+       scatterData.push({
+          name: name,
+          value: geoCoordMap[name].concat([Math.random() * 100 + 100]), // 添加随机值用于显示
+          symbolSize: 8,
+          itemStyle: {
+             color: '#fff'
+          }
+       });
+    }
+
+    // 初始化地图
+    function initMap() {
+      // 初始化 ECharts 实例
+      myChart = echarts.init(document.getElementById('map-container'));
+
+      // 注册模拟的中国地图数据
+      echarts.registerMap('china', simpleChinaMap);
+      
+      // 注册模拟的世界地图数据
+      echarts.registerMap('world', simpleWorldMap);
+
+      // 显示中国项目分布图
+      renderMap(currentMapType, currentDataView);
+      
+      // 响应式处理
+      window.addEventListener('resize', function() {
+        myChart.resize();
+      });
+    }
+
+    // 简化的中国地图几何数据（模拟数据）
+    const simpleChinaMap = {
+      type: 'FeatureCollection',
+      features: [
+        {
+          type: 'Feature',
+          properties: { name: '北京' },
+          geometry: {
+            type: 'Point',
+            coordinates: [116.4074, 39.9042]
+          }
+        },
+        {
+          type: 'Feature',
+          properties: { name: '上海' },
+          geometry: {
+            type: 'Point',
+            coordinates: [121.4737, 31.2304]
+          }
+        },
+        {
+          type: 'Feature',
+          properties: { name: '广东' },
+          geometry: {
+            type: 'Point',
+            coordinates: [113.2806, 23.1258]
+          }
+        },
+        {
+          type: 'Feature',
+          properties: { name: '江苏' },
+          geometry: {
+            type: 'Point',
+            coordinates: [118.7969, 32.0603]
+          }
+        },
+        {
+          type: 'Feature',
+          properties: { name: '浙江' },
+          geometry: {
+            type: 'Point',
+            coordinates: [120.1536, 30.2875]
+          }
+        },
+        {
+          type: 'Feature',
+          properties: { name: '山东' },
+          geometry: {
+            type: 'Point',
+            coordinates: [117.0009, 36.6758]
+          }
+        },
+        {
+          type: 'Feature',
+          properties: { name: '河南' },
+          geometry: {
+            type: 'Point',
+            coordinates: [113.6654, 34.7580]
+          }
+        },
+        {
+          type: 'Feature',
+          properties: { name: '河北' },
+          geometry: {
+            type: 'Point',
+            coordinates: [114.5025, 38.0455]
+          }
+        },
+        {
+          type: 'Feature',
+          properties: { name: '四川' },
+          geometry: {
+            type: 'Point',
+            coordinates: [104.0659, 30.6599]
+          }
+        },
+        {
+          type: 'Feature',
+          properties: { name: '湖北' },
+          geometry: {
+            type: 'Point',
+            coordinates: [114.2986, 30.5844]
+          }
+        },
+        {
+          type: 'Feature',
+          properties: { name: '湖南' },
+          geometry: {
+            type: 'Point',
+            coordinates: [112.9822, 28.1941]
+          }
+        },
+        {
+          type: 'Feature',
+          properties: { name: '安徽' },
+          geometry: {
+            type: 'Point',
+            coordinates: [117.2272, 31.8206]
+          }
+        },
+        {
+          type: 'Feature',
+          properties: { name: '江西' },
+          geometry: {
+            type: 'Point',
+            coordinates: [115.8582, 28.6829]
+          }
+        },
+        {
+          type: 'Feature',
+          properties: { name: '重庆' },
+          geometry: {
+            type: 'Point',
+            coordinates: [106.5505, 29.5638]
+          }
+        },
+        {
+          type: 'Feature',
+          properties: { name: '陕西' },
+          geometry: {
+            type: 'Point',
+            coordinates: [108.9480, 34.2632]
+          }
+        },
+        {
+          type: 'Feature',
+          properties: { name: '辽宁' },
+          geometry: {
+            type: 'Point',
+            coordinates: [123.4291, 41.8354]
+          }
+        },
+        {
+          type: 'Feature',
+          properties: { name: '山西' },
+          geometry: {
+            type: 'Point',
+            coordinates: [112.5492, 37.8573]
+          }
+        },
+        {
+          type: 'Feature',
+          properties: { name: '云南' },
+          geometry: {
+            type: 'Point',
+            coordinates: [102.7123, 25.0406]
+          }
+        },
+        {
+          type: 'Feature',
+          properties: { name: '广西' },
+          geometry: {
+            type: 'Point',
+            coordinates: [108.3200, 22.8240]
+          }
+        },
+        {
+          type: 'Feature',
+          properties: { name: '贵州' },
+          geometry: {
+            type: 'Point',
+            coordinates: [106.6998, 26.6492]
+          }
+        },
+        {
+          type: 'Feature',
+          properties: { name: '黑龙江' },
+          geometry: {
+            type: 'Point',
+            coordinates: [126.5349, 45.8038]
+          }
+        },
+        {
+          type: 'Feature',
+          properties: { name: '甘肃' },
+          geometry: {
+            type: 'Point',
+            coordinates: [103.8236, 36.0597]
+          }
+        },
+        {
+          type: 'Feature',
+          properties: { name: '新疆' },
+          geometry: {
+            type: 'Point',
+            coordinates: [87.6168, 43.7934]
+          }
+        },
+        {
+          type: 'Feature',
+          properties: { name: '吉林' },
+          geometry: {
+            type: 'Point',
+            coordinates: [125.3235, 43.8871]
+          }
+        },
+        {
+          type: 'Feature',
+          properties: { name: '内蒙古' },
+          geometry: {
+            type: 'Point',
+            coordinates: [111.7649, 40.8183]
+          }
+        },
+        {
+          type: 'Feature',
+          properties: { name: '福建' },
+          geometry: {
+            type: 'Point',
+            coordinates: [119.3062, 26.0753]
+          }
+        },
+        {
+          type: 'Feature',
+          properties: { name: '台湾' },
+          geometry: {
+            type: 'Point',
+            coordinates: [121.5091, 25.0443]
+          }
+        },
+        {
+          type: 'Feature',
+          properties: { name: '海南' },
+          geometry: {
+            type: 'Point',
+            coordinates: [110.3311, 20.0320]
+          }
+        },
+        {
+          type: 'Feature',
+          properties: { name: '宁夏' },
+          geometry: {
+            type: 'Point',
+            coordinates: [106.2782, 38.4664]
+          }
+        },
+        {
+          type: 'Feature',
+          properties: { name: '青海' },
+          geometry: {
+            type: 'Point',
+            coordinates: [101.7789, 36.6232]
+          }
+        },
+        {
+          type: 'Feature',
+          properties: { name: '西藏' },
+          geometry: {
+            type: 'Point',
+            coordinates: [91.1322, 29.6604]
+          }
+        },
+        {
+          type: 'Feature',
+          properties: { name: '天津' },
+          geometry: {
+            type: 'Point',
+            coordinates: [117.1902, 39.1256]
+          }
+        },
+        {
+          type: 'Feature',
+          properties: { name: '香港' },
+          geometry: {
+            type: 'Point',
+            coordinates: [114.1716, 22.2764]
+          }
+        },
+        {
+          type: 'Feature',
+          properties: { name: '澳门' },
+          geometry: {
+            type: 'Point',
+            coordinates: [113.5439, 22.1987]
+          }
+        }
+      ]
+    };
+    
+    // 简化的世界地图几何数据（模拟数据）
+    const simpleWorldMap = {
+      type: 'FeatureCollection',
+      features: [
+        {
+          type: 'Feature',
+          properties: { name: 'China' },
+          geometry: {
+            type: 'Point',
+            coordinates: [104.1954, 35.8617]
+          }
+        },
+        {
+          type: 'Feature',
+          properties: { name: 'United States of America' },
+          geometry: {
+            type: 'Point',
+            coordinates: [-95.7129, 37.0902]
+          }
+        },
+        {
+          type: 'Feature',
+          properties: { name: 'India' },
+          geometry: {
+            type: 'Point',
+            coordinates: [78.9629, 20.5937]
+          }
+        },
+        {
+          type: 'Feature',
+          properties: { name: 'Japan' },
+          geometry: {
+            type: 'Point',
+            coordinates: [138.2529, 36.2048]
+          }
+        },
+        {
+          type: 'Feature',
+          properties: { name: 'Germany' },
+          geometry: {
+            type: 'Point',
+            coordinates: [10.4515, 51.1657]
+          }
+        },
+        {
+          type: 'Feature',
+          properties: { name: 'United Kingdom' },
+          geometry: {
+            type: 'Point',
+            coordinates: [-3.4360, 55.3781]
+          }
+        },
+        {
+          type: 'Feature',
+          properties: { name: 'France' },
+          geometry: {
+            type: 'Point',
+            coordinates: [2.2137, 46.2276]
+          }
+        },
+        {
+          type: 'Feature',
+          properties: { name: 'Italy' },
+          geometry: {
+            type: 'Point',
+            coordinates: [12.5674, 41.8719]
+          }
+        },
+        {
+          type: 'Feature',
+          properties: { name: 'Brazil' },
+          geometry: {
+            type: 'Point',
+            coordinates: [-51.9253, -14.2350]
+          }
+        },
+        {
+          type: 'Feature',
+          properties: { name: 'Russia' },
+          geometry: {
+            type: 'Point',
+            coordinates: [105.3188, 61.5240]
+          }
+        },
+        {
+          type: 'Feature',
+          properties: { name: 'Canada' },
+          geometry: {
+            type: 'Point',
+            coordinates: [-106.3468, 56.1304]
+          }
+        },
+        {
+          type: 'Feature',
+          properties: { name: 'Australia' },
+          geometry: {
+            type: 'Point',
+            coordinates: [133.7751, -25.2744]
+          }
+        },
+        {
+          type: 'Feature',
+          properties: { name: 'South Korea' },
+          geometry: {
+            type: 'Point',
+            coordinates: [127.7669, 35.9078]
+          }
+        },
+        {
+          type: 'Feature',
+          properties: { name: 'Spain' },
+          geometry: {
+            type: 'Point',
+            coordinates: [-3.7038, 40.4168]
+          }
+        },
+        {
+          type: 'Feature',
+          properties: { name: 'Mexico' },
+          geometry: {
+            type: 'Point',
+            coordinates: [-102.5528, 23.6345]
+          }
+        }
+      ]
+    };
+    
+    // 渲染地图
+    function renderMap(mapType, dataView) {
+      currentMapType = mapType;
+      currentDataView = dataView;
+      
+      // 配置选项
+      var option = {
+         backgroundColor: "#003366",
+         title: {
+            show: true,
+            text: "项目分布图",
+            x: 'center',
+            top: "10",
+            textStyle: {
+               color: "#fff",
+               fontFamily: "等线",
+               fontSize: 18,
+            },
+         },
+         tooltip: {
+            trigger: 'item',
+            position: function (point, params, dom, rect, size) {
+               var x = 0; // x坐标位置
+               var y = 0; // y坐标位置
+               // 当前鼠标位置
+               var pointX = point[0];
+               var pointY = point[1];
+               // 提示框大小
+               var boxWidth = size.contentSize[0];
+               var boxHeight = size.contentSize[1];
+
+               // boxWidth > pointX 说明鼠标左边放不下提示框
+               if (boxWidth > pointX) {
+                  x = pointX + 10;
+               } else { // 左边放的下
+                  x = pointX - boxWidth - 10;
+               }
+
+               // boxHeight > pointY 说明鼠标上边放不下提示框
+               if (boxHeight > pointY) {
+                  y = 5;
+               } else { // 上边放得下
+                  y = pointY - boxHeight;
+               }
+               return [x, y];
+            },
+            show: true,
+            enterable: true,
+            textStyle: {
+               fontSize: 13,
+               color: '#fff',
+            },
+            backgroundColor: 'rgba(0,2,89,0.8)',
+            formatter: function (params) {
+               if (geoCoordMapVideo[params.name]) {
+                  const videoSrc = geoCoordMapVideo[params.name].src || '';
+                  return `
+                               <div class="ui-map-img">
+                                  <div class='ui-maptxt'>${params.name}</div>
+                                       <div class="video-container">
+                                           <video 
+                          src="./video/${videoSrc}" 
+                          muted 
+                          autoplay 
+                          style="width: 200px; height: auto; display: block; margin-top: 10px;">
+                          您的浏览器不支持视频播放。
+                      </video>
+                  </div>
+              </div>
+          `;
+               } else {
+                  return params.name + ': ' + params.value;
+               }
+            }
+         },
+         geo: [{
+            layoutCenter: ['50%', '50%'], //位置
+            layoutSize: '180%', //大小
+            show: true,
+            map: mapType,
+            roam: false,
+            zoom: 0.65,
+            aspectScale: 1,
+            label: {
+               normal: {
+                  show: false,
+                  textStyle: {
+                     color: '#fff'
+                  }
+               },
+               emphasis: {
+                  show: false,
+                  textStyle: {
+                     color: '#fff'
+                  }
+               }
+            },
+            itemStyle: {
+               normal: {
+                  areaColor: {
+                     type: "linear",
+                     x: 1200,
+                     y: 0,
+                     x2: 0,
+                     y2: 0,
+                     colorStops: [{
+                        offset: 0,
+                        color: "rgba(3,27,78,0.75)", // 0% 处的颜色
+                     }, {
+                        offset: 1,
+                        color: "rgba(58,149,253,0.75)", // 50% 处的颜色
+                     },],
+                     global: true, // 缺省为 false
+                  },
+                  borderColor: "#c0f3fb",
+                  borderWidth: 1,
+                  shadowColor: "#8cd3ef",
+                  shadowOffsetY: 10,
+                  shadowBlur: 120,
+               },
+               emphasis: {
+                  areaColor: "rgba(0,254,233,0.6)",
+               }
+            }
+         }, {
+            type: "map",
+            map: mapType,
+            zlevel: -1,
+            aspectScale: 1,
+            zoom: 0.65,
+            layoutCenter: ["50%", "51%"],
+            layoutSize: "180%",
+            roam: false,
+            silent: true,
+            itemStyle: {
+               normal: {
+                  borderWidth: 1,
+                  // borderColor:"rgba(17, 149, 216,0.6)",
+                  borderColor: "rgba(58,149,253,0.8)",
+                  shadowColor: "rgba(172, 122, 255,0.5)",
+                  shadowOffsetY: 5,
+                  shadowBlur: 15,
+               },
+            },
+         }, {
+            type: "map",
+            map: mapType,
+            zlevel: -2,
+            aspectScale: 1,
+            zoom: 0.65,
+            layoutCenter: ["50%", "52%"],
+            layoutSize: "180%",
+            roam: false,
+            silent: true,
+            itemStyle: {
+               normal: {
+                  borderWidth: 1,
+                  // borderColor: "rgba(57, 132, 188,0.4)",
+                  borderColor: "rgba(58,149,253,0.6)",
+                  shadowColor: "rgba(65, 214, 255,1)",
+                  shadowOffsetY: 5,
+                  shadowBlur: 15,
+                  areaColor: "rgba(5,21,35,0.1)",
+               },
+            },
+         }, {
+            type: "map",
+            map: mapType,
+            zlevel: -3,
+            aspectScale: 1,
+            zoom: 0.65,
+            layoutCenter: ["50%", "53%"],
+            layoutSize: "180%",
+            roam: false,
+            silent: true,
+            itemStyle: {
+               normal: {
+                  borderWidth: 1,
+                  // borderColor: "rgba(11, 43, 97,0.4)",
+                  borderColor: "rgba(58,149,253,0.4)",
+                  shadowColor: "rgba(58,149,253,1)",
+                  shadowOffsetY: 5,
+                  shadowBlur: 10,
+                  areaColor: "transpercent",
+               },
+            },
+         }, {
+            type: "map",
+            map: mapType,
+            zlevel: -4,
+            aspectScale: 1,
+            zoom: 0.65,
+            layoutCenter: ["50%", "54%"],
+            layoutSize: "180%",
+            roam: false,
+            silent: true,
+            itemStyle: {
+               normal: {
+                  borderWidth: 5,
+                  // borderColor: "rgba(11, 43, 97,0.8)",
+                  borderColor: "rgba(5,9,57,0.8)",
+                  shadowColor: "rgba(29, 111, 165,0.8)",
+                  shadowOffsetY: 15,
+                  shadowBlur: 10,
+                  areaColor: "rgba(5,21,35,0.1)",
+               },
+            },
+         },],
+         series: [
+            {
+               type: 'map',
+               map: mapType,
+               geoIndex: 0,
+               aspectScale: 1, //长宽比
+               zoom: 0.65,
+               showLegendSymbol: true,
+               roam: true,
+               label: {
+                  normal: {
+                     show: true,
+                     textStyle: {
+                        color: "#fff",
+                        fontSize: "120%"
+                     },
+                  },
+                  emphasis: {
+                     show: false,
+                  },
+               },
+               itemStyle: {
+                  normal: {
+                     areaColor: {
+                        type: "linear",
+                        x: 1200,
+                        y: 0,
+                        x2: 0,
+                        y2: 0,
+                        colorStops: [{
+                           offset: 0,
+                           color: "rgba(3,27,78,0.75)", // 0% 处的颜色
+                        }, {
+                           offset: 1,
+                           color: "rgba(58,149,253,0.75)", // 50% 处的颜色
+                        },],
+                        global: true, // 缺省为 false
+                     },
+                     borderColor: "#fff",
+                     borderWidth: 0.2,
+                  },
+               },
+               layoutCenter: ["50%", "50%"],
+               layoutSize: "180%",
+               animation: false,
+               markPoint: {
+                  symbol: "none"
+               },
+               data: data,
+            },
+            {
+               name: '坐标点',
+               type: 'effectScatter',
+               coordinateSystem: 'geo',
+               data: scatterData,
+               symbolSize: function (val) {
+                  return val[2] / 10; // 根据第三个值调整大小
+               },
+               showEffectOn: 'render',
+               rippleEffect: {
+                  brushType: 'stroke'
+               },
+               hoverAnimation: true,
+               label: {
+                  formatter: '{b}',
+                  position: 'right',
+                  show: true
+               },
+               itemStyle: {
+                  color: {
+                     type: 'radial',
+                     x: 0.5,
+                     y: 0.5,
+                     r: 0.5,
+                     colorStops: [
+                        {
+                           offset: 0,
+                           color: 'rgba(255, 255, 255, 1)' // 中心白色
+                        },
+                        {
+                           offset: 1,
+                           color: 'rgba(255, 255, 255, 0)' // 边缘透明
+                        }
+                     ]
+                  },
+                  shadowBlur: 10,
+                  shadowColor: 'rgba(255, 255, 255, 0.5)'
+               },
+               zlevel: 1
+            }
+         ],
+      };
+
+      // 应用配置并渲染
+      myChart.setOption(option);
+      
+      // 跳动效果函数
+      function startTooltipJump() {
+         if (isTooltipPaused) return;
+
+         // 清除之前的定时器（防止重复）
+         if (tooltipInterval) clearInterval(tooltipInterval);
+
+         tooltipInterval = setInterval(() => {
+            // 先隐藏之前的tooltip
+            myChart.dispatchAction({ type: 'hideTip' });
+
+            const currentProvince = provinces[currentIndex];
+            const coord = geoCoordMap[currentProvince] ||
+               geoCoordMap[currentProvince + '市'] ||
+               geoCoordMap[currentProvince + '省'];
+
+            if (coord) {
+               // 获取地理坐标对应的像素坐标
+               const pixelCoord = myChart.convertToPixel({ seriesIndex: 0 }, coord);
+
+               // 显示当前省份的tooltip
+               myChart.dispatchAction({
+                  type: 'showTip',
+                  seriesIndex: 0,
+                  dataIndex: data.findIndex(item => item.name === currentProvince),
+                  position: pixelCoord
+               });
+
+               currentIndex = (currentIndex + 1) % provinces.length;
+            } else {
+               console.warn(`未找到省份 ${currentProvince} 的坐标`);
+               currentIndex = (currentIndex + 1) % provinces.length;
+            }
+         }, 3000);
+      }
+
+      // 开始跳动
+      startTooltipJump();
+
+      // 暂停跳动
+      function stopTooltipJump() {
+         if (tooltipInterval) {
+            clearInterval(tooltipInterval);
+            tooltipInterval = null;
+         }
+
+         // 隐藏最后显示的 tooltip
+         myChart.dispatchAction({ type: 'hideTip' });
+         isTooltipPaused = true;
+      }
+
+      // 恢复跳动
+      function resumeTooltipJump() {
+         isTooltipPaused = false;
+         startTooltipJump();
+      }
+
+      // 鼠标移入暂停跳动
+      myChart.on('mouseover', function () {
+         stopTooltipJump();
+      });
+
+      // 鼠标移出恢复跳动
+      myChart.on('mouseout', function () {
+         resumeTooltipJump();
+      });
+
+      // 添加点击事件
+      myChart.on('click', function (params) {
+         console.log("这是点击部位的参数", params);
+         if (params.name) {
+            console.log("这是点击部位的参数", geoCoordMap[params.name]);
+            document.getElementById('map-info').innerHTML = 
+              `<strong>您点击了:</strong> ${params.name}<br/>
+               项目数量: ${params.value}`;
+         }
+      });
+    }
+    
+    // 切换到中国地图
+    function switchToChinaMap() {
+      renderMap('china', currentDataView);
+    }
+    
+    // 切换到世界地图
+    function switchToWorldMap() {
+      renderMap('world', currentDataView);
+    }
+    
+    // 切换数据视图（项目数/人口/GDP）
+    function toggleDataView() {
+      const newDataView = currentDataView === 'projects' ? 'population' : 
+                         currentDataView === 'population' ? 'gdp' : 'projects';
+      renderMap(currentMapType, newDataView);
+    }
+    
+    // 重置视图
+    function resetView() {
+      renderMap('china', 'projects');
+    }
+    
+    // 页面加载完成后初始化地图
+    document.addEventListener('DOMContentLoaded', function() {
+      initMap();
+    });
+  </script>
+</body>
+</html>
