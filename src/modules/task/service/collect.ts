@@ -5,6 +5,7 @@ import { CollectionService } from '../../video/service/collection';
 import { tagSQLQuery } from '../../video/service/tagGet';
 import { DictInfoService } from '../../dict/service/info';
 import { RedisService } from '@midwayjs/redis';
+import { VideosService } from '../../video/service/videos';
 
 /**
  * TaskCollectService
@@ -24,6 +25,9 @@ export class TaskCollectService extends BaseService {
 
   @Inject()
   redisService: RedisService;
+
+  @Inject()
+  videosService: VideosService;
 
   /**
    * 执行每日采集任务
@@ -177,6 +181,7 @@ export class TaskCollectService extends BaseService {
       throw error;
     }
   }
+
   async getVideoTag() {
     try {
       const tags: any[] = await this.nativeQuery(tagSQLQuery);
@@ -204,6 +209,22 @@ export class TaskCollectService extends BaseService {
 
     } catch (error) {
       this.logger.error(TAG, '获取视频tag异常', error);
+      throw error;
+    }
+  }
+
+  
+  /**
+   * 视频重新匹配分类
+   */
+
+  async rematchCategory() {
+    try {
+      this.logger.info(TAG, '视频重新匹配分类调用了');
+      await this.videosService.rematchCategory();
+      return '任务执行成功';
+    } catch (error) {
+      this.logger.error(TAG, '视频重新匹配分类异常', error);
       throw error;
     }
   }

@@ -146,4 +146,14 @@ export class AppVideoController extends BaseController {
       return this.fail(error);
     }
   }
+
+  @CoolTag(TagTypes.IGNORE_TOKEN)
+  @Post('/rematchCategory', { summary: '视频重新匹配分类' })
+  async rematchCategory(): Promise<unknown> {
+    try {
+      return this.ok(await this.videosService.rematchCategory());
+    } catch (error) {
+      return this.fail(error);
+    }
+  }
 }
