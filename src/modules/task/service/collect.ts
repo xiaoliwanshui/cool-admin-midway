@@ -1,11 +1,11 @@
-import { Inject, Logger, Provide } from '@midwayjs/core';
-import { BaseService } from '@cool-midway/core';
-import { ILogger } from '@midwayjs/logger';
-import { CollectionService } from '../../video/service/collection';
-import { tagSQLQuery } from '../../video/service/tagGet';
-import { DictInfoService } from '../../dict/service/info';
-import { RedisService } from '@midwayjs/redis';
-import { VideosService } from '../../video/service/videos';
+import {Inject, Logger, Provide} from '@midwayjs/core';
+import {BaseService} from '@cool-midway/core';
+import {ILogger} from '@midwayjs/logger';
+import {CollectionService} from '../../video/service/collection';
+import {tagSQLQuery} from '../../video/service/tagGet';
+import {DictInfoService} from '../../dict/service/info';
+import {RedisService} from '@midwayjs/redis';
+import {VideosService} from '../../video/service/videos';
 
 /**
  * TaskCollectService
@@ -85,7 +85,7 @@ export class TaskCollectService extends BaseService {
       'UPDATE video v SET play_url_put_in = CASE WHEN EXISTS (SELECT 1 FROM video_line vl WHERE vl.video_id = v.id) THEN 1 ELSE 0 END;';
     try {
       await this.nativeQuery(SQLQuery);
-       return '任务执行成功';
+      return '任务执行成功';
     } catch (error) {
       this.logger.error(TAG, '数据分类异常', error);
       await this.nativeQuery('ROLLBACK;');
@@ -102,7 +102,7 @@ export class TaskCollectService extends BaseService {
     try {
       this.logger.info(TAG, '检查视频线路调用了');
       await this.collectionService.checkVideoLine();
-       return '任务执行成功';
+      return '任务执行成功';
     } catch (error) {
       this.logger.error(TAG, '检查视频线路异常', error);
       throw error;
@@ -135,7 +135,7 @@ export class TaskCollectService extends BaseService {
         };
         this.logger.info(TAG, `Redis状态: 连接正常，队列长度: ${redisLength}`);
       } catch (error) {
-        diagnosis.redisStatus = { connected: false, error: error.message };
+        diagnosis.redisStatus = {connected: false, error: error.message};
         this.logger.error(TAG, 'Redis连接失败', error);
       }
 
@@ -206,14 +206,14 @@ export class TaskCollectService extends BaseService {
           // this.logger.info(TAG, '视频tag已存在', tag.tag);
         }
       }
-
+      return '任务执行成功';
     } catch (error) {
       this.logger.error(TAG, '获取视频tag异常', error);
       throw error;
     }
   }
 
-  
+
   /**
    * 视频重新匹配分类
    */
