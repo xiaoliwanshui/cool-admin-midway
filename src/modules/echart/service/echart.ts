@@ -95,19 +95,35 @@ export class EChartService extends BaseService {
   async visit() {
     // 并行执行所有查询，提升性能
     const [totalResult, todayResult, hourData] = await Promise.all([
-      // 统计不重复的IP数量
+      // 统计不重复的IP数量（过滤本地IP）
       this.sysLogEntity
         .createQueryBuilder('log')
         .select('COUNT(DISTINCT log.ip)', 'count')
         .where('log.ip IS NOT NULL')
+        .andWhere('log.ip NOT LIKE :localhost1', { localhost1: '127.0.0.1%' })
+        .andWhere('log.ip NOT LIKE :localhost2', { localhost2: '::1%' })
+        .andWhere('log.ip NOT LIKE :localhost3', { localhost3: '::ffff:127.0.0.1%' })
+        .andWhere('log.ip NOT LIKE :private1', { private1: '192.168.%' })
+        .andWhere('log.ip NOT LIKE :private2', { private2: '10.%' })
+        .andWhere('log.ip NOT REGEXP :private3Regex', { 
+          private3Regex: '^172\\.(1[6-9]|2[0-9]|3[0-1])\\.'
+        })
         .getRawOne(),
-      // 统计今日不重复的IP数量
+      // 统计今日不重复的IP数量（过滤本地IP）
       this.sysLogEntity
         .createQueryBuilder('log')
         .select('COUNT(DISTINCT log.ip)', 'count')
         .where('log.ip IS NOT NULL')
         .andWhere('DATE(log.createTime) = DATE(:today)', {
           today: new Date(),
+        })
+        .andWhere('log.ip NOT LIKE :localhost1', { localhost1: '127.0.0.1%' })
+        .andWhere('log.ip NOT LIKE :localhost2', { localhost2: '::1%' })
+        .andWhere('log.ip NOT LIKE :localhost3', { localhost3: '::ffff:127.0.0.1%' })
+        .andWhere('log.ip NOT LIKE :private1', { private1: '192.168.%' })
+        .andWhere('log.ip NOT LIKE :private2', { private2: '10.%' })
+        .andWhere('log.ip NOT REGEXP :private3Regex', { 
+          private3Regex: '^172\\.(1[6-9]|2[0-9]|3[0-1])\\.'
         })
         .getRawOne(),
       // 获取按小时区间的数据
@@ -132,6 +148,14 @@ export class EChartService extends BaseService {
       .where('sysLog.params IS NOT NULL')
       .andWhere("JSON_EXTRACT(sysLog.params, '$.keyWord') IS NOT NULL")
       .andWhere("JSON_EXTRACT(sysLog.params, '$.keyWord') != ''") // 过滤掉keyword为空字符串的数据
+      .andWhere('sysLog.ip NOT LIKE :localhost1', { localhost1: '127.0.0.1%' })
+      .andWhere('sysLog.ip NOT LIKE :localhost2', { localhost2: '::1%' })
+      .andWhere('sysLog.ip NOT LIKE :localhost3', { localhost3: '::ffff:127.0.0.1%' })
+      .andWhere('sysLog.ip NOT LIKE :private1', { private1: '192.168.%' })
+      .andWhere('sysLog.ip NOT LIKE :private2', { private2: '10.%' })
+      .andWhere('sysLog.ip NOT REGEXP :private3Regex', { 
+        private3Regex: '^172\\.(1[6-9]|2[0-9]|3[0-1])\\.'
+      })
       .groupBy("JSON_EXTRACT(sysLog.params, '$.keyWord')") // 修改 GROUP BY 中的 JSON 路径表达式
       .orderBy('count', 'DESC')
       .limit(12)
@@ -336,12 +360,24 @@ export class EChartService extends BaseService {
       startTime.setHours(Number(hours), 0, 0, 0);
       endTime.setHours(Number(hours) + 2, 0, 0, 0);
 
-      // 查询对应时间区间的浏览数
-      const count = await this.sysLogEntity.count({
-        where: {
-          createTime: Between(startTime, endTime),
-        },
-      });
+      // 查询对应时间区间的浏览数（过滤本地IP）
+      const count = await this.sysLogEntity
+        .createQueryBuilder('log')
+        .where('log.createTime BETWEEN :startTime AND :endTime', {
+          startTime,
+          endTime,
+        })
+        .andWhere('log.ip IS NOT NULL')
+        .andWhere('log.ip NOT LIKE :localhost1', { localhost1: '127.0.0.1%' })
+        .andWhere('log.ip NOT LIKE :localhost2', { localhost2: '::1%' })
+        .andWhere('log.ip NOT LIKE :localhost3', { localhost3: '::ffff:127.0.0.1%' })
+        .andWhere('log.ip NOT LIKE :private1', { private1: '192.168.%' })
+        .andWhere('log.ip NOT LIKE :private2', { private2: '10.%' })
+        .andWhere('(log.ip NOT LIKE :private3 OR log.ip NOT REGEXP :private3Regex)', { 
+          private3: '172.%',
+          private3Regex: '^172\\.(1[6-9]|2[0-9]|3[0-1])\\.'
+        })
+        .getCount();
 
       return { interval, count };
     });

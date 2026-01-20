@@ -1,11 +1,11 @@
-import { CoolConfig } from '@cool-midway/core';
-import { MidwayConfig } from '@midwayjs/core';
+import {CoolConfig} from '@cool-midway/core';
+import {MidwayConfig} from '@midwayjs/core';
 import * as path from 'path';
-import { pUploadPath } from '../comm/path';
-import { availablePort } from '../comm/port';
+import {pUploadPath} from '../comm/path';
+import {availablePort} from '../comm/port';
 
 // redis缓存
-import { redisStore } from 'cache-manager-ioredis-yet';
+import {redisStore} from 'cache-manager-ioredis-yet';
 
 export default {
   cryptoConfig: {
@@ -94,7 +94,7 @@ fwIDAQAB
   redis: {
     client: {
       port: 6379, // Redis port
-      host: '114.134.185.126', // Redis host
+      host: '156.224.29.37', // Redis host
       password: '',
       db: 1
     }
@@ -105,7 +105,7 @@ fwIDAQAB
         store: redisStore,
         options: {
           port: 6379,
-          host: '114.134.185.126',
+          host: '156.224.29.37',
           password: '',
           ttl: 0,
           db: 0
