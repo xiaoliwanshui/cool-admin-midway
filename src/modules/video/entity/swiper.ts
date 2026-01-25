@@ -1,5 +1,5 @@
-import { Column, Entity, Index } from 'typeorm';
-import { BaseEntity } from '../../base/entity/base';
+import {Column, Entity, Index} from 'typeorm';
+import {BaseEntity} from '../../base/entity/base';
 
 /**
  * 视频轮播
@@ -7,25 +7,28 @@ import { BaseEntity } from '../../base/entity/base';
 
 @Entity('video_swiper')
 export class VideoSwiperEntity extends BaseEntity {
-  @Column({ comment: '标题', nullable: true })
+  @Column({comment: '标题', nullable: true})
   title: string;
 
-  @Column({ comment: '图片', nullable: true, type: 'text' })
+  @Column({comment: '图片', nullable: true, type: 'text'})
   image: string;
 
-  @Column({ comment: '页面', nullable: true })
+  @Column({comment: '页面', nullable: true})
   path: string;
 
-  @Column({ comment: '关联ID', nullable: true })
+  @Column({comment: '颜色', nullable: true})
+  color: string;
+
+  @Column({comment: '关联ID', nullable: true})
   relatedId: number;
 
   @Index()
-  @Column({ comment: 'category', nullable: true })
+  @Column({comment: 'category', nullable: true})
   category: number;
 
-  @Column({ comment: '排序', nullable: true, default: 0 })
+  @Column({comment: '排序', nullable: true, default: 0})
   sort: number;
 
-  @Column({ comment: '状态', default: true })
+  @Column({comment: '状态', default: true})
   status: number;
 }
