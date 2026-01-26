@@ -19,6 +19,9 @@ export class VideoSwiperEntity extends BaseEntity {
   @Column({comment: '颜色', nullable: true})
   color: string;
 
+  @Column({comment: '副标题', nullable: true})
+  subTitle: string;
+
   @Column({comment: '关联ID', nullable: true})
   relatedId: number;
 
