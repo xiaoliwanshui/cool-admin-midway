@@ -1,14 +1,8 @@
-import {
-  BaseController,
-  CoolController,
-  CoolTag,
-  CoolUrlTag,
-  TagTypes,
-} from '@cool-midway/core';
-import { Body, Get, Inject, Post, Query } from '@midwayjs/core';
-import { Context } from '@midwayjs/koa';
-import { VideoEntity } from '../../entity/videos';
-import { VideosService } from '../../service/videos';
+import {BaseController, CoolController, CoolTag, CoolUrlTag, TagTypes,} from '@cool-midway/core';
+import {Body, Get, Inject, Post, Query} from '@midwayjs/core';
+import {Context} from '@midwayjs/koa';
+import {VideoEntity} from '../../entity/videos';
+import {VideosService} from '../../service/videos';
 
 /**
  * 商品
@@ -30,6 +24,7 @@ import { VideosService } from '../../service/videos';
       'directors',
       'actors',
       'video_tag',
+      'video_class'
     ],
     fieldEq: [
       'category_id',
@@ -41,24 +36,24 @@ import { VideosService } from '../../service/videos';
       'searchRecommendType',
     ],
     where: ctx => {
-      const { directors, actors, video_tag } = ctx.request.body;
+      const {directors, actors, video_tag} = ctx.request.body;
       //获取请求头
-      const { aldult } = ctx.request.headers;
+      const {aldult} = ctx.request.headers;
       const where = [
         [
           'directors like :directors',
-          { directors: `%${directors}%` },
+          {directors: `%${directors}%`},
           directors,
         ],
-        ['actors like :actors', { actors: `%${actors}%` }, actors],
+        ['actors like :actors', {actors: `%${actors}%`}, actors],
         [
           'video_tag like :video_tag',
-          { video_tag: `%${video_tag}%` },
+          {video_tag: `%${video_tag}%`},
           video_tag,
         ],
       ];
       if (aldult === '0') {
-        where.push(['category_pid != :category_pid', { category_pid: 643 }]);
+        where.push(['category_pid != :category_pid', {category_pid: 643}]);
       }
       return where;
     },
@@ -113,7 +108,7 @@ export class AppVideoController extends BaseController {
    * @param id 视频ID
    */
   @CoolTag(TagTypes.IGNORE_TOKEN)
-  @Get('/detail', { summary: '获取视频详情' })
+  @Get('/detail', {summary: '获取视频详情'})
   async detail(@Query('id') id: number): Promise<unknown> {
     try {
       const createUserId = this.ctx.user?.id;
@@ -125,7 +120,7 @@ export class AppVideoController extends BaseController {
   }
 
   @CoolTag(TagTypes.IGNORE_TOKEN)
-  @Get('/rank', { summary: '获取视频排行信息' })
+  @Get('/rank', {summary: '获取视频排行信息'})
   async videoRank(): Promise<unknown> {
     try {
       return this.ok(await this.videosService.getVideoRank());
@@ -138,7 +133,7 @@ export class AppVideoController extends BaseController {
    * 获取视频VideoEntity字段信息
    */
   @CoolTag(TagTypes.IGNORE_TOKEN)
-  @Get('/videoEntity', { summary: '获取视频字段信息' })
+  @Get('/videoEntity', {summary: '获取视频字段信息'})
   async videoEntity(): Promise<unknown> {
     try {
       return this.ok(await this.videosService.getVideoEntityFields());
@@ -148,7 +143,7 @@ export class AppVideoController extends BaseController {
   }
 
   @CoolTag(TagTypes.IGNORE_TOKEN)
-  @Post('/rematchCategory', { summary: '视频重新匹配分类' })
+  @Post('/rematchCategory', {summary: '视频重新匹配分类'})
   async rematchCategory(): Promise<unknown> {
     try {
       return this.ok(await this.videosService.rematchCategory());
