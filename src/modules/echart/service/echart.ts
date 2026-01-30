@@ -1,15 +1,15 @@
-import { BaseService } from '@cool-midway/core';
-import { Inject, Provide } from '@midwayjs/core';
-import { InjectEntityModel } from '@midwayjs/typeorm';
-import { Between, Not, Repository } from 'typeorm';
-import { UserInfoEntity } from '../../user/entity/info';
-import { BaseSysLogEntity } from '../../base/entity/sys/log';
-import { ViewsEntity } from '../../user/entity/views';
-import { VideoEntity } from '../../video/entity/videos';
-import { RedisService } from '@midwayjs/redis';
-import { DictInfoService } from '../../dict/service/info';
-import { PlayLineEntity } from '../../video/entity/play_line';
-import { FeedbackInfoEntity } from '../../application/entity/feedbackInfo';
+import {BaseService} from '@cool-midway/core';
+import {Inject, Provide} from '@midwayjs/core';
+import {InjectEntityModel} from '@midwayjs/typeorm';
+import {Between, Not, Repository} from 'typeorm';
+import {UserInfoEntity} from '../../user/entity/info';
+import {BaseSysLogEntity} from '../../base/entity/sys/log';
+import {ViewsEntity} from '../../user/entity/views';
+import {VideoEntity} from '../../video/entity/videos';
+import {RedisService} from '@midwayjs/redis';
+import {DictInfoService} from '../../dict/service/info';
+import {PlayLineEntity} from '../../video/entity/play_line';
+import {FeedbackInfoEntity} from '../../application/entity/feedbackInfo';
 
 /**
  * 用户信息
@@ -46,19 +46,19 @@ export class EChartService extends BaseService {
     const [total, today] = await Promise.all([
       this.userInfoEntity.count(),
       this.userInfoEntity.countBy({
-        createTime: new Date(),
+        createTime: Between(new Date(new Date().getTime() - 24 * 60 * 60 * 1000), new Date())
       }),
     ]);
 
-    return { total, today };
+    return {total, today};
   }
 
   //统计playLineEntity status =0的数量 和占比(百分比)
   async playLine() {
     // 并行执行两个查询，提升性能
     const [fail, success] = await Promise.all([
-      this.playLineEntity.countBy({ status: 0 }),
-      this.playLineEntity.countBy({ status: 1 }),
+      this.playLineEntity.countBy({status: 0}),
+      this.playLineEntity.countBy({status: 1}),
     ]);
 
     return {
@@ -88,7 +88,7 @@ export class EChartService extends BaseService {
       this.feedbackInfoEntity.count(),
     ]);
 
-    return { week, day, sum };
+    return {week, day, sum};
   }
 
   // 统计访问的总数量和今日新增数量
@@ -100,13 +100,13 @@ export class EChartService extends BaseService {
         .createQueryBuilder('log')
         .select('COUNT(DISTINCT log.ip)', 'count')
         .where('log.ip IS NOT NULL')
-        .andWhere('log.ip NOT LIKE :localhost1', { localhost1: '127.0.0.1%' })
-        .andWhere('log.ip NOT LIKE :localhost2', { localhost2: '::1%' })
+        .andWhere('log.ip NOT LIKE :localhost1', {localhost1: '127.0.0.1%'})
+        .andWhere('log.ip NOT LIKE :localhost2', {localhost2: '::1%'})
         .andWhere('log.ip NOT LIKE :localhost3', {
           localhost3: '::ffff:127.0.0.1%',
         })
-        .andWhere('log.ip NOT LIKE :private1', { private1: '192.168.%' })
-        .andWhere('log.ip NOT LIKE :private2', { private2: '10.%' })
+        .andWhere('log.ip NOT LIKE :private1', {private1: '192.168.%'})
+        .andWhere('log.ip NOT LIKE :private2', {private2: '10.%'})
         .andWhere('log.ip NOT REGEXP :private3Regex', {
           private3Regex: '^172\\.(1[6-9]|2[0-9]|3[0-1])\\.',
         })
@@ -119,13 +119,13 @@ export class EChartService extends BaseService {
         .andWhere('DATE(log.createTime) = DATE(:today)', {
           today: new Date(),
         })
-        .andWhere('log.ip NOT LIKE :localhost1', { localhost1: '127.0.0.1%' })
-        .andWhere('log.ip NOT LIKE :localhost2', { localhost2: '::1%' })
+        .andWhere('log.ip NOT LIKE :localhost1', {localhost1: '127.0.0.1%'})
+        .andWhere('log.ip NOT LIKE :localhost2', {localhost2: '::1%'})
         .andWhere('log.ip NOT LIKE :localhost3', {
           localhost3: '::ffff:127.0.0.1%',
         })
-        .andWhere('log.ip NOT LIKE :private1', { private1: '192.168.%' })
-        .andWhere('log.ip NOT LIKE :private2', { private2: '10.%' })
+        .andWhere('log.ip NOT LIKE :private1', {private1: '192.168.%'})
+        .andWhere('log.ip NOT LIKE :private2', {private2: '10.%'})
         .andWhere('log.ip NOT REGEXP :private3Regex', {
           private3Regex: '^172\\.(1[6-9]|2[0-9]|3[0-1])\\.',
         })
@@ -152,13 +152,13 @@ export class EChartService extends BaseService {
       .where('sysLog.params IS NOT NULL')
       .andWhere("JSON_EXTRACT(sysLog.params, '$.keyWord') IS NOT NULL")
       .andWhere("JSON_EXTRACT(sysLog.params, '$.keyWord') != ''") // 过滤掉keyword为空字符串的数据
-      .andWhere('sysLog.ip NOT LIKE :localhost1', { localhost1: '127.0.0.1%' })
-      .andWhere('sysLog.ip NOT LIKE :localhost2', { localhost2: '::1%' })
+      .andWhere('sysLog.ip NOT LIKE :localhost1', {localhost1: '127.0.0.1%'})
+      .andWhere('sysLog.ip NOT LIKE :localhost2', {localhost2: '::1%'})
       .andWhere('sysLog.ip NOT LIKE :localhost3', {
         localhost3: '::ffff:127.0.0.1%',
       })
-      .andWhere('sysLog.ip NOT LIKE :private1', { private1: '192.168.%' })
-      .andWhere('sysLog.ip NOT LIKE :private2', { private2: '10.%' })
+      .andWhere('sysLog.ip NOT LIKE :private1', {private1: '192.168.%'})
+      .andWhere('sysLog.ip NOT LIKE :private2', {private2: '10.%'})
       .andWhere('sysLog.ip NOT REGEXP :private3Regex', {
         private3Regex: '^172\\.(1[6-9]|2[0-9]|3[0-1])\\.',
       })
@@ -207,7 +207,7 @@ export class EChartService extends BaseService {
       getTopTitles(startOfYear, endOfYear),
     ]);
 
-    return { today, week, month, year };
+    return {today, week, month, year};
   }
 
   //根据视频category_pid分组统计数据并返回
@@ -269,7 +269,7 @@ export class EChartService extends BaseService {
         .getRawMany(), // 返回原始数据
     ]);
 
-    return { update, create };
+    return {update, create};
   }
 
   //videoEntity play_url_put_in =0 的数量
@@ -374,13 +374,13 @@ export class EChartService extends BaseService {
           endTime,
         })
         .andWhere('log.ip IS NOT NULL')
-        .andWhere('log.ip NOT LIKE :localhost1', { localhost1: '127.0.0.1%' })
-        .andWhere('log.ip NOT LIKE :localhost2', { localhost2: '::1%' })
+        .andWhere('log.ip NOT LIKE :localhost1', {localhost1: '127.0.0.1%'})
+        .andWhere('log.ip NOT LIKE :localhost2', {localhost2: '::1%'})
         .andWhere('log.ip NOT LIKE :localhost3', {
           localhost3: '::ffff:127.0.0.1%',
         })
-        .andWhere('log.ip NOT LIKE :private1', { private1: '192.168.%' })
-        .andWhere('log.ip NOT LIKE :private2', { private2: '10.%' })
+        .andWhere('log.ip NOT LIKE :private1', {private1: '192.168.%'})
+        .andWhere('log.ip NOT LIKE :private2', {private2: '10.%'})
         .andWhere(
           '(log.ip NOT LIKE :private3 OR log.ip NOT REGEXP :private3Regex)',
           {
@@ -390,14 +390,14 @@ export class EChartService extends BaseService {
         )
         .getCount();
 
-      return { interval, count };
+      return {interval, count};
     });
 
     // 并行执行所有查询
     const queryResults = await Promise.all(queries);
 
     // 将结果存入对应的时间区间
-    queryResults.forEach(({ interval, count }) => {
+    queryResults.forEach(({interval, count}) => {
       results[interval] = count;
     });
 
