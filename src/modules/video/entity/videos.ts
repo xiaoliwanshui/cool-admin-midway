@@ -1,5 +1,5 @@
-import { Column, Entity, Index, Unique } from 'typeorm';
-import { BaseEntity } from '../../base/entity/base';
+import {Column, Entity, Index, Unique} from 'typeorm';
+import {BaseEntity} from '../../base/entity/base';
 
 const _ = require('lodash');
 
@@ -9,27 +9,27 @@ const _ = require('lodash');
 @Entity('video')
 @Unique(['title'])
 export class VideoEntity extends BaseEntity {
-  @Index({ unique: true }) // 定义全文索引
-  @Column({ comment: '影片标题', length: 191, nullable: true })
+  @Index({unique: true}) // 定义全文索引
+  @Column({comment: '影片标题', length: 191, nullable: true})
   title: string;
 
-  @Column({ comment: '影片副标题', length: 191, nullable: true })
+  @Column({comment: '影片副标题', length: 191, nullable: true})
   sub_title: string;
 
-  @Column({ comment: '是否vip', nullable: true, default: 0 })
+  @Column({comment: '是否vip', nullable: true, default: 0})
   vip: number;
 
-  @Column({ comment: '影片标签', length: 191, nullable: true })
+  @Column({comment: '影片标签', length: 191, nullable: true})
   video_tag: string;
-  @Column({ comment: '影片类型', length: 191, nullable: true })
+  @Column({comment: '影片类型', length: 191, nullable: true})
   video_class: string;
   //添加索引
   @Index()
-  @Column({ comment: '分类', nullable: true })
+  @Column({comment: '分类', nullable: true})
   category_id: number;
-  @Column({ comment: '父级分类', nullable: true })
+  @Column({comment: '父级分类', nullable: true})
   category_pid: number;
-  @Column({ comment: '影片封面图', type: 'text', nullable: true })
+  @Column({comment: '影片封面图', type: 'text', nullable: true})
   surface_plot: string;
   @Column({
     comment: '是否轮播',
@@ -44,11 +44,11 @@ export class VideoEntity extends BaseEntity {
     nullable: true,
   })
   cycle_img: string;
-  @Index({ fulltext: true }) // 定义全文索引
-  @Column({ comment: '导演', type: 'text', nullable: true })
+  @Index({fulltext: true}) // 定义全文索引
+  @Column({comment: '导演', type: 'text', nullable: true})
   directors: string;
-  @Index({ fulltext: true }) // 定义全文索引
-  @Column({ comment: '演员', type: 'text', nullable: true })
+  @Index({fulltext: true}) // 定义全文索引
+  @Column({comment: '演员', type: 'text', nullable: true})
   actors: string;
   @Column({
     comment: 'imd评分.百分制',
@@ -230,29 +230,29 @@ export class VideoEntity extends BaseEntity {
   })
   play_url_put_in: number;
   @Index()
-  @Column({ comment: '资源id', nullable: true })
+  @Column({comment: '资源id', nullable: true})
   collection_id: number;
 
   @Index()
-  @Column({ comment: '顶数', nullable: true })
+  @Column({comment: '顶数', nullable: true})
   up: number;
 
   @Index()
-  @Column({ comment: '踩数', nullable: true })
+  @Column({comment: '踩数', nullable: true})
   down: number;
 
   @Index()
-  @Column({ comment: 'VIP集数', default:0})
+  @Column({comment: 'VIP集数', default: 0})
   vipNumber: number;
 
-  @Column({ comment: '资源名称', nullable: true, length: 256 })
+  @Column({comment: '资源名称', nullable: true, length: 256})
   collection_name: string;
 
   @Index()
-  @Column({ comment: '搜索榜单分类', nullable: true })
+  @Column({comment: '搜索榜单分类', nullable: true})
   searchRecommendType: number;
 
   @Index()
-  @Column({ comment: '排序' })
+  @Column({comment: '排序', default: 0})
   sort: number;
 }

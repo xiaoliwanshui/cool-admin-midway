@@ -1,11 +1,11 @@
-import { ILogger, Inject, Provide } from '@midwayjs/core';
-import { InjectEntityModel } from '@midwayjs/typeorm';
-import { VideoEntity } from '../entity/videos';
-import { In, Repository } from 'typeorm';
-import { VideoAlbumRelationship } from '../entity/video_album_relationship';
-import { VideoAlbumEntity } from '../entity/album';
-import { AlbumQueryDTO } from '../dto/album';
-import { AlbumResponse, AlbumVideoInfo } from '../dto/album_response';
+import {ILogger, Inject, Provide} from '@midwayjs/core';
+import {InjectEntityModel} from '@midwayjs/typeorm';
+import {VideoEntity} from '../entity/videos';
+import {In, Repository} from 'typeorm';
+import {VideoAlbumRelationship} from '../entity/video_album_relationship';
+import {VideoAlbumEntity} from '../entity/album';
+import {AlbumQueryDTO} from '../dto/album';
+import {AlbumResponse, AlbumVideoInfo} from '../dto/album_response';
 
 const TAG = 'AlbumVideoServer';
 
@@ -25,7 +25,7 @@ export class AlbumVideoServer {
 
   //批量添加专辑内容
   async insertAlbumVideo(id: number, title: [string]): Promise<any> {
-    const list = await this.videoEntity.findBy({ title: In(title) });
+    const list = await this.videoEntity.findBy({title: In(title)});
     return await this.videoAlbumRelationship.save(
       list.map(item => {
         return {
@@ -37,7 +37,7 @@ export class AlbumVideoServer {
   }
 
   async album(query: AlbumQueryDTO): Promise<AlbumResponse> {
-    let { list } = await this.videoAlbumEntityPage(query);
+    let {list} = await this.videoAlbumEntityPage(query);
     const pagination = this.setPageDefault(query);
     return {
       list,
@@ -73,19 +73,24 @@ export class AlbumVideoServer {
       take: query.size,
     });
     if (!data.length) {
-      return { list: data as AlbumVideoInfo[] };
+      return {list: data as AlbumVideoInfo[]};
     }
     return this.videoAlbumRelationshipPage(data, query);
   }
 
-  async videoAlbumRelationshipPage(data: VideoAlbumEntity[], query: AlbumQueryDTO): Promise<{ list: AlbumVideoInfo[] }> {
+  async videoAlbumRelationshipPage(data: VideoAlbumEntity[], query: AlbumQueryDTO): Promise<{
+    list: AlbumVideoInfo[]
+  }> {
     if (data.length) {
       for (const item of data) {
         let video: VideoEntity[] = [];
         let relationshipData = await this.videoAlbumRelationship.find({
-          where: { album_id: item.id },
+          where: {album_id: item.id},
           skip: query.videoPage * (query.videoPage - 1),
           take: query.videoSize,
+          order: {
+            sort: 'DESC',
+          },
         });
         for (const dataItem of relationshipData) {
           const videoItem = await this.videoEntity.findOneBy({
@@ -100,6 +105,6 @@ export class AlbumVideoServer {
     } else {
       data = [];
     }
-    return { list: data as AlbumVideoInfo[] };
+    return {list: data as AlbumVideoInfo[]};
   }
 }
