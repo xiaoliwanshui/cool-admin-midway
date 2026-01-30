@@ -94,7 +94,7 @@ fwIDAQAB
   redis: {
     client: {
       port: 6379, // Redis port
-      host: '156.224.29.37', // Redis host
+      host: '127.0.0.1', // Redis host
       password: '',
       db: 1
     }
@@ -105,7 +105,7 @@ fwIDAQAB
         store: redisStore,
         options: {
           port: 6379,
-          host: '156.224.29.37',
+          host: '127.0.0.1',
           password: '',
           ttl: 0,
           db: 0

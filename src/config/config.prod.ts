@@ -12,7 +12,7 @@ export default {
     dataSource: {
       default: {
         type: 'mysql',
-        host: '156.224.29.37',
+        host: '127.0.0.1',
         port: 3306,
         username: 'cms',
         password: 'n4mM4KHkEyaNZEm2',
@@ -35,7 +35,7 @@ export default {
   redis: {
     client: {
       port: 6379, // Redis port
-      host: '156.224.29.37', // Redis host
+      host: '127.0.0.1', // Redis host
       password: '',
       db: 1
     }
@@ -46,7 +46,7 @@ export default {
         store: redisStore,
         options: {
           port: 6379,
-          host: '156.224.29.37',
+          host: '127.0.0.1',
           password: '',
           ttl: 0,
           db: 0,
