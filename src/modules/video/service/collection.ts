@@ -65,6 +65,12 @@ export class CollectionService extends BaseService {
 
   // 是否正在处理采集队列
   private collectionProcessing = false;
+  
+  // 单次处理的最大数量，防止长时间阻塞
+  private readonly maxProcessPerBatch = 100;
+  
+  // 单次处理的最大时间，防止长时间阻塞（毫秒）
+  private readonly maxProcessTimePerBatch = 30000; // 30秒
 
   /**
    * 处理按天同步视频的业务逻辑
@@ -447,10 +453,30 @@ export class CollectionService extends BaseService {
     runBackground(async () => {
       try {
         this.logger.info(TAG, '后台采集任务开始执行');
-        do {
+        
+        // 记录开始时间用于超时控制
+        const startTime = Date.now();
+        let processedCount = 0;
+        
+        // 循环处理，但限制单次处理的数量和时间
+        while (await this.redisService.exists('video:collection')) {
+          // 检查是否超出处理限制
+          if (processedCount >= this.maxProcessPerBatch || 
+              Date.now() - startTime > this.maxProcessTimePerBatch) {
+            this.logger.info(TAG, `达到单次处理限制，已处理: ${processedCount} 项，用时: ${Date.now() - startTime}ms`);
+            
+            // 短暂延迟后重新调度，让其他任务有机会执行
+            setTimeout(() => {
+              this.triggerCollectionProcessing();
+            }, 1000); // 1秒后重新检查
+            
+            return; // 结束当前处理函数
+          }
+          
           await this.concurrencyService.syncVideoPageList();
           await this.sleep(50);
-        } while (await this.redisService.exists('video:collection'));
+          processedCount++;
+        }
 
         if (global.gc) {
           const used = process.memoryUsage().heapUsed / 1024 / 1024;

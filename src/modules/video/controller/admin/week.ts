@@ -1,6 +1,6 @@
-import { BaseController, CoolController } from '@cool-midway/core';
-import { WeekEntity } from '../../entity/week';
-import { VideoEntity } from '../../entity/videos';
+import {BaseController, CoolController} from '@cool-midway/core';
+import {WeekEntity} from '../../entity/week';
+import {VideoEntity} from '../../entity/videos';
 
 /**
  *
@@ -15,7 +15,7 @@ import { VideoEntity } from '../../entity/videos';
     };
   },
   pageQueryOp: {
-    fieldEq: ['week'],
+    fieldEq: ['week', 'videoId'],
     select: [
       'a.*',
       'b.title',

@@ -137,5 +137,18 @@ fwIDAQAB
       // 软删除
       softDelete: true
     }
-  } as CoolConfig
+  } as CoolConfig,
+  // 任务配置
+  task: {
+    // 日志保留天数
+    log: {
+      keepDays: 20
+    },
+    // 任务执行超时时间（毫秒）
+    execution: {
+      timeout: 300000 // 5分钟
+    },
+    // 健康检查间隔时间（毫秒）
+    healthCheckInterval: 600000 // 10分钟，减少日志频率
+  }
 } as MidwayConfig;

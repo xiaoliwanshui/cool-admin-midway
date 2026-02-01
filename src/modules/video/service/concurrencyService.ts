@@ -41,6 +41,12 @@ export class ConcurrencyService {
 
   private readonly yieldThreshold = 5;
   private readonly listYieldThreshold = 50;
+  
+  // 单次处理的最大数量，防止长时间阻塞
+  private readonly maxProcessPerCall = 20;
+  
+  // 单次处理的最大时间，防止长时间阻塞（毫秒）
+  private readonly maxProcessTimePerCall = 10000; // 10秒
 
   async getRedisData() {
     try {
@@ -62,11 +68,19 @@ export class ConcurrencyService {
     try {
       // this.logger.info(TAG, '开始处理Redis中的视频采集数据');
       
-      // 循环处理Redis中的所有数据
+      // 记录开始时间用于超时控制
+      const startTime = Date.now();
       let processedCount = 0;
       let maxRetries = 100; // 最大重试次数，防止无限循环
       
       while (processedCount < maxRetries) {
+        // 检查是否超出处理限制
+        if (processedCount >= this.maxProcessPerCall || 
+            Date.now() - startTime > this.maxProcessTimePerCall) {
+          // this.logger.info(TAG, `达到单次处理限制，已处理: ${processedCount} 项，用时: ${Date.now() - startTime}ms`);
+          break; // 退出循环，让其他任务有机会执行
+        }
+        
         const data: any = await this.getRedisData();
         if (!data) {
           if (processedCount === 0) {
@@ -80,7 +94,7 @@ export class ConcurrencyService {
         // 验证数据结构
         if (!this.validateRedisData(data)) {
           // this.logger.warn(TAG, `第${processedCount + 1}条数据格式无效，跳过`);
-          processedCount++;
+          processedCount++; 
           continue;
         }
         

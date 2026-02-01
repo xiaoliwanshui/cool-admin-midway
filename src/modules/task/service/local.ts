@@ -1,22 +1,13 @@
-import {
-  App,
-  Config,
-  Inject,
-  Logger,
-  Provide,
-  Scope,
-  ScopeEnum,
-} from '@midwayjs/core';
-import { BaseService, CoolEventManager } from '@cool-midway/core';
-import { InjectEntityModel } from '@midwayjs/typeorm';
-import { Equal, LessThan, Repository } from 'typeorm';
-import { TaskInfoEntity } from '../entity/info';
-import { TaskLogEntity } from '../entity/log';
-import { ILogger } from '@midwayjs/logger';
+import {App, Config, IMidwayApplication, Init, Inject, Logger, Provide, Scope, ScopeEnum,} from '@midwayjs/core';
+import {BaseService, CoolEventManager} from '@cool-midway/core';
+import {InjectEntityModel} from '@midwayjs/typeorm';
+import {Equal, LessThan, Repository} from 'typeorm';
+import {TaskInfoEntity} from '../entity/info';
+import {TaskLogEntity} from '../entity/log';
+import {ILogger} from '@midwayjs/logger';
 import * as _ from 'lodash';
-import { Utils } from '../../../comm/utils';
-import { IMidwayApplication } from '@midwayjs/core';
-import { v4 as uuidv4 } from 'uuid';
+import {Utils} from '../../../comm/utils';
+import {v4 as uuidv4} from 'uuid';
 import * as moment from 'moment';
 import * as CronJob from 'cron';
 
@@ -44,17 +35,39 @@ export class TaskLocalService extends BaseService {
   @Config('task.log.keepDays')
   keepDays: number;
 
+  @Config('task.execution.timeout')
+  executionTimeout: number = 300000; // 默认5分钟超时
+
+  @Config('task.healthCheckInterval')
+  healthCheckInterval: number = 300000; // 默认5分钟检查一次
+
   @Inject()
   coolEventManager: CoolEventManager;
 
   // 存储所有运行的任务
   private cronJobs: Map<string, CronJob.CronJob> = new Map();
+  private healthCheckTimer: NodeJS.Timeout;
+
+  @Init()
+  async initHealthCheck() {
+    // 确保定时器被清理
+    if (this.healthCheckTimer) {
+      clearInterval(this.healthCheckTimer);
+    }
+    // 启动健康检查定时器，使用配置的间隔时间
+    this.healthCheckTimer = setInterval(() => {
+      this.checkStuckTasks();
+    }, this.healthCheckInterval);
+
+    // 初始化完成后启动健康检查，但不立即执行
+    // 健康检查由定时器定期执行
+  }
 
   /**
    * 停止任务
    */
   async stop(id) {
-    const task = await this.taskInfoEntity.findOneBy({ id: Equal(id) });
+    const task = await this.taskInfoEntity.findOneBy({id: Equal(id)});
     if (task) {
       this.stopByJobId(task.jobId);
       this.coolEventManager.emit('onLocalTaskStop', task.jobId);
@@ -80,7 +93,7 @@ export class TaskLocalService extends BaseService {
    * 开始任务
    */
   async start(id, type?) {
-    const task = await this.taskInfoEntity.findOneBy({ id: Equal(id) });
+    const task = await this.taskInfoEntity.findOneBy({id: Equal(id)});
     task.status = 1;
     if (type || type == 0) {
       task.type = type;
@@ -92,7 +105,7 @@ export class TaskLocalService extends BaseService {
    * 手动执行一次
    */
   async once(id) {
-    const task = await this.taskInfoEntity.findOneBy({ id: Equal(id) });
+    const task = await this.taskInfoEntity.findOneBy({id: Equal(id)});
     if (task) {
       await this.executeJob(task);
     }
@@ -103,34 +116,6 @@ export class TaskLocalService extends BaseService {
    */
   async exist(jobId) {
     return this.cronJobs.has(jobId);
-  }
-
-  /**
-   * 创建定时任务
-   */
-  private createCronJob(task) {
-    let cronTime;
-    if (task.taskType === 0) {
-      // cron 类型
-      cronTime = task.cron;
-    } else {
-      // 间隔类型
-      cronTime = `*/${task.every / 1000} * * * * *`;
-    }
-
-    const job = new CronJob.CronJob(
-      cronTime,
-      async () => {
-        await this.executeJob(task);
-      },
-      null,
-      false,
-      'Asia/Shanghai'
-    );
-
-    this.cronJobs.set(task.jobId, job);
-    job.start();
-    return job;
   }
 
   /**
@@ -147,13 +132,6 @@ export class TaskLocalService extends BaseService {
   }
 
   /**
-   * 执行任务
-   */
-  private async executeJob(task) {
-    await this.executor(task);
-  }
-
-  /**
    * 新增或修改
    */
   async addOrUpdate(params) {
@@ -163,15 +141,15 @@ export class TaskLocalService extends BaseService {
 
     const shouldStartJob = params.status === 1;
 
-    await this.getOrmManager().transaction(async transactionalEntityManager => {
-      if (params.taskType === 0) {
-        params.limit = null;
-        params.every = null;
-      } else {
-        params.cron = null;
-      }
-      await transactionalEntityManager.save(TaskInfoEntity, params);
-    });
+    // 使用直接保存方式，避免事务复杂性
+    if (params.taskType === 0) {
+      params.limit = null;
+      params.every = null;
+    } else {
+      params.cron = null;
+    }
+
+    await this.taskInfoEntity.save(params);
 
     if (shouldStartJob) {
       await this.restartCronJob(params);
@@ -190,15 +168,15 @@ export class TaskLocalService extends BaseService {
       idArr = ids.split(',');
     }
     for (const id of idArr) {
-      const task = await this.taskInfoEntity.findOneBy({ id });
+      const task = await this.taskInfoEntity.findOneBy({id});
       if (task) {
         const job = this.cronJobs.get(task.jobId);
         if (job) {
           job.stop();
           this.cronJobs.delete(task.jobId);
         }
-        await this.taskInfoEntity.delete({ id });
-        await this.taskLogEntity.delete({ taskId: id });
+        await this.taskInfoEntity.delete({id});
+        await this.taskLogEntity.delete({taskId: id});
       }
     }
   }
@@ -235,7 +213,7 @@ export class TaskLocalService extends BaseService {
   async updateNextRunTime(jobId) {
     const nextRunTime = await this.getNextRunTime(jobId);
     if (nextRunTime) {
-      await this.taskInfoEntity.update({ jobId }, { nextRunTime });
+      await this.taskInfoEntity.update({jobId}, {nextRunTime});
     }
   }
 
@@ -245,7 +223,7 @@ export class TaskLocalService extends BaseService {
   async initTask() {
     try {
       this.logger.info('init local task....');
-      const runningTasks = await this.taskInfoEntity.findBy({ status: 1 });
+      const runningTasks = await this.taskInfoEntity.findBy({status: 1});
       if (!_.isEmpty(runningTasks)) {
         for (const task of runningTasks) {
           const job = await this.exist(task.jobId);
@@ -300,7 +278,7 @@ export class TaskLocalService extends BaseService {
    * 获取任务详情
    */
   async info(id: any): Promise<any> {
-    const info = await this.taskInfoEntity.findOneBy({ id });
+    const info = await this.taskInfoEntity.findOneBy({id});
     return {
       ...info,
       repeatCount: info.limit,
@@ -315,9 +293,12 @@ export class TaskLocalService extends BaseService {
     if (task.startDate && moment(task.startDate).isAfter(moment())) {
       return;
     }
+
+    let timeoutId: NodeJS.Timeout;
     try {
       const currentTime = moment().toDate();
-      const lockExpireTime = moment().add(5, 'minutes').toDate();
+      // 使用配置的超时时间而不是固定的5分钟
+      const lockExpireTime = moment().add(this.executionTimeout / 1000, 'seconds').toDate();
       const result = await this.taskInfoEntity
         .createQueryBuilder()
         .update()
@@ -325,7 +306,7 @@ export class TaskLocalService extends BaseService {
           lastExecuteTime: currentTime,
           lockExpireTime: lockExpireTime,
         })
-        .where('id = :id', { id: task.id })
+        .where('id = :id', {id: task.id})
         .andWhere('lockExpireTime IS NULL OR lockExpireTime < :currentTime', {
           currentTime,
         })
@@ -336,21 +317,136 @@ export class TaskLocalService extends BaseService {
         return;
       }
 
-      const serviceResult = await this.invokeService(task.service);
+      // 设置执行超时控制
+      const timeoutPromise = new Promise((_, reject) => {
+        timeoutId = setTimeout(() => {
+          reject(new Error(`任务执行超时 (${this.executionTimeout}ms)`));
+        }, this.executionTimeout);
+      });
+
+      // 执行实际任务并处理超时
+      const serviceResult = await Promise.race([
+        this.invokeService(task.service),
+        timeoutPromise
+      ]);
+
       await this.record(task, 1, JSON.stringify(serviceResult));
     } catch (error) {
       await this.record(task, 0, error.message);
     } finally {
-      // 释放锁
-      await this.taskInfoEntity.update(
-        { id: task.id },
-        { lockExpireTime: null }
-      );
+      // 清除超时定时器
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+      // 确保锁被释放
+      try {
+        await this.taskInfoEntity.update(
+          {id: task.id},
+          {lockExpireTime: null}
+        );
+      } catch (releaseError) {
+        this.logger.error('释放任务锁失败:', releaseError);
+      }
     }
 
     if (!task.isOnce) {
       await this.updateNextRunTime(task.jobId);
-      await this.taskInfoEntity.update({ id: task.id }, { status: 1 });
+      await this.taskInfoEntity.update({id: task.id}, {status: 1});
     }
+  }
+
+  /**
+   * 检查卡住的任务并清理过期锁
+   */
+  async checkStuckTasks() {
+    try {
+      this.logger.debug('开始检查本地任务的卡住任务...');
+
+      const now = moment().toDate();
+      const expiredLocks = await this.taskInfoEntity.find({
+        where: {
+          lockExpireTime: LessThan(now)
+        }
+      });
+
+      if (expiredLocks.length > 0) {
+        this.logger.warn(`发现 ${expiredLocks.length} 个过期的本地任务锁，正在清理并重新执行...`);
+
+        for (const task of expiredLocks) {
+          this.logger.warn(`清理过期本地任务锁: ${task.name} (ID: ${task.id})`);
+
+          // 清理锁
+          await this.taskInfoEntity.update(
+            {id: task.id},
+            {lockExpireTime: null}
+          );
+
+          // 如果任务是启用状态，尝试重新执行
+          if (task.status === 1) {
+            this.logger.info(`重新执行卡住的本地任务: ${task.name}`);
+            try {
+              await this.executeJob(task);
+              this.logger.info(`卡住任务重新执行成功: ${task.name}`);
+            } catch (error) {
+              this.logger.error(`卡住任务重新执行失败: ${task.name}, 错误:`, error);
+            }
+          }
+        }
+      } else {
+        this.logger.debug('未发现过期的本地任务锁');
+      }
+    } catch (error) {
+      this.logger.error('检查本地卡住的任务时发生错误:', error);
+    }
+  }
+
+  /**
+   * 销毁时清理资源
+   */
+  destroy() {
+    if (this.healthCheckTimer) {
+      clearInterval(this.healthCheckTimer);
+    }
+
+    // 停止所有cron任务
+    for (const [jobId, job] of this.cronJobs) {
+      job.stop();
+      this.cronJobs.delete(jobId);
+    }
+  }
+
+  /**
+   * 创建定时任务
+   */
+  private createCronJob(task) {
+    let cronTime;
+    if (task.taskType === 0) {
+      // cron 类型
+      cronTime = task.cron;
+    } else {
+      // 间隔类型
+      cronTime = `*/${task.every / 1000} * * * * *`;
+    }
+
+    const job = new CronJob.CronJob(
+      cronTime,
+      async () => {
+        await this.executeJob(task);
+      },
+      null,
+      false,
+      'Asia/Shanghai'
+    );
+
+    this.cronJobs.set(task.jobId, job);
+    job.start();
+    return job;
+  }
+
+  /**
+   * 执行任务
+   */
+  private async executeJob(task) {
+    await this.executor(task);
   }
 }

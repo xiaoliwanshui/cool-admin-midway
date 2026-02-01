@@ -1,29 +1,20 @@
-import {
-  App,
-  Config,
-  Inject,
-  Logger,
-  Provide,
-  Scope,
-  ScopeEnum,
-} from '@midwayjs/core';
-import { BaseService } from '@cool-midway/core';
-import { InjectEntityModel } from '@midwayjs/typeorm';
-import { Equal, LessThan, Repository } from 'typeorm';
-import { TaskInfoEntity } from '../entity/info';
-import { TaskLogEntity } from '../entity/log';
-import { ILogger } from '@midwayjs/logger';
+import {App, Config, IMidwayApplication, Init, Inject, Logger, Provide, Scope, ScopeEnum,} from '@midwayjs/core';
+import {BaseService} from '@cool-midway/core';
+import {InjectEntityModel} from '@midwayjs/typeorm';
+import {Equal, LessThan, Repository} from 'typeorm';
+import {TaskInfoEntity} from '../entity/info';
+import {TaskLogEntity} from '../entity/log';
+import {ILogger} from '@midwayjs/logger';
 import * as _ from 'lodash';
-import { Utils } from '../../../comm/utils';
-import { TaskInfoQueue } from '../queue/task';
-import { IMidwayApplication } from '@midwayjs/core';
+import {Utils} from '../../../comm/utils';
+import {TaskInfoQueue} from '../queue/task';
 import * as moment from 'moment';
 
 /**
  * 任务
  */
 @Provide()
-@Scope(ScopeEnum.Request, { allowDowngrade: true })
+@Scope(ScopeEnum.Request, {allowDowngrade: true})
 export class TaskBullService extends BaseService {
   @InjectEntityModel(TaskInfoEntity)
   taskInfoEntity: Repository<TaskInfoEntity>;
@@ -46,12 +37,32 @@ export class TaskBullService extends BaseService {
   @Config('task.log.keepDays')
   keepDays: number;
 
+  @Config('task.execution.timeout')
+  executionTimeout: number = 300000; // 默认5分钟超时
+
+  @Config('task.healthCheckInterval')
+  healthCheckInterval: number = 300000; // 默认5分钟检查一次
+
+  private healthCheckTimer: NodeJS.Timeout;
+
+  @Init()
+  async initHealthCheck() {
+    // 确保定时器被清理
+    if (this.healthCheckTimer) {
+      clearInterval(this.healthCheckTimer);
+    }
+    // 启动健康检查定时器，使用配置的间隔时间
+    this.healthCheckTimer = setInterval(() => {
+      this.checkStuckTasks();
+    }, this.healthCheckInterval);
+  }
+
   /**
    * 停止任务
    * @param id
    */
   async stop(id) {
-    const task = await this.taskInfoEntity.findOneBy({ id: Equal(id) });
+    const task = await this.taskInfoEntity.findOneBy({id: Equal(id)});
     if (task) {
       const result = await this.taskInfoQueue.getJobSchedulers();
       const job = _.find(result, e => {
@@ -65,37 +76,40 @@ export class TaskBullService extends BaseService {
       await this.updateNextRunTime(task.jobId);
     }
   }
+
   /**
    * 移除任务
    * @param taskId
    */
   async remove(taskId) {
-    const info = await this.taskInfoEntity.findOneBy({ id: Equal(taskId) });
+    const info = await this.taskInfoEntity.findOneBy({id: Equal(taskId)});
     const result = await this.taskInfoQueue.getJobSchedulers();
-    const job = _.find(result, { key: info?.jobId });
+    const job = _.find(result, {key: info?.jobId});
     if (job) {
       await this.taskInfoQueue.removeJobScheduler(job.key);
     }
   }
+
   /**
    * 开始任务
    * @param id
    * @param type
    */
   async start(id, type?) {
-    const task = await this.taskInfoEntity.findOneBy({ id: Equal(id) });
+    const task = await this.taskInfoEntity.findOneBy({id: Equal(id)});
     task.status = 1;
     if (type || type == 0) {
       task.type = type;
     }
     await this.addOrUpdate(task);
   }
+
   /**
    * 手动执行一次
    * @param id
    */
   async once(id) {
-    const task = await this.taskInfoEntity.findOneBy({ id: Equal(id) });
+    const task = await this.taskInfoEntity.findOneBy({id: Equal(id)});
     if (task) {
       await this.taskInfoQueue.add(
         {
@@ -110,12 +124,13 @@ export class TaskBullService extends BaseService {
       );
     }
   }
+
   /**
    * 检查任务是否存在
    * @param jobId
    */
   async exist(jobId) {
-    const info = await this.taskInfoEntity.findOneBy({ jobId: Equal(jobId) });
+    const info = await this.taskInfoEntity.findOneBy({jobId: Equal(jobId)});
     if (!info) {
       return false;
     }
@@ -125,6 +140,7 @@ export class TaskBullService extends BaseService {
     });
     return !!job;
   }
+
   /**
    * 新增或修改
    * @param params
@@ -145,7 +161,7 @@ export class TaskBullService extends BaseService {
         if (exist) {
           await this.remove(params.id);
         }
-        const { every, limit, startDate, endDate, cron } = params;
+        const {every, limit, startDate, endDate, cron} = params;
         const repeat = {
           every,
           limit,
@@ -177,6 +193,7 @@ export class TaskBullService extends BaseService {
       });
     }
   }
+
   /**
    * 删除
    * @param ids
@@ -189,13 +206,13 @@ export class TaskBullService extends BaseService {
       idArr = ids.split(',');
     }
     for (const id of idArr) {
-      const task = await this.taskInfoEntity.findOneBy({ id });
+      const task = await this.taskInfoEntity.findOneBy({id});
       const exist = await this.exist(task.jobId);
       if (exist) {
         this.stop(task.id);
       }
-      await this.taskInfoEntity.delete({ id });
-      await this.taskLogEntity.delete({ taskId: id });
+      await this.taskInfoEntity.delete({id});
+      await this.taskLogEntity.delete({taskId: id});
     }
   }
 
@@ -223,6 +240,7 @@ export class TaskBullService extends BaseService {
       createTime: LessThan(moment().subtract(this.keepDays, 'days').toDate()),
     });
   }
+
   /**
    * 初始化任务
    */
@@ -230,7 +248,7 @@ export class TaskBullService extends BaseService {
     try {
       await this.utils.sleep(3000);
       this.logger.info('init task....');
-      const runningTasks = await this.taskInfoEntity.findBy({ status: 1 });
+      const runningTasks = await this.taskInfoEntity.findBy({status: 1});
       if (!_.isEmpty(runningTasks)) {
         for (const task of runningTasks) {
           const job = await this.exist(task.jobId); // 任务已存在就不添加
@@ -240,8 +258,10 @@ export class TaskBullService extends BaseService {
           }
         }
       }
-    } catch (e) {}
+    } catch (e) {
+    }
   }
+
   /**
    * 任务ID
    * @param jobId
@@ -257,6 +277,7 @@ export class TaskBullService extends BaseService {
     }
     return nextRunTime;
   }
+
   /**
    * 更新下次执行时间
    * @param jobId
@@ -267,34 +288,36 @@ export class TaskBullService extends BaseService {
       return;
     }
     await this.taskInfoEntity.update(
-      { jobId },
+      {jobId},
       {
         nextRunTime,
       }
     );
   }
+
   /**
    * 详情
    * @param id
    * @returns
    */
   async info(id: any): Promise<any> {
-    const info = await this.taskInfoEntity.findOneBy({ id });
+    const info = await this.taskInfoEntity.findOneBy({id});
     return {
       ...info,
       repeatCount: info.limit,
     };
   }
+
   /**
    * 刷新任务状态
    */
   async updateStatus(jobId: number) {
-    const task = await this.taskInfoEntity.findOneBy({ id: jobId });
+    const task = await this.taskInfoEntity.findOneBy({id: jobId});
     if (!task) {
       return;
     }
     const result = await this.taskInfoQueue.getJobSchedulers();
-    const job = _.find(result, { key: task.jobId });
+    const job = _.find(result, {key: task.jobId});
     if (!job) {
       return;
     }
@@ -304,6 +327,7 @@ export class TaskBullService extends BaseService {
       await this.taskInfoEntity.update(task.id, task);
     }
   }
+
   /**
    * 调用service
    * @param serviceStr
@@ -336,6 +360,63 @@ export class TaskBullService extends BaseService {
           }
         }
       }
+    }
+  }
+
+  /**
+   * 带超时控制的服务调用
+   * @param serviceStr
+   */
+  async invokeServiceWithTimeout(serviceStr: string) {
+    if (!serviceStr) return;
+
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => {
+        reject(new Error(`任务执行超时 (${this.executionTimeout}ms)`));
+      }, this.executionTimeout);
+    });
+
+    const servicePromise = this.invokeService(serviceStr);
+
+    return Promise.race([servicePromise, timeoutPromise]);
+  }
+
+  /**
+   * 检查卡住的任务并清理过期锁
+   */
+  async checkStuckTasks() {
+    try {
+      // Bull任务不需要锁机制，这里只做日志记录
+      this.logger.debug('Bull任务健康检查完成 - Bull队列自带锁机制');
+
+      // 检查是否有长时间运行的任务（超过配置的超时时间的2倍）
+      const timeoutThreshold = this.executionTimeout * 2;
+      const stuckTime = moment().subtract(timeoutThreshold, 'milliseconds').toDate();
+      
+      const runningTasks = await this.taskInfoEntity.find({
+        where: {
+          status: 1,
+          lastExecuteTime: LessThan(stuckTime)
+        }
+      });
+
+      if (runningTasks.length > 0) {
+        this.logger.warn(`发现 ${runningTasks.length} 个可能卡住的Bull任务，建议检查队列状态`);
+        for (const task of runningTasks) {
+          this.logger.warn(`可能卡住的Bull任务: ${task.name} (ID: ${task.id}), 最后执行时间: ${task.lastExecuteTime}`);
+        }
+      }
+    } catch (error) {
+      this.logger.error('检查Bull任务状态时发生错误:', error);
+    }
+  }
+
+  /**
+   * 销毁时清理资源
+   */
+  destroy() {
+    if (this.healthCheckTimer) {
+      clearInterval(this.healthCheckTimer);
     }
   }
 }

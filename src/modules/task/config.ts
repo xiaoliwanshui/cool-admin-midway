@@ -19,5 +19,12 @@ export default () => {
       // 日志保留时间，单位天
       keepDays: 20,
     },
+    // 任务执行配置
+    execution: {
+      // 任务执行超时时间，单位毫秒
+      timeout: 300000, // 5分钟
+    },
+    // 任务健康检查配置
+    healthCheckInterval: 300000, // 5分钟
   } as ModuleConfig;
 };
