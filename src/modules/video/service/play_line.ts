@@ -27,6 +27,13 @@ export class PlayLineService extends BaseService {
     if (!data.video_line_id || data.video_line_id === null || data.video_line_id === undefined) {
       return;
     }
+
+    // 检查数据源是否可用
+    if (!this.playLineEntity) {
+      this.logger.error(TAG, `PlayLineEntity 数据源未正确初始化`);
+      throw new Error('PlayLineEntity 数据源未正确初始化');
+    }
+
     try {
       // 先检查是否存在相同 file 的记录
       const existing = await this.playLineEntity.findOne({
@@ -62,6 +69,12 @@ export class PlayLineService extends BaseService {
         );
       }
     } catch (error) {
+      // 检查是否是数据源错误
+      if (error && error.message && error.message.includes('DataSource undefined not found')) {
+        this.logger.error(TAG, `数据源错误: ${data.collection_name} ${data.video_name} ${data.name}`, error);
+        throw error; // 重新抛出数据源错误，让上级处理
+      }
+
       // 如果仍然出现重复键错误，尝试更新
       if (
         error.code === 'ER_DUP_ENTRY' ||
@@ -89,19 +102,25 @@ export class PlayLineService extends BaseService {
             `update (duplicate key) ${data.collection_name} ${data.video_name} ${data.name} video_line_id ${data.video_line_id} success`
           );
         } catch (updateError) {
-          // this.logger.error(
-          //   TAG,
-          //   `update failed for ${data.collection_name} ${data.video_name} ${data.name}:`,
-          //   updateError.message
-          // );
+          // 检查是否是数据源错误
+          if (updateError && updateError.message && updateError.message.includes('DataSource undefined not found')) {
+            this.logger.error(TAG, `数据源错误 (更新阶段): ${data.collection_name} ${data.video_name} ${data.name}`, updateError);
+            throw updateError; // 重新抛出数据源错误
+          }
+
+          this.logger.error(
+            TAG,
+            `update failed for ${data.collection_name} ${data.video_name} ${data.name}:`,
+            updateError.message
+          );
           throw updateError;
         }
       } else {
-        // this.logger.error(
-        //   TAG,
-        //   `insert failed for ${data.collection_name} ${data.video_name} ${data.name}:`,
-        //   error.message
-        // );
+        this.logger.error(
+          TAG,
+          `insert failed for ${data.collection_name} ${data.video_name} ${data.name}:`,
+          error.message
+        );
         throw error;
       }
     }
@@ -148,6 +167,7 @@ export class PlayLineService extends BaseService {
       // 添加安全检查，确保vipNumber不小于0且不大于数组长度
       if (vipNumber >= 0 && vipNumber < playLines.length) {
         for (let i = vipNumber; i < playLines.length; i++) {
+          // @ts-ignore
           playLines[i].vip = 1;
         }
       }
@@ -165,10 +185,12 @@ export class PlayLineService extends BaseService {
   //实现一个删除接口删除异常的播放线路 status: 0 的线路 并且video_id相同的线路都删除
   async delete(ids: number[]): Promise<void> {
     const playLine = await this.playLineEntity.findBy({id: In(ids)});
-    playLine.forEach(async (line) => {
+    for (const line of playLine) {
       await this.playLineEntity.delete(line.id);
-      await this.videoLineEntity.delete(line.video_line_id);
-    });
+      if (line.video_line_id) {
+        await this.videoLineEntity.delete(line.video_line_id);
+      }
+    }
   }
 
   //实现一个合并接口
@@ -181,6 +203,12 @@ export class PlayLineService extends BaseService {
       throw error;
     }
   }
+
+  idsDelete(ids: number[] | string[]) {
+    // 将数字转换为字符串以匹配 bigint 类型
+    const stringIds = ids.map(id => id.toString());
+    this.playLineEntity.delete({
+      video_id: In(stringIds)
+    });
+  }
 }
-
-

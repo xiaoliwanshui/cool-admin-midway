@@ -1,6 +1,6 @@
 import {BaseService} from '@cool-midway/core';
 import {InjectEntityModel} from '@midwayjs/typeorm';
-import {Repository} from 'typeorm';
+import {In, Repository} from 'typeorm';
 import {VideoEntity} from '../entity/videos';
 import {VideoLineEntity} from '../entity/video_line';
 import {ILogger, Inject, Provide} from '@midwayjs/core';
@@ -167,6 +167,15 @@ export class VideoLineService extends BaseService {
       collection_id: id
     }, {
       sort: sort
+    });
+  }
+
+  idsDelete(ids: number[] | string[]) {
+    // 将数字转换为字符串以匹配 bigint 类型
+    console.log('ids', typeof ids);
+    const stringIds = ids.map(id => id.toString());
+    this.videoLineEntity.delete({
+      video_id: In(stringIds)
     });
   }
 }

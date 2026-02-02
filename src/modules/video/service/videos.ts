@@ -1,20 +1,20 @@
-import { InjectEntityModel } from '@midwayjs/typeorm';
-import { In, Repository } from 'typeorm';
-import { VideoEntity } from '../entity/videos';
-import { VideoAlbumEntity } from '../entity/album';
-import { VideoAlbumRelationship } from '../entity/video_album_relationship';
-import { VideoWeekEntity } from '../entity/week_video';
-import { WeekEntity } from '../entity/week';
-import { ILogger, Inject, Provide } from '@midwayjs/core';
-import { CollectionEntity } from '../entity/collection';
-import { VideoLineService } from './videoLine';
-import { PlayLineService } from './play_line';
-import { PlayLineEntity } from '../entity/play_line';
-import { DuplicateKeyHandler } from './duplicateKeyHandler';
-import { MemberService } from '../../member/service/member';
-import { BaseService } from '../../base/service/base';
-import { DictInfoEntity } from '../../dict/entity/info';
-import { DictInfoService } from '../../dict/service/info';
+import {InjectEntityModel} from '@midwayjs/typeorm';
+import {In, Repository} from 'typeorm';
+import {VideoEntity} from '../entity/videos';
+import {VideoAlbumEntity} from '../entity/album';
+import {VideoAlbumRelationship} from '../entity/video_album_relationship';
+import {VideoWeekEntity} from '../entity/week_video';
+import {WeekEntity} from '../entity/week';
+import {ILogger, Inject, Provide} from '@midwayjs/core';
+import {CollectionEntity} from '../entity/collection';
+import {VideoLineService} from './videoLine';
+import {PlayLineService} from './play_line';
+import {PlayLineEntity} from '../entity/play_line';
+import {DuplicateKeyHandler} from './duplicateKeyHandler';
+import {MemberService} from '../../member/service/member';
+import {BaseService} from '../../base/service/base';
+import {DictInfoEntity} from '../../dict/entity/info';
+import {DictInfoService} from '../../dict/service/info';
 
 const TAG = 'VideosService';
 
@@ -40,6 +40,7 @@ export class VideosService extends BaseService {
 
   @Inject()
   VideoLineService: VideoLineService;
+
 
   @Inject()
   memberService: MemberService;
@@ -69,6 +70,10 @@ export class VideosService extends BaseService {
       if (!data.vip) {
         this.playLineService.cancelVip(data.id);
       }
+    } else if (type === 'delete') {
+      this.logger.warn(TAG, `modifyAfter: ${JSON.stringify(data)}`);
+      this.VideoLineService.idsDelete(data)
+      this.playLineService.idsDelete(data)
     }
   }
 
@@ -90,11 +95,11 @@ export class VideosService extends BaseService {
       skip: query.page * (query.page - 1),
       take: query.size,
     });
-    return { list: data, pagination: { page: query.page, size: query.size } };
+    return {list: data, pagination: {page: query.page, size: query.size}};
   }
 
   async week(query: any): Promise<any> {
-    let { list } = await this.videoWeekPage(query);
+    let {list} = await this.videoWeekPage(query);
     return await this.videoWeekVideoPage(list, query);
   }
 
@@ -112,7 +117,7 @@ export class VideosService extends BaseService {
     for (const item of list) {
       let video = [];
       let data = await this.videoWeekEntity.find({
-        where: { week_id: item.id },
+        where: {week_id: item.id},
         take: query.videoSize || 4,
       });
       for (const dataItem of data) {
@@ -124,7 +129,7 @@ export class VideosService extends BaseService {
       }
       item['list'] = video;
     }
-    return { list: list };
+    return {list: list};
   }
 
   //批量插入
@@ -162,6 +167,16 @@ export class VideosService extends BaseService {
             `视频线路保存失败: ${videoEntity.title}`,
             lineError
           );
+
+          // 检查是否是数据源错误
+          if (lineError && lineError.message && lineError.message.includes('DataSource undefined not found')) {
+            this.logger.error(
+              TAG,
+              `数据源错误，无法保存视频线路: ${videoEntity.title}`,
+              lineError
+            );
+            // 不中断视频主记录的保存，只记录线路保存失败
+          }
         }
       } else {
         this.logger.error(
@@ -195,7 +210,7 @@ export class VideosService extends BaseService {
     if (!ids || ids.length === 0) {
       throw new Error('ids 不能为空');
     }
-    await this.videoEntity.update({ id: In(ids) }, { searchRecommendType });
+    await this.videoEntity.update({id: In(ids)}, {searchRecommendType});
   }
 
   /**
@@ -205,7 +220,7 @@ export class VideosService extends BaseService {
   async getVideoDetail(id: number, createUserId?: number): Promise<any> {
     // 获取视频基本信息
     const video = await this.videoEntity.findOne({
-      where: { id },
+      where: {id},
     });
 
     if (!video) {
@@ -214,16 +229,16 @@ export class VideosService extends BaseService {
 
     // 获取视频线路信息
     const videoLines = await this.VideoLineService.videoLineEntity.find({
-      where: { video_id: id },
-      order: { sort: 'DESC' },
+      where: {video_id: id},
+      order: {sort: 'DESC'},
     });
 
     // 获取每个线路下的播放资源
     const linesWithSources = [];
     for (const line of videoLines) {
       const playLines = await this.playLineService.playLineEntity.find({
-        where: { video_line_id: line.id },
-        order: { sort: 'ASC' },
+        where: {video_line_id: line.id},
+        order: {sort: 'ASC'},
       });
 
       linesWithSources.push({
@@ -306,125 +321,13 @@ export class VideosService extends BaseService {
         }
       }
 
-      return { list: videoRankList };
+      return {list: videoRankList};
     } catch (error) {
       // 记录错误日志
       this.logger.error(TAG, '获取视频排行信息失败', error);
       // 抛出错误，让controller层处理并返回给前台
       throw new Error(error?.message || '获取视频排行信息失败');
     }
-  }
-
-  /**
-   * 清理视频数据
-   */
-  private cleanVideoData(videoEntity: VideoEntity): void {
-    // 确保sort字段有默认值
-    if (videoEntity.sort === undefined || videoEntity.sort === null) {
-      videoEntity.sort = 0;
-    }
-
-    // 清理可能为null的字符串字段
-    const stringFields = [
-      'video_class',
-      'video_tag',
-      'sub_title',
-      'directors',
-      'actors',
-      'introduce',
-    ];
-    stringFields.forEach(field => {
-      if (videoEntity[field] === null || videoEntity[field] === undefined) {
-        videoEntity[field] = '';
-      }
-    });
-  }
-
-  /**
-   * 截断过长的数据
-   */
-  private truncateVideoData(videoEntity: VideoEntity): void {
-    // 字段长度限制映射
-    const fieldLimits = {
-      title: 191,
-      sub_title: 191,
-      video_tag: 191,
-      video_class: 191,
-      collection_name: 256,
-    };
-
-    Object.keys(fieldLimits).forEach(field => {
-      if (videoEntity[field] && typeof videoEntity[field] === 'string') {
-        const limit = fieldLimits[field];
-        if (videoEntity[field].length > limit) {
-          videoEntity[field] =
-            videoEntity[field].substring(0, limit - 3) + '...';
-          this.logger.warn(TAG, `字段 ${field} 已截断至 ${limit} 字符`);
-        }
-      }
-    });
-  }
-
-  /**
-   * 准备插入数据（移除id字段）
-   */
-  private prepareVideoForInsert(
-    videoEntity: VideoEntity
-  ): Partial<VideoEntity> {
-    const { id, ...insertData } = videoEntity;
-    return insertData;
-  }
-
-  /**
-   * 准备更新数据（移除id字段和时间戳字段）
-   */
-  private prepareVideoForUpdate(
-    videoEntity: VideoEntity
-  ): Partial<VideoEntity> {
-    const { id, createTime, updateTime, createUserId, ...updateData } =
-      videoEntity;
-    return updateData;
-  }
-
-  /**
-   * 检查两个标签是否匹配（支持相似词匹配）
-   * @param tag1 标签1
-   * @param tag2 标签2
-   * @returns 是否匹配
-   */
-  private isTagMatch(tag1: string, tag2: string): boolean {
-    if (!tag1 || !tag2) return false;
-
-    // 完全匹配
-    if (tag1 === tag2) return true;
-
-    // 双向包含匹配
-    if (tag1.includes(tag2) || tag2.includes(tag1)) return true;
-
-    // 相似词匹配：检查是否有共同的字，且长度相近
-    const tag1Chars = Array.from(tag1);
-    const tag2Chars = Array.from(tag2);
-    const commonChars = tag1Chars.filter(char => tag2Chars.includes(char));
-    
-    const minLength = Math.min(tag1.length, tag2.length);
-    const maxLength = Math.max(tag1.length, tag2.length);
-    const lengthDiff = maxLength - minLength;
-    
-    // 长度相近（相差不超过1）且有足够的共同字符
-    if (lengthDiff <= 1 && commonChars.length > 0) {
-      // 对于短标签（2-3个字），如果共同字符数 >= 最小长度-1，认为匹配
-      // 例如："记录"(2字) 和 "纪录"(2字) 有1个共同字符"录"，1 >= 2-1=1，匹配
-      // 例如："记录"(2字) 和 "纪录片"(3字) 有1个共同字符"录"，1 >= 2-1=1，匹配
-      if (minLength <= 3 && commonChars.length >= minLength - 1) {
-        return true;
-      }
-      // 对于较长的标签（>3字），要求至少有一半的共同字符
-      if (minLength > 3 && commonChars.length >= Math.floor(minLength / 2)) {
-        return true;
-      }
-    }
-
-    return false;
   }
 
   /**
@@ -513,17 +416,17 @@ export class VideosService extends BaseService {
         // 将 video_class 按逗号分割成标签数组（去除空格）
         const videoClassTags = videoClass
           ? videoClass
-              .split(',')
-              .map(tag => tag.trim())
-              .filter(tag => tag)
+            .split(',')
+            .map(tag => tag.trim())
+            .filter(tag => tag)
           : [];
 
         // 将 video_tag 按逗号分割成标签数组（去除空格）
         const videoTagTags = videoTag
           ? videoTag
-              .split(',')
-              .map(tag => tag.trim())
-              .filter(tag => tag)
+            .split(',')
+            .map(tag => tag.trim())
+            .filter(tag => tag)
           : [];
 
         // 合并 video_class 和 video_tag 的标签数组
@@ -543,9 +446,9 @@ export class VideosService extends BaseService {
           // 将 categoryRemark 按逗号分割成标签数组（去除空格）
           const categoryRemarkTags = categoryRemark
             ? categoryRemark
-                .split(',')
-                .map(tag => tag.trim())
-                .filter(tag => tag)
+              .split(',')
+              .map(tag => tag.trim())
+              .filter(tag => tag)
             : [];
 
           // 检查是否有共同的标签（支持智能匹配，包括相似词匹配）
@@ -604,5 +507,117 @@ export class VideosService extends BaseService {
       this.logger.error(TAG, '视频分类匹配失败', error);
       throw error;
     }
+  }
+
+  /**
+   * 清理视频数据
+   */
+  private cleanVideoData(videoEntity: VideoEntity): void {
+    // 确保sort字段有默认值
+    if (videoEntity.sort === undefined || videoEntity.sort === null) {
+      videoEntity.sort = 0;
+    }
+
+    // 清理可能为null的字符串字段
+    const stringFields = [
+      'video_class',
+      'video_tag',
+      'sub_title',
+      'directors',
+      'actors',
+      'introduce',
+    ];
+    stringFields.forEach(field => {
+      if (videoEntity[field] === null || videoEntity[field] === undefined) {
+        videoEntity[field] = '';
+      }
+    });
+  }
+
+  /**
+   * 截断过长的数据
+   */
+  private truncateVideoData(videoEntity: VideoEntity): void {
+    // 字段长度限制映射
+    const fieldLimits = {
+      title: 191,
+      sub_title: 191,
+      video_tag: 191,
+      video_class: 191,
+      collection_name: 256,
+    };
+
+    Object.keys(fieldLimits).forEach(field => {
+      if (videoEntity[field] && typeof videoEntity[field] === 'string') {
+        const limit = fieldLimits[field];
+        if (videoEntity[field].length > limit) {
+          videoEntity[field] =
+            videoEntity[field].substring(0, limit - 3) + '...';
+          this.logger.warn(TAG, `字段 ${field} 已截断至 ${limit} 字符`);
+        }
+      }
+    });
+  }
+
+  /**
+   * 准备插入数据（移除id字段）
+   */
+  private prepareVideoForInsert(
+    videoEntity: VideoEntity
+  ): Partial<VideoEntity> {
+    const {id, ...insertData} = videoEntity;
+    return insertData;
+  }
+
+  /**
+   * 准备更新数据（移除id字段和时间戳字段）
+   */
+  private prepareVideoForUpdate(
+    videoEntity: VideoEntity
+  ): Partial<VideoEntity> {
+    const {id, createTime, updateTime, createUserId, ...updateData} =
+      videoEntity;
+    return updateData;
+  }
+
+  /**
+   * 检查两个标签是否匹配（支持相似词匹配）
+   * @param tag1 标签1
+   * @param tag2 标签2
+   * @returns 是否匹配
+   */
+  private isTagMatch(tag1: string, tag2: string): boolean {
+    if (!tag1 || !tag2) return false;
+
+    // 完全匹配
+    if (tag1 === tag2) return true;
+
+    // 双向包含匹配
+    if (tag1.includes(tag2) || tag2.includes(tag1)) return true;
+
+    // 相似词匹配：检查是否有共同的字，且长度相近
+    const tag1Chars = Array.from(tag1);
+    const tag2Chars = Array.from(tag2);
+    const commonChars = tag1Chars.filter(char => tag2Chars.includes(char));
+
+    const minLength = Math.min(tag1.length, tag2.length);
+    const maxLength = Math.max(tag1.length, tag2.length);
+    const lengthDiff = maxLength - minLength;
+
+    // 长度相近（相差不超过1）且有足够的共同字符
+    if (lengthDiff <= 1 && commonChars.length > 0) {
+      // 对于短标签（2-3个字），如果共同字符数 >= 最小长度-1，认为匹配
+      // 例如："记录"(2字) 和 "纪录"(2字) 有1个共同字符"录"，1 >= 2-1=1，匹配
+      // 例如："记录"(2字) 和 "纪录片"(3字) 有1个共同字符"录"，1 >= 2-1=1，匹配
+      if (minLength <= 3 && commonChars.length >= minLength - 1) {
+        return true;
+      }
+      // 对于较长的标签（>3字），要求至少有一半的共同字符
+      if (minLength > 3 && commonChars.length >= Math.floor(minLength / 2)) {
+        return true;
+      }
+    }
+
+    return false;
   }
 }
