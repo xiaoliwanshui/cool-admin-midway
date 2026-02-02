@@ -2,8 +2,8 @@
  * @Author: 17691002584 17691002584@163.com
  * @Date: 2026-02-02 15:55:14
  * @LastEditors: 17691002584 17691002584@163.com
- * @LastEditTime: 2026-02-02 16:30:49
- * @FilePath: src/modules/task/job/sync.jobCollect.ts
+ * @LastEditTime: 2026-02-02 17:26:37
+ * @FilePath: src/modules/task/job/async.jobCollect.ts
  * @Description: 视频采集定时任务，每隔2秒执行一次
  */
 
@@ -20,10 +20,10 @@ import {Repository} from "typeorm";
   cronTime: "*/2 * * * * *", // 每隔 2s 执行
   start: true,
 })
-export class JobCollectJob extends BaseService implements IJob {
+export class JobCollectStartJob extends BaseService implements IJob {
   @Logger()
   logger: ILogger;
-  
+
   @InjectEntityModel(TaskLogEntity)
   taskLogEntity: Repository<TaskLogEntity>;
 
@@ -44,10 +44,10 @@ export class JobCollectJob extends BaseService implements IJob {
     }
 
     this.logger.info("视频采集任务开始执行");
-    
+
     // 设置执行标志
     this.isExecuting = true;
-    
+
     // 在后台异步执行采集任务，不阻塞定时任务的执行周期
     this.executeCollectionTask()
       .then(async () => {
