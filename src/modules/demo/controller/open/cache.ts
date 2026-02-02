@@ -31,7 +31,7 @@ export class OpenDemoCacheController extends BaseController {
       return true;
     } catch (error) {
       // 如果Redis是只读副本，记录错误但不抛出
-      if (error.message && error.message.includes('READONLY')) {
+      if (error.message && (error.message.includes('READONLY') || error.message.includes('read only'))) {
         this.logger.warn(`Redis is in read-only mode, skipping cache set for key: ${key}`, error.message);
         return false;
       } else {
