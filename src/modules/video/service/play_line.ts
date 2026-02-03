@@ -1,12 +1,13 @@
 import {BaseService} from '@cool-midway/core';
 import {InjectEntityModel} from '@midwayjs/typeorm';
 import {In, Repository} from 'typeorm';
-import {ILogger, Inject, Provide} from '@midwayjs/core';
+import {ILogger, Inject, InjectClient, Provide} from '@midwayjs/core';
 import {PlayLineEntity} from '../entity/play_line';
 import {Line} from '../bean/SourceVideo';
 import axios from 'axios';
 import {VideoLineEntity} from '../entity/video_line';
 import {playFileMergeSQL} from "./play_file_merge";
+import {CachingFactory, MidwayCache} from '@midwayjs/cache-manager';
 
 const TAG = 'PlayLineService';
 
@@ -21,6 +22,11 @@ export class PlayLineService extends BaseService {
   @Inject()
   logger: ILogger;
 
+  @InjectClient(CachingFactory, 'default')
+  midwayCache: MidwayCache;
+
+  private readonly CACHE_TTL = 300; // 缓存时间5分钟
+
   async insert(data: Line): Promise<void> {
     // 如果 data.video_line_id 不存在或无效，就不执行以下逻辑
     // 使用严格检查：null、undefined、0 都视为无效
@@ -32,6 +38,15 @@ export class PlayLineService extends BaseService {
     if (!this.playLineEntity) {
       this.logger.error(TAG, `PlayLineEntity 数据源未正确初始化`);
       throw new Error('PlayLineEntity 数据源未正确初始化');
+    }
+
+    // 优化：使用缓存避免重复查询
+    const cacheKey = `playLine:file:${data.file}`;
+    const cachedExists = await this.midwayCache.get(cacheKey);
+
+    if (cachedExists) {
+      this.logger.debug(TAG, `播放线路已存在，跳过: ${data.file}`);
+      return;
     }
 
     try {
@@ -53,7 +68,7 @@ export class PlayLineService extends BaseService {
           sort: data.sort,
           collection_id: data.collection_id,
           collection_name: data.collection_name,
-          video_line_id: data.video_line_id, // 使用已验证的有效 video_line_id
+          video_line_id: data.video_line_id
         };
         await this.playLineEntity.update({file: data.file}, updateData);
         this.logger.info(
@@ -65,14 +80,17 @@ export class PlayLineService extends BaseService {
         await this.playLineEntity.save(data);
         this.logger.info(
           TAG,
-          `insert ${data.collection_name} ${data.video_name} ${data.name} video_line_id ${data.video_line_id} success`
+          `insert ${data.collection_name} ${data.video_name} ${data.name} video_line_id ${data.video_line_id}  success`
         );
       }
+
+      // 缓存存在标记
+      await this.midwayCache.set(cacheKey, true, this.CACHE_TTL);
     } catch (error) {
       // 检查是否是数据源错误
       if (error && error.message && error.message.includes('DataSource undefined not found')) {
         this.logger.error(TAG, `数据源错误: ${data.collection_name} ${data.video_name} ${data.name}`, error);
-        throw error; // 重新抛出数据源错误，让上级处理
+        throw error;
       }
 
       // 如果仍然出现重复键错误，尝试更新
@@ -83,7 +101,6 @@ export class PlayLineService extends BaseService {
       ) {
         try {
           // 更新时也要确保 video_line_id 有效
-          // 由于前面已经检查过 data.video_line_id 有效，这里直接使用
           const updateData: Partial<Line> = {
             name: data.name,
             file: data.file,
@@ -94,18 +111,21 @@ export class PlayLineService extends BaseService {
             sort: data.sort,
             collection_id: data.collection_id,
             collection_name: data.collection_name,
-            video_line_id: data.video_line_id, // 使用已验证的有效 video_line_id
+            video_line_id: data.video_line_id
           };
           await this.playLineEntity.update({file: data.file}, updateData);
           this.logger.info(
             TAG,
-            `update (duplicate key) ${data.collection_name} ${data.video_name} ${data.name} video_line_id ${data.video_line_id} success`
+            `update (duplicate key) ${data.collection_name} ${data.video_name} ${data.name} video_line_id ${data.video_line_id}  success`
           );
+
+          // 缓存存在标记
+          await this.midwayCache.set(cacheKey, true, this.CACHE_TTL);
         } catch (updateError) {
           // 检查是否是数据源错误
           if (updateError && updateError.message && updateError.message.includes('DataSource undefined not found')) {
             this.logger.error(TAG, `数据源错误 (更新阶段): ${data.collection_name} ${data.video_name} ${data.name}`, updateError);
-            throw updateError; // 重新抛出数据源错误
+            throw updateError;
           }
 
           this.logger.error(
@@ -151,6 +171,15 @@ export class PlayLineService extends BaseService {
 
   //根据 传入的  video_id 查询出所有的播放线路  并按照 sort 排序 按照collection_id 进行分组
   async startVip(video_id: number, vipNumber: number): Promise<{ [collection_id: number]: PlayLineEntity[] }> {
+    const cacheKey = `playLines:grouped:${video_id}`;
+
+    // 尝试从缓存获取分组数据
+    const cachedData = await this.midwayCache.get(cacheKey);
+    if (cachedData) {
+      this.logger.debug(TAG, `从缓存获取分组播放线路: ${video_id}`);
+      return cachedData as { [collection_id: number]: PlayLineEntity[] };
+    }
+
     const playLines = await this.playLineEntity.find({
       where: {video_id},
       order: {sort: 'ASC'},
@@ -162,18 +191,25 @@ export class PlayLineService extends BaseService {
       acc[playLine.collection_id].push(playLine);
       return acc;
     }, {} as { [collection_id: number]: PlayLineEntity[] });
-    //将每一组的数据以vipNumber为起始index 将后续所有的数据的 vip字段设置为1
+
+    // 优化：使用批量更新代替逐个保存
+    const idsToUpdate: number[] = [];
     Object.values(groupedPlayLines).forEach((playLines) => {
-      // 添加安全检查，确保vipNumber不小于0且不大于数组长度
       if (vipNumber >= 0 && vipNumber < playLines.length) {
         for (let i = vipNumber; i < playLines.length; i++) {
-          // @ts-ignore
-          playLines[i].vip = 1;
+          idsToUpdate.push(playLines[i].id);
         }
       }
     });
-    //将数据更新到数据库
-    await this.playLineEntity.save(playLines);
+
+    if (idsToUpdate.length > 0) {
+      await this.playLineEntity.update({id: In(idsToUpdate)}, {vip: 1});
+      this.logger.info(TAG, `批量更新VIP状态: ${idsToUpdate.length} 条记录`);
+    }
+
+    // 缓存分组数据
+    await this.midwayCache.set(cacheKey, groupedPlayLines, this.CACHE_TTL);
+
     return groupedPlayLines;
   }
 

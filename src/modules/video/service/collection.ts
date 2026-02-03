@@ -1,25 +1,20 @@
-import {
-  App,
-  ILogger,
-  IMidwayApplication,
-  Inject,
-  Provide,
-} from '@midwayjs/core';
-import { InjectEntityModel } from '@midwayjs/typeorm';
-import { Repository } from 'typeorm';
-import { RedisService } from '@midwayjs/redis';
-import { CollectionEntity } from '../entity/collection';
-import { CollectionCategoryEntity } from '../entity/collection_category';
-import { VIDEOPARAMS, VideoParams } from '../bean/VideoParams';
-import { ConcurrencyService } from '../service/concurrencyService';
-import { CategoryService } from '../service/categoryService';
-import { VideoEntity } from '../entity/videos';
-import { VideoLineService } from './videoLine';
-import { NetworkErrorHandler } from './networkErrorHandler';
-import { PlayLineService } from './play_line';
-import { VideoRulesEntity } from '../entity/video_rules';
-import { VideosService } from './videos';
-import { BaseService } from '../../base/service/base';
+import {App, ILogger, IMidwayApplication, Inject, InjectClient, Provide,} from '@midwayjs/core';
+import {InjectEntityModel} from '@midwayjs/typeorm';
+import {In, Repository} from 'typeorm';
+import {RedisService} from '@midwayjs/redis';
+import {CollectionEntity} from '../entity/collection';
+import {CollectionCategoryEntity} from '../entity/collection_category';
+import {VIDEOPARAMS, VideoParams} from '../bean/VideoParams';
+import {ConcurrencyService} from '../service/concurrencyService';
+import {CategoryService} from '../service/categoryService';
+import {VideoEntity} from '../entity/videos';
+import {VideoLineService} from './videoLine';
+import {NetworkErrorHandler} from './networkErrorHandler';
+import {PlayLineService} from './play_line';
+import {VideoRulesEntity} from '../entity/video_rules';
+import {VideosService} from './videos';
+import {BaseService} from '../../base/service/base';
+import {CachingFactory, MidwayCache} from '@midwayjs/cache-manager';
 
 const TAG = 'CollectionService';
 
@@ -63,12 +58,17 @@ export class CollectionService extends BaseService {
   @App()
   app: IMidwayApplication;
 
+  @InjectClient(CachingFactory, 'default')
+  midwayCache: MidwayCache;
+
+  private readonly CACHE_TTL = 300; // 缓存时间5分钟
+
   // 是否正在处理采集队列
   private collectionProcessing = false;
-  
+
   // 单次处理的最大数量，防止长时间阻塞
   private readonly maxProcessPerBatch = 100;
-  
+
   // 单次处理的最大时间，防止长时间阻塞（毫秒）
   private readonly maxProcessTimePerBatch = 30000; // 30秒
 
@@ -81,7 +81,7 @@ export class CollectionService extends BaseService {
    * 然后调用syncVideo方法，并传入操作类型'day'和小时数24。
    */
   async day(id: number) {
-    const collectionEntity = await this.collectionEntity.findOneBy({ id });
+    const collectionEntity = await this.collectionEntity.findOneBy({id});
     await this.syncVideo(collectionEntity, {
       op: 'day',
       h: 24,
@@ -89,7 +89,7 @@ export class CollectionService extends BaseService {
   }
 
   async week(id: number) {
-    const collectionEntity = await this.collectionEntity.findOneBy({ id });
+    const collectionEntity = await this.collectionEntity.findOneBy({id});
     await this.syncVideo(collectionEntity, {
       op: 'week',
       h: 24 * 7,
@@ -108,118 +108,141 @@ export class CollectionService extends BaseService {
   }
 
   async checkVideoLine() {
-    const find = this.videoEntity.createQueryBuilder();
-    find.where('play_url_put_in = :play_url_put_in', { play_url_put_in: 0 });
-    const data = await this.entityRenderPage(find, { page: 1, size: 10 });
+    const cacheKey = 'checkVideoLine:processing';
 
-    // 分批处理播放线路检查，避免内存溢出
-    const batchSize = 20; // 减小批次大小以降低内存占用
-    let offset = 0;
-    let hasMore = true;
-
-    while (hasMore) {
-      // 分批获取播放线路
-      const playLines = await this.playLineService.playLineEntity.find({
-        skip: offset,
-        take: batchSize,
-      });
-
-      // 如果没有更多数据，结束循环
-      if (playLines.length === 0) {
-        hasMore = false;
-        break;
-      }
-
-      // 检查每个播放线路的链接是否可访问
-      for (const playLine of playLines) {
-        if (playLine.id) {
-          try {
-            const isAccessible = await this.playLineService.isUrlAccessible(
-              playLine.file
-            );
-
-            // 根据访问结果更新状态
-            if (!isAccessible) {
-              // 如果链接不可访问，更新状态为禁用
-              await this.playLineService.playLineEntity.update(
-                { id: playLine.id },
-                { status: 0 }
-              );
-              this.logger.warn(
-                TAG,
-                `播放线路 ${playLine.name} 的链接 ${playLine.file} 无法访问，已禁用`
-              );
-            } else {
-              // 如果链接可访问，确保状态为启用
-              await this.playLineService.playLineEntity.update(
-                { id: playLine.id },
-                { status: 1 }
-              );
-              this.logger.info(
-                TAG,
-                `播放线路 ${playLine.name} 的链接 ${playLine.file} 访问正常`
-              );
-            }
-          } catch (error) {
-            this.logger.error(
-              TAG,
-              `检查播放线路 ${playLine.name} 时发生错误:`,
-              error
-            );
-
-            // 发生错误时也禁用线路
-            await this.playLineService.playLineEntity.update(
-              { id: playLine.id },
-              { status: 0 }
-            );
-          }
-        }
-        // 每处理一条记录后稍微延迟，避免请求过于频繁
-        await new Promise(resolve => setTimeout(resolve, 50));
-      }
-
-      // 更新偏移量
-      offset += batchSize;
-
-      // 如果返回的数据少于批次大小，说明已经处理完所有数据
-      if (playLines.length < batchSize) {
-        hasMore = false;
-      }
-
-      // 每处理完一批后，主动触发垃圾回收（如果内存使用过高）
-      if (global.gc) {
-        const used = process.memoryUsage().heapUsed / 1024 / 1024;
-        if (used > 300) {
-          // 降低内存阈值
-          // 如果内存使用超过300MB
-          this.logger.info(
-            TAG,
-            `当前内存使用 ${used.toFixed(2)} MB，触发垃圾回收`
-          );
-          global.gc();
-
-          // 短暂延迟让GC完成
-          await new Promise(resolve => setTimeout(resolve, 100));
-        }
-      }
-
-      // 每批处理完成后添加延迟，减轻系统压力
-      await new Promise(resolve => setTimeout(resolve, 200));
+    // 检查是否有正在进行的检查任务
+    const isProcessing = await this.midwayCache.get(cacheKey);
+    if (isProcessing) {
+      this.logger.debug(TAG, '播放线路检查任务正在进行，跳过本次检查');
+      return;
     }
 
-    // 原有的处理逻辑 - 也进行内存优化
-    for (const videoEntity of data.list) {
-      let collectionEntity = await this.collectionEntity.findOneBy({
-        id: videoEntity.collection_id,
-      });
+    // 设置处理标记，防止重复执行
+    await this.midwayCache.set(cacheKey, true, 600);
 
-      // 只有当collectionEntity存在时才执行插入操作
-      if (collectionEntity) {
-        await this.videoLineService.insert(videoEntity, collectionEntity);
+    try {
+      const find = this.videoEntity.createQueryBuilder();
+      find.where('play_url_put_in = :play_url_put_in', {play_url_put_in: 0});
+      const data = await this.entityRenderPage(find, {page: 1, size: 10});
+
+      // 分批处理播放线路检查，避免内存溢出
+      const batchSize = 20;
+      let offset = 0;
+      let hasMore = true;
+
+      // 优化：批量收集需要更新的ID
+      const idsToDisable: number[] = [];
+      const idsToEnable: number[] = [];
+
+      while (hasMore) {
+        // 分批获取播放线路
+        const playLines = await this.playLineService.playLineEntity.find({
+          skip: offset,
+          take: batchSize,
+        });
+
+        // 如果没有更多数据，结束循环
+        if (playLines.length === 0) {
+          hasMore = false;
+          break;
+        }
+
+        // 检查每个播放线路的链接是否可访问
+        for (const playLine of playLines) {
+          if (playLine.id) {
+            try {
+              const isAccessible = await this.playLineService.isUrlAccessible(
+                playLine.file
+              );
+
+              // 根据访问结果收集需要更新的ID
+              if (!isAccessible) {
+                idsToDisable.push(playLine.id);
+              } else {
+                idsToEnable.push(playLine.id);
+              }
+            } catch (error) {
+              this.logger.error(
+                TAG,
+                `检查播放线路 ${playLine.name} 时发生错误:`,
+                error
+              );
+              // 发生错误时也禁用线路
+              idsToDisable.push(playLine.id);
+            }
+          }
+          // 每处理一条记录后稍微延迟，避免请求过于频繁
+          await new Promise(resolve => setTimeout(resolve, 50));
+        }
+
+        // 更新偏移量
+        offset += batchSize;
+
+        // 如果返回的数据少于批次大小，说明已经处理完所有数据
+        if (playLines.length < batchSize) {
+          hasMore = false;
+        }
+
+        // 每处理完一批后，主动触发垃圾回收（如果内存使用过高）
+        if (global.gc) {
+          const used = process.memoryUsage().heapUsed / 1024 / 1024;
+          if (used > 300) {
+            // 降低内存阈值
+            this.logger.info(
+              TAG,
+              `当前内存使用 ${used.toFixed(2)} MB，触发垃圾回收`
+            );
+            global.gc();
+
+            // 短暂延迟让GC完成
+            await new Promise(resolve => setTimeout(resolve, 100));
+          }
+        }
+
+        // 每批处理完成后添加延迟，减轻系统压力
+        await new Promise(resolve => setTimeout(resolve, 200));
       }
 
-      // 每处理一个视频后稍微延迟
-      await new Promise(resolve => setTimeout(resolve, 10));
+      // 优化：批量更新数据库，减少数据库操作次数
+      if (idsToDisable.length > 0) {
+        await this.playLineService.playLineEntity.update(
+          {id: In(idsToDisable)},
+          {status: 0}
+        );
+        this.logger.warn(
+          TAG,
+          `批量禁用 ${idsToDisable.length} 条不可访问的播放线路`
+        );
+      }
+
+      if (idsToEnable.length > 0) {
+        await this.playLineService.playLineEntity.update(
+          {id: In(idsToEnable)},
+          {status: 1}
+        );
+        this.logger.info(
+          TAG,
+          `批量启用 ${idsToEnable.length} 条可访问的播放线路`
+        );
+      }
+
+      // 原有的处理逻辑 - 也进行内存优化
+      for (const videoEntity of data.list) {
+        let collectionEntity = await this.collectionEntity.findOneBy({
+          id: videoEntity.collection_id,
+        });
+
+        // 只有当collectionEntity存在时才执行插入操作
+        if (collectionEntity) {
+          await this.videoLineService.insert(videoEntity, collectionEntity);
+        }
+
+        // 每处理一个视频后稍微延迟
+        await new Promise(resolve => setTimeout(resolve, 10));
+      }
+    } finally {
+      // 清除处理标记
+      await this.midwayCache.del(cacheKey);
     }
   }
 
@@ -253,7 +276,7 @@ export class CollectionService extends BaseService {
 
       let page = 0;
       // 从 params 中提取参数，保留所有原始参数
-      const baseParams: VIDEOPARAMS = params ? { ...params } : {};
+      const baseParams: VIDEOPARAMS = params ? {...params} : {};
 
       if (params) {
         if (params.page) {
@@ -453,26 +476,26 @@ export class CollectionService extends BaseService {
     runBackground(async () => {
       try {
         this.logger.info(TAG, '后台采集任务开始执行');
-        
+
         // 记录开始时间用于超时控制
         const startTime = Date.now();
         let processedCount = 0;
-        
+
         // 循环处理，但限制单次处理的数量和时间
         while (await this.redisService.exists('video:collection')) {
           // 检查是否超出处理限制
-          if (processedCount >= this.maxProcessPerBatch || 
-              Date.now() - startTime > this.maxProcessTimePerBatch) {
+          if (processedCount >= this.maxProcessPerBatch ||
+            Date.now() - startTime > this.maxProcessTimePerBatch) {
             this.logger.info(TAG, `达到单次处理限制，已处理: ${processedCount} 项，用时: ${Date.now() - startTime}ms`);
-            
+
             // 短暂延迟后重新调度，让其他任务有机会执行
             setTimeout(() => {
               this.triggerCollectionProcessing();
             }, 1000); // 1秒后重新检查
-            
+
             return; // 结束当前处理函数
           }
-          
+
           await this.concurrencyService.syncVideoPageList();
           await this.sleep(50);
           processedCount++;

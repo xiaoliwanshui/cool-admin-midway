@@ -3,10 +3,11 @@ import {InjectEntityModel} from '@midwayjs/typeorm';
 import {In, Repository} from 'typeorm';
 import {VideoEntity} from '../entity/videos';
 import {VideoLineEntity} from '../entity/video_line';
-import {ILogger, Inject, Provide} from '@midwayjs/core';
+import {ILogger, Inject, InjectClient, Provide} from '@midwayjs/core';
 import {CollectionEntity} from '../entity/collection';
 import {Line} from '../bean/SourceVideo';
 import {PlayLineService} from './play_line';
+import {CachingFactory, MidwayCache} from '@midwayjs/cache-manager';
 
 const TAG = 'VideoLineService';
 
@@ -20,16 +21,37 @@ export class VideoLineService extends BaseService {
   @Inject()
   logger: ILogger;
 
+  @InjectClient(CachingFactory, 'default')
+  midwayCache: MidwayCache;
+
+  private readonly CACHE_TTL = 300; // 缓存时间5分钟
+
   /**
-   * 排序查询
+   * 排序查询（添加缓存）
    */
   async line(query: any): Promise<any> {
+    const cacheKey = `videoLine:line:${query.id}`;
+
+    // 尝试从缓存获取数据
+    const cachedData = await this.midwayCache.get(cacheKey);
+    if (cachedData) {
+      this.logger.debug(TAG, `从缓存获取视频线路: ${cacheKey}`);
+      return cachedData;
+    }
+
     //通过query.id查询videoLineEntity的数据
     const videoLineEntity = await this.videoLineEntity.findOne({
       where: {
         id: query.id,
       },
     });
+
+    // 缓存结果
+    if (videoLineEntity) {
+      await this.midwayCache.set(cacheKey, videoLineEntity, this.CACHE_TTL);
+      this.logger.debug(TAG, `视频线路已缓存: ${cacheKey}`);
+    }
+
     return videoLineEntity;
   }
 
@@ -81,63 +103,93 @@ export class VideoLineService extends BaseService {
     collectionEntity: CollectionEntity
   ): Promise<void> {
     try {
-      // 插入或更新数据
-      await this.videoLineEntity.upsert({
+      const videoId = videoEntity.id;
+      const collectionId = collectionEntity.id;
+
+      // 检查缓存中是否已存在该视频线路
+      const cacheKey = `videoLine:exists:${videoId}:${collectionId}`;
+      const existsInCache = await this.midwayCache.get(cacheKey);
+
+      if (existsInCache) {
+        this.logger.debug(TAG, `视频线路已存在，跳过: ${videoEntity.title}`);
+        return;
+      }
+
+      // 插入或更新数据（优化：使用 upsert 避免重复查询）
+      const upsertResult = await this.videoLineEntity.upsert({
         collection_name: collectionEntity.name,
         tag: collectionEntity.param,
-        video_id: videoEntity.id,
+        video_id: videoId,
         video_name: videoEntity.title,
-        collection_id: collectionEntity.id,
+        collection_id: collectionId,
         sort: collectionEntity.sort,
       }, ['collection_id', 'video_id']);
 
-      // 查询获取实际的 videoLineEntity id
-      const videoLineEntity = await this.videoLineEntity.findOne({
-        where: {
-          video_id: videoEntity.id,
-          collection_id: collectionEntity.id,
-        },
-      });
+      // 从 upsert 结果中获取 videoLineEntity id
+      const videoLineEntityId = upsertResult.identifiers[0]?.id || upsertResult.raw?.insertId;
 
-      if (!videoLineEntity || !videoLineEntity.id) {
-        this.logger.error(TAG, `无法获取 videoLineEntity id: ${videoEntity.title}`);
-        return;
+      if (!videoLineEntityId) {
+        // 如果 upsert 没有返回 ID，则查询获取
+        const videoLineEntity = await this.videoLineEntity.findOne({
+          where: {
+            video_id: videoId,
+            collection_id: collectionId,
+          },
+        });
+
+        if (!videoLineEntity || !videoLineEntity.id) {
+          this.logger.error(TAG, `无法获取 videoLineEntity id: ${videoEntity.title}`);
+          return;
+        }
       }
 
       let parseVideoList = this.parseVideoList(
         videoEntity,
         collectionEntity,
-        videoLineEntity.id
+        videoLineEntityId
       );
+
       // 使用 Promise.all 等待所有插入操作完成，确保 video_line_id 正确设置
       await Promise.all(
         parseVideoList.map(item => this.playLineService.insert(item))
       );
-      this.logger.info(TAG, `insert ${videoEntity.title} videoLineEntityId ${videoLineEntity.id} success`);
+
+      this.logger.info(TAG, `insert ${videoEntity.title} videoLineEntityId ${videoLineEntityId} success`);
+
+      // 缓存存在标记
+      await this.midwayCache.set(cacheKey, true, this.CACHE_TTL);
+
       // 显式释放对象引用
       videoEntity = null;
       parseVideoList = null;
     } catch (error) {
-      // 更新数据
+      this.logger.error(TAG, `插入视频线路失败: ${videoEntity?.title}`, error);
+
+      // 更新数据（优化：简化错误处理逻辑）
+      const videoId = videoEntity.id;
+      const collectionId = collectionEntity.id;
+      const cacheKey = `videoLine:exists:${videoId}:${collectionId}`;
+
       await this.videoLineEntity.update(
         {
-          video_id: videoEntity.id,
-          collection_id: collectionEntity.id,
+          video_id: videoId,
+          collection_id: collectionId,
         },
         {
           collection_name: collectionEntity.name,
           tag: collectionEntity.param,
-          video_id: videoEntity.id,
+          video_id: videoId,
           video_name: videoEntity.title,
-          collection_id: collectionEntity.id,
+          collection_id: collectionId,
           sort: collectionEntity.sort,
         }
       );
-      //查询
+
+      // 查询获取实际的 videoLineEntity id
       const videoLineEntity = await this.videoLineEntity.findOne({
         where: {
-          video_id: videoEntity.id,
-          collection_id: collectionEntity.id,
+          video_id: videoId,
+          collection_id: collectionId,
         },
       });
 
@@ -151,11 +203,17 @@ export class VideoLineService extends BaseService {
         collectionEntity,
         videoLineEntity.id
       );
+
       // 使用 Promise.all 等待所有插入操作完成，确保 video_line_id 正确设置
       await Promise.all(
         parseVideoList.map(item => this.playLineService.insert(item))
       );
+
       this.logger.info(TAG, `update ${videoEntity.title} videoLineEntityId ${videoLineEntity.id}  success`);
+
+      // 缓存存在标记
+      await this.midwayCache.set(cacheKey, true, this.CACHE_TTL);
+
       // 显式释放对象引用
       videoEntity = null;
       parseVideoList = null;

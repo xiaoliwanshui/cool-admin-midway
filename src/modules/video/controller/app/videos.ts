@@ -39,7 +39,7 @@ import {VideosService} from '../../service/videos';
       const {directors, actors, video_tag} = ctx.request.body;
       const {aldult} = ctx.request.headers;
       const where = [];
-      
+
       if (directors) {
         where.push([
           'directors like :directors',
@@ -47,11 +47,11 @@ import {VideosService} from '../../service/videos';
           directors,
         ]);
       }
-      
+
       if (actors) {
         where.push(['actors like :actors', {actors: `%${actors}%`}, actors]);
       }
-      
+
       if (video_tag) {
         where.push([
           'video_tag like :video_tag',
@@ -59,13 +59,13 @@ import {VideosService} from '../../service/videos';
           video_tag,
         ]);
       }
-      if(aldult){
-      if (aldult === '0') {
-              where.push(['category_pid != :category_pid', {category_pid: 643}]);
-            }
+      if (aldult) {
+        if (aldult === '0') {
+          where.push(['category_pid != :category_pid', {category_pid: 643}]);
+        }
       }
-     
-      
+
+
       return where;
     },
     addOrderBy: {
@@ -93,6 +93,7 @@ export class AppVideoController extends BaseController {
 
   @Inject()
   ctx: Context;
+
 
   @CoolTag(TagTypes.IGNORE_TOKEN)
   @Post('/sort')

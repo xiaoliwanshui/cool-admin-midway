@@ -28,13 +28,18 @@ export default {
         entities,
         // 订阅者
         subscribers: [TenantSubscriber],
-        // 连接池配置
-        poolSize: 10,
-        maxQueryExecutionTime: 2000,
-        connectTimeout: 10000,
-        acquireTimeout: 10000,
+        // 连接池配置（优化：增加连接池大小，提高并发处理能力）
+        poolSize: 20,
+        maxQueryExecutionTime: 5000,
+        connectTimeout: 15000,
+        acquireTimeout: 15000,
         waitForConnections: true,
         queueLimit: 0,
+        extra: {
+          connectionLimit: 20,
+          waitForConnections: true,
+          queueLimit: 0
+        }
       },
     },
   },

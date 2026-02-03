@@ -5,7 +5,7 @@ import {VideoAlbumEntity} from '../entity/album';
 import {VideoAlbumRelationship} from '../entity/video_album_relationship';
 import {VideoWeekEntity} from '../entity/week_video';
 import {WeekEntity} from '../entity/week';
-import {ILogger, Inject, Provide} from '@midwayjs/core';
+import {ILogger, Inject, InjectClient, Provide} from '@midwayjs/core';
 import {CollectionEntity} from '../entity/collection';
 import {VideoLineService} from './videoLine';
 import {PlayLineService} from './play_line';
@@ -15,6 +15,8 @@ import {MemberService} from '../../member/service/member';
 import {BaseService} from '../../base/service/base';
 import {DictInfoEntity} from '../../dict/entity/info';
 import {DictInfoService} from '../../dict/service/info';
+import {CachingFactory, MidwayCache} from '@midwayjs/cache-manager';
+import * as crypto from 'crypto';
 
 const TAG = 'VideosService';
 
@@ -56,6 +58,11 @@ export class VideosService extends BaseService {
 
   @Inject()
   dictInfoService: DictInfoService;
+
+  @InjectClient(CachingFactory, 'default')
+  midwayCache: MidwayCache;
+
+  private readonly CACHE_TTL = 300; // 缓存时间5分钟
 
   /**
    * 修改之前
@@ -297,31 +304,66 @@ export class VideosService extends BaseService {
 
   async getVideoRank(): Promise<any> {
     try {
+      const cacheKey = 'video:rank:all';
+      
+      // 尝试从缓存获取数据
+      const cachedData = await this.midwayCache.get(cacheKey);
+      if (cachedData) {
+        this.logger.debug(TAG, '从缓存获取视频排行信息');
+        return cachedData;
+      }
+
       //获取字典数据
       let videoCategoryEntityList: DictInfoEntity[] = (
         await this.dictInfoService.data(['search_type'])
       )['search_type'];
 
+      if (!videoCategoryEntityList || videoCategoryEntityList.length === 0) {
+        return {list: []};
+      }
+
+      // 优化：使用单个查询获取所有排行视频，避免循环查询
+      const categoryIds = videoCategoryEntityList.map(item => item.id);
+      const allVideos = await this.videoEntity.find({
+        where: {
+          searchRecommendType: In(categoryIds),
+        },
+        order: {
+          sort: 'DESC',
+        },
+      });
+
+      // 按分类分组
+      const videoMap = new Map<number, any[]>();
+      allVideos.forEach(video => {
+        if (!videoMap.has(video.searchRecommendType)) {
+          videoMap.set(video.searchRecommendType, []);
+        }
+        const videos = videoMap.get(video.searchRecommendType);
+        if (videos.length < 7) {
+          videos.push(video);
+        }
+      });
+
+      // 构建结果
       let videoRankList = [];
       for (const item of videoCategoryEntityList) {
-        const video = await this.videoEntity.find({
-          where: {
-            searchRecommendType: item.id,
-          },
-          take: 7,
-          order: {
-            sort: 'DESC',
-          },
-        });
-        if (video.length > 0) {
+        const videos = videoMap.get(item.id);
+        if (videos && videos.length > 0) {
           videoRankList.push({
             ...item,
-            list: video,
+            list: videos,
           });
         }
       }
 
-      return {list: videoRankList};
+      const result = {list: videoRankList};
+      
+      // 缓存结果，缓存时间10分钟
+      await this.midwayCache.set(cacheKey, result, 600);
+      this.logger.debug(TAG, '视频排行信息已缓存');
+
+      return result;
     } catch (error) {
       // 记录错误日志
       this.logger.error(TAG, '获取视频排行信息失败', error);
@@ -507,6 +549,15 @@ export class VideosService extends BaseService {
       this.logger.error(TAG, '视频分类匹配失败', error);
       throw error;
     }
+  }
+
+  /**
+   * 生成缓存键
+   */
+  private generateCacheKey(prefix: string, params: any): string {
+    const paramsStr = JSON.stringify(params);
+    const hash = crypto.createHash('md5').update(paramsStr).digest('hex');
+    return `${prefix}:${hash}`;
   }
 
   /**

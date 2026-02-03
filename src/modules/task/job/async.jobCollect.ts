@@ -19,7 +19,7 @@ import {Repository} from "typeorm";
 const TAG = 'JobCollectStartJob';
 
 @Job("syncJob", {
-    cronTime: "*/2 * * * * *", // 每隔 2s 执行
+    cronTime: "*/30 * * * * *", // 每隔 30s 执行（优化：从2秒改为30秒，减少数据库压力）
     start: true,
 })
 export class JobCollectStartJob extends BaseService implements IJob {

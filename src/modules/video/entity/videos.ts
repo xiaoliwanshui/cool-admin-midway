@@ -8,6 +8,7 @@ const _ = require('lodash');
  */
 @Entity('video')
 @Unique(['title'])
+@Index(['year', 'id'])
 export class VideoEntity extends BaseEntity {
   @Index({unique: true}) // 定义全文索引
   @Column({comment: '影片标题', length: 191, nullable: true})
