@@ -221,6 +221,134 @@ export class VideosService extends BaseService {
   }
 
   /**
+   * 批量插入视频
+   * @param videoEntities 视频实体数组
+   * @param collectionEntity 集合实体
+   * @returns 插入结果统计
+   */
+  async batchInsert(
+    videoEntities: VideoEntity[],
+    collectionEntity: CollectionEntity
+  ): Promise<{ successCount: number; skipCount: number; errorCount: number }> {
+    if (!videoEntities || videoEntities.length === 0) {
+      return { successCount: 0, skipCount: 0, errorCount: 0 };
+    }
+
+    let successCount = 0;
+    let skipCount = 0;
+    let errorCount = 0;
+
+    try {
+      const cacheKey = `batchInsert:${collectionEntity.id}`;
+      
+      // 检查是否有正在进行的批量插入任务
+      const isProcessing = await this.midwayCache.get(cacheKey);
+      if (isProcessing) {
+        this.logger.debug(TAG, '批量插入任务正在进行，跳过本次处理');
+        return { successCount: 0, skipCount: videoEntities.length, errorCount: 0 };
+      }
+
+      await this.midwayCache.set(cacheKey, true, 300);
+
+      try {
+        // 过滤和清理数据
+        const validVideos: VideoEntity[] = [];
+        const videoTitles = new Set<string>();
+
+        for (const videoEntity of videoEntities) {
+          // 检查必要的字段
+          if (!videoEntity.title || !videoEntity.title.trim()) {
+            this.logger.warn(TAG, '视频标题为空，跳过保存');
+            skipCount++;
+            continue;
+          }
+
+          // 检查重复标题（在同一批次内）
+          if (videoTitles.has(videoEntity.title)) {
+            this.logger.debug(TAG, `批次内重复标题跳过: ${videoEntity.title}`);
+            skipCount++;
+            continue;
+          }
+          videoTitles.add(videoEntity.title);
+
+          // 数据清理和验证
+          this.cleanVideoData(videoEntity);
+          validVideos.push(videoEntity);
+        }
+
+        if (validVideos.length === 0) {
+          this.logger.info(TAG, '没有有效的视频需要插入');
+          return { successCount: 0, skipCount: videoEntities.length, errorCount: 0 };
+        }
+
+        // 使用批量插入
+        try {
+          const insertedVideos = await this.videoEntity.insert(validVideos);
+          
+          if (insertedVideos && insertedVideos.identifiers && insertedVideos.identifiers.length > 0) {
+            successCount = insertedVideos.identifiers.length;
+            
+            // 批量保存视频线路信息
+            const videosWithIds: VideoEntity[] = [];
+            for (let i = 0; i < validVideos.length && i < insertedVideos.identifiers.length; i++) {
+              const videoEntity = validVideos[i];
+              const insertedId = insertedVideos.identifiers[i].id;
+              
+              if (insertedId) {
+                videoEntity.id = insertedId;
+                videosWithIds.push(videoEntity);
+              }
+            }
+
+            // 批量插入视频线路
+            if (videosWithIds.length > 0) {
+              await this.VideoLineService.batchInsert(videosWithIds, collectionEntity);
+            }
+            
+            this.logger.info(TAG, `批量插入视频完成，成功${successCount}条，跳过${skipCount}条`);
+          }
+        } catch (insertError) {
+          // 如果批量插入失败（如重复键错误），回退到逐个插入
+          if (this.duplicateKeyHandler.isDuplicateKeyError(insertError) || 
+              insertError.code === 'ER_DUP_ENTRY' || 
+              insertError.errno === 1062) {
+            this.logger.warn(TAG, '批量插入遇到重复键，回退到逐个插入');
+            
+            for (const videoEntity of validVideos) {
+              try {
+                const savedVideo = await this.duplicateKeyHandler.safeVideoInsert(videoEntity);
+                if (savedVideo && savedVideo.id) {
+                  videoEntity.id = savedVideo.id;
+                  await this.VideoLineService.insert(videoEntity, collectionEntity).catch(lineError => {
+                    this.logger.error(TAG, `视频线路保存失败: ${videoEntity.title}`, lineError);
+                  });
+                  successCount++;
+                }
+              } catch (singleError) {
+                if (this.duplicateKeyHandler.isDuplicateKeyError(singleError)) {
+                  skipCount++;
+                } else {
+                  errorCount++;
+                  this.logger.error(TAG, `插入视频失败: ${videoEntity.title}`, singleError);
+                }
+              }
+            }
+          } else {
+            throw insertError;
+          }
+        }
+      } finally {
+        await this.midwayCache.del(cacheKey);
+      }
+    } catch (error) {
+      this.logger.error(TAG, '批量插入视频异常', error);
+      throw error;
+    }
+
+    return { successCount, skipCount, errorCount };
+  }
+
+  /**
    * 根据视频ID获取视频信息和线路资源
    * @param id 视频ID
    */

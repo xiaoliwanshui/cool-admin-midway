@@ -26,6 +26,167 @@ export class PlayLineService extends BaseService {
   midwayCache: MidwayCache;
 
   private readonly CACHE_TTL = 300; // 缓存时间5分钟
+  private readonly BATCH_SIZE = 100; // 每批处理的数据量
+  private readonly CACHE_CHECK_BATCH_SIZE = 50; // 每次并行检查缓存的条数
+
+  /**
+   * 批量插入播放线路
+   * @param playLines 播放线路数据数组
+   * @returns 插入结果统计
+   */
+  async batchInsert(playLines: Line[]): Promise<{ successCount: number; skipCount: number }> {
+    if (!playLines || playLines.length === 0) {
+      return { successCount: 0, skipCount: 0 };
+    }
+
+    let successCount = 0;
+    let skipCount = 0;
+    const totalLines = playLines.length;
+
+    try {
+      if (!this.playLineEntity) {
+        this.logger.error(TAG, `PlayLineEntity 数据源未正确初始化`);
+        throw new Error('PlayLineEntity 数据源未正确初始化');
+      }
+
+      this.logger.info(TAG, `开始批量插入播放线路，总计 ${totalLines} 条`);
+
+      const cacheKeyPrefix = `playLine:file:`;
+
+      for (let i = 0; i < playLines.length; i += this.BATCH_SIZE) {
+        const batch = playLines.slice(i, Math.min(i + this.BATCH_SIZE, playLines.length));
+        const batchNum = Math.floor(i / this.BATCH_SIZE) + 1;
+        const totalBatches = Math.ceil(playLines.length / this.BATCH_SIZE);
+
+        this.logger.info(TAG, `处理第 ${batchNum}/${totalBatches} 批，本批 ${batch.length} 条`);
+
+        const batchResult = await this.processBatch(batch, cacheKeyPrefix);
+        successCount += batchResult.successCount;
+        skipCount += batchResult.skipCount;
+
+        this.logger.info(TAG, `第 ${batchNum}/${totalBatches} 批处理完成，成功 ${batchResult.successCount} 条，跳过 ${batchResult.skipCount} 条`);
+      }
+
+      this.logger.info(TAG, `批量插入播放线路完成，总计成功 ${successCount} 条，跳过 ${skipCount} 条`);
+    } catch (error) {
+      this.logger.error(TAG, '批量插入播放线路异常', error);
+      throw error;
+    }
+
+    return { successCount, skipCount };
+  }
+
+  private async processBatch(batch: Line[], cacheKeyPrefix: string): Promise<{ successCount: number; skipCount: number }> {
+    let successCount = 0;
+    let skipCount = 0;
+
+    const validPlayLines: Line[] = [];
+
+    for (let i = 0; i < batch.length; i += this.CACHE_CHECK_BATCH_SIZE) {
+      const checkBatch = batch.slice(i, Math.min(i + this.CACHE_CHECK_BATCH_SIZE, batch.length));
+
+      const checkResults = await Promise.allSettled(
+        checkBatch.map(async (data) => {
+          if (!data.video_line_id || data.video_line_id === null || data.video_line_id === undefined) {
+            return { valid: false, reason: 'invalid_video_line_id' };
+          }
+
+          const cacheKey = `${cacheKeyPrefix}${data.file}`;
+          const cachedExists = await this.midwayCache.get(cacheKey);
+
+          if (cachedExists) {
+            return { valid: false, reason: 'cached', data };
+          }
+
+          return { valid: true, data };
+        })
+      );
+
+      for (const result of checkResults) {
+        if (result.status === 'fulfilled') {
+          if (result.value.valid) {
+            validPlayLines.push(result.value.data);
+          } else if (result.value.reason === 'invalid_video_line_id') {
+            skipCount++;
+          } else if (result.value.reason === 'cached') {
+            skipCount++;
+          }
+        } else {
+          this.logger.warn(TAG, `缓存检查失败: ${result.reason}`);
+          skipCount++;
+        }
+      }
+    }
+
+    if (validPlayLines.length === 0) {
+      return { successCount: 0, skipCount: batch.length };
+    }
+
+    const playLineData = validPlayLines.map(data => ({
+      name: data.name,
+      file: data.file,
+      sub_title: data.sub_title,
+      video_id: data.video_id,
+      video_name: data.video_name,
+      tag: data.tag,
+      sort: data.sort,
+      collection_id: data.collection_id,
+      collection_name: data.collection_name,
+      video_line_id: data.video_line_id,
+      status: 1,
+      vip: 0,
+    }));
+
+    try {
+      const upsertResult = await this.playLineEntity.upsert(
+        playLineData,
+        ['file']
+      );
+
+      if (upsertResult.identifiers && upsertResult.identifiers.length > 0) {
+        successCount = upsertResult.identifiers.length;
+
+        const cachePromises = validPlayLines.map(data => 
+          this.midwayCache.set(`${cacheKeyPrefix}${data.file}`, true, this.CACHE_TTL)
+        );
+        await Promise.allSettled(cachePromises);
+      }
+    } catch (insertError) {
+      if (
+        insertError.code === 'ER_DUP_ENTRY' ||
+        insertError.errno === 1062 ||
+        (insertError.message && insertError.message.includes('Duplicate entry'))
+      ) {
+        this.logger.warn(TAG, '批量插入遇到重复键，回退到逐个插入');
+
+        for (const data of validPlayLines) {
+          try {
+            await this.insert(data);
+            successCount++;
+          } catch (singleError) {
+            if (this.isDuplicateKeyError(singleError)) {
+              skipCount++;
+            } else {
+              this.logger.error(TAG, `插入播放线路失败: ${data.file}`, singleError);
+            }
+          }
+        }
+      } else {
+        throw insertError;
+      }
+    }
+
+    return { successCount, skipCount };
+  }
+
+  /**
+   * 判断是否为重复键错误
+   */
+  private isDuplicateKeyError(error: any): boolean {
+    return error.code === 'ER_DUP_ENTRY' || 
+           error.errno === 1062 ||
+           (error.message && error.message.includes('Duplicate entry'));
+  }
 
   async insert(data: Line): Promise<void> {
     // 如果 data.video_line_id 不存在或无效，就不执行以下逻辑

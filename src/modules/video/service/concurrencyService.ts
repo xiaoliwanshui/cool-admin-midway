@@ -229,49 +229,28 @@ export class ConcurrencyService {
   async saveVideo(videoList: VideoBean[], collectionEntity: CollectionEntity) {
     try {
       // this.logger.info(TAG, `开始保存视频数据，共${videoList.length}条`);
-
-      // 批量处理避免内存问题，同时减少并发冲突
-      const batchSize = 5; // 减小批处理大小避免重复键冲突
-      let savedCount = 0;
-      let errorCount = 0;
-
-      while (videoList.length) {
-        const batch = videoList.splice(0, batchSize);
-
-        // 使用串行处理而非并行处理，避免重复键冲突
-        for (const item of batch) {
-          try {
-            await this.videosService.insert(
-              item as unknown as VideoEntity,
-              collectionEntity
-            );
-            savedCount++;
-          } catch (error) {
-            errorCount++;
-            // 重复键错误不记录为系统错误，只记录为debug日志
-            if (this.isDuplicateKeyError(error)) {
-              // this.logger.debug(TAG, `视频已存在，跳过: ${item.getTitle()}`);
-            } else {
-              // this.logger.error(TAG, `保存视频失败: ${item.getTitle()}`, error);
-            }
-          }
+      
+      // 转换 VideoBean 为 VideoEntity
+      const videoEntities: VideoEntity[] = [];
+      for (const item of videoList) {
+        try {
+          const videoEntity = item as unknown as VideoEntity;
+          videoEntities.push(videoEntity);
+        } catch (error) {
+          // this.logger.error(TAG, `转换视频数据失败`, error);
         }
-
-        // 及时释放 batch 数组内存
-        batch.length = 0;
-
-        // 内存管理
-        if (process.memoryUsage().heapUsed > 500 * 1024 * 1024) {
-          global.gc && global.gc();
-          // this.logger.info(TAG, `内存使用超过500MB，触发垃圾回收`);
-        }
-
-        // 添加小延时避免数据库连接过载
-        await new Promise(resolve => setTimeout(resolve, 50));
       }
 
-      // this.logger.info(TAG, `视频保存完成，成功${savedCount}条，失败${errorCount}条`);
+      if (videoEntities.length === 0) {
+        // this.logger.warn(TAG, '没有有效的视频数据需要保存');
+        return;
+      }
 
+      // 使用批量插入方法
+      const result = await this.videosService.batchInsert(videoEntities, collectionEntity);
+      
+      // this.logger.info(TAG, `视频保存完成，成功${result.successCount}条，跳过${result.skipCount}条，失败${result.errorCount}条`);
+      
       // 显式清空数组，释放内存
       videoList = null;
       collectionEntity = null;
