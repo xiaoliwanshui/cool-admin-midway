@@ -37,24 +37,35 @@ import {VideosService} from '../../service/videos';
     ],
     where: ctx => {
       const {directors, actors, video_tag} = ctx.request.body;
-      //获取请求头
       const {aldult} = ctx.request.headers;
-      const where = [
-        [
+      const where = [];
+      
+      if (directors) {
+        where.push([
           'directors like :directors',
           {directors: `%${directors}%`},
           directors,
-        ],
-        ['actors like :actors', {actors: `%${actors}%`}, actors],
-        [
+        ]);
+      }
+      
+      if (actors) {
+        where.push(['actors like :actors', {actors: `%${actors}%`}, actors]);
+      }
+      
+      if (video_tag) {
+        where.push([
           'video_tag like :video_tag',
           {video_tag: `%${video_tag}%`},
           video_tag,
-        ],
-      ];
-      if (aldult === '0') {
-        where.push(['category_pid != :category_pid', {category_pid: 643}]);
+        ]);
       }
+      if(aldult){
+      if (aldult === '0') {
+              where.push(['category_pid != :category_pid', {category_pid: 643}]);
+            }
+      }
+     
+      
       return where;
     },
     addOrderBy: {

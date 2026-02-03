@@ -95,6 +95,9 @@ export class ConcurrencyService {
         if (!this.validateRedisData(data)) {
           // this.logger.warn(TAG, `第${processedCount + 1}条数据格式无效，跳过`);
           processedCount++; 
+          // 及时释放 data 内存
+          data.collectionEntity = null;
+          data.videoParams = null;
           continue;
         }
         
@@ -118,6 +121,10 @@ export class ConcurrencyService {
             languageMap
           );
           
+          // 及时释放 data 内存
+          data.collectionEntity = null;
+          data.videoParams = null;
+          
           processedCount++;
           // this.logger.debug(TAG, `第${processedCount}条数据处理完成`);
           
@@ -130,6 +137,9 @@ export class ConcurrencyService {
         } catch (error) {
           // this.logger.error(TAG, `处理第${processedCount + 1}条数据失败`, error);
           processedCount++; // 即使失败也计数，避免无限循环
+          // 及时释放 data 内存
+          data.collectionEntity = null;
+          data.videoParams = null;
         }
       }
       
@@ -262,6 +272,9 @@ export class ConcurrencyService {
             }
           }
         }
+        
+        // 及时释放 batch 数组内存
+        batch.length = 0;
         
         // 内存管理
         if (process.memoryUsage().heapUsed > 500 * 1024 * 1024) {
@@ -400,6 +413,9 @@ export class ConcurrencyService {
         }
       }
       
+      // 及时释放 result.data.list 内存
+      result.data.list = null;
+      
       // this.logger.info(TAG, `视频数据处理完成，处理${processedCount}条，有效${videoList.length}条`);
     } else {
       // this.logger.warn(TAG, '无效的视频数据响应', { 
@@ -444,8 +460,12 @@ export class ConcurrencyService {
             videoList
           );
         }
+        // 及时释放 result.data.list 内存
+        result.data.list = null;
       }
     }
+    // 及时释放 results 数组
+    results = null;
     this.saveVideo(videoList, collectionEntity);
   }
 

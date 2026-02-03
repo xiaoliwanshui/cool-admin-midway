@@ -1,4 +1,15 @@
-const { Bootstrap } = require('@midwayjs/bootstrap');
+const {Bootstrap} = require('@midwayjs/bootstrap');
+
+// 内存监控代码
+setInterval(() => {
+  const memoryUsage = process.memoryUsage();
+  console.log('内存使用情况:');
+  console.log('堆内存总量:', Math.round(memoryUsage.heapTotal / 1024 / 1024) + 'MB');
+  console.log('堆内存使用量:', Math.round(memoryUsage.heapUsed / 1024 / 1024) + 'MB');
+  console.log('外部内存使用量:', Math.round(memoryUsage.external / 1024 / 1024) + 'MB');
+  console.log('RSS (常驻集大小):', Math.round(memoryUsage.rss / 1024 / 1024) + 'MB');
+  console.log('-----------------------------------');
+}, 5000); // 每5秒检查一次
 
 // 全局错误处理 - 在应用启动前设置
 process.on('unhandledRejection', (reason, promise) => {

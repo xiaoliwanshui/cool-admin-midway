@@ -2,7 +2,7 @@
  * @Author: 17691002584 17691002584@163.com
  * @Date: 2026-02-02 15:55:14
  * @LastEditors: 17691002584 17691002584@163.com
- * @LastEditTime: 2026-02-03 01:14:42
+ * @LastEditTime: 2026-02-03 13:06:46
  * @FilePath: src/modules/task/job/async.jobCollect.ts
  * @Description: 视频采集定时任务，每隔2秒执行一次
  */
