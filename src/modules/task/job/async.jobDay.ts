@@ -2,7 +2,7 @@
  * @Author: 17691002584 17691002584@163.com
  * @Date: 2026-02-02 16:40:57
  * @LastEditors: 17691002584 17691002584@163.com
- * @LastEditTime: 2026-02-04 11:18:08
+ * @LastEditTime: 2026-02-05 01:11:21
  * @FilePath: src/modules/task/job/async.jobDay.ts
  * @Description: 这是默认设置,可以在设置》工具》File Description中进行配置
  */
@@ -10,7 +10,7 @@
  * @Author: 17691002584 17691002584@163.com
  * @Date: 2026-02-02 15:55:14
  * @LastEditors: 17691002584 17691002584@163.com
- * @LastEditTime: 2026-02-04 11:18:08
+ * @LastEditTime: 2026-02-05 01:11:21
  * @FilePath: src/modules/task/job/async.jobDay.ts
  * @Description: 日更新采集定时任务，每隔2秒执行一次，遍历所有采集源并分批处理
  */
@@ -28,7 +28,7 @@ import {CollectionEntity} from "../../video/entity/collection";
 const TAG = 'JobDayCollectJob';
 
 @Job("syncJob", {
-  cronTime: FORMAT.CRONTAB.EVERY_PER_5_MINUTE,
+  cronTime: FORMAT.CRONTAB.EVERY_PER_10_MINUTE,
   start: true,
 })
 export class JobDayCollectJob extends BaseService implements IJob {
@@ -45,7 +45,7 @@ export class JobDayCollectJob extends BaseService implements IJob {
   collectionService: CollectionService;
 
   // 定义固定的任务ID，避免硬编码
-  private readonly COLLECTION_TASK_ID = 19;
+  private readonly COLLECTION_TASK_ID = 2;
 
   // 标识是否正在执行采集任务，防止任务重叠
   private isExecuting = false;
@@ -56,7 +56,6 @@ export class JobDayCollectJob extends BaseService implements IJob {
 
   async onTick() {
     this.logger.info(TAG, "日更新采集任务开始执行");
-    return
     // 检查是否已有任务在执行，如果有则跳过本次执行
     if (this.isExecuting) {
       this.logger.info(TAG, "日更新采集任务正在执行中，跳过本次执行");

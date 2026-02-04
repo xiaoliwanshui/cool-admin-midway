@@ -2,7 +2,7 @@
  * @Author: 17691002584 17691002584@163.com
  * @Date: 2026-02-02 15:55:14
  * @LastEditors: 17691002584 17691002584@163.com
- * @LastEditTime: 2026-02-04 10:38:37
+ * @LastEditTime: 2026-02-05 01:10:26
  * @FilePath: src/modules/task/job/async.jobFilter.ts
  * @Description: 视频播放地址更新定时任务，每6小时执行一次
  */
@@ -33,7 +33,7 @@ export class JobFilter extends BaseService implements IJob {
   taskLogEntity: Repository<TaskLogEntity>;
 
   // 定义固定的任务ID，避免硬编码
-  private readonly FILTER_TASK_ID = 4;
+  private readonly FILTER_TASK_ID = 3;
 
   // 标识是否正在执行过滤任务，防止任务重叠
   private isExecuting = false;

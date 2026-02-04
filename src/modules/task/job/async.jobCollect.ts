@@ -2,7 +2,7 @@
  * @Author: 17691002584 17691002584@163.com
  * @Date: 2026-02-02 15:55:14
  * @LastEditors: 17691002584 17691002584@163.com
- * @LastEditTime: 2026-02-04 11:18:08
+ * @LastEditTime: 2026-02-05 01:10:26
  * @FilePath: src/modules/task/job/async.jobCollect.ts
  * @Description: 视频采集定时任务，每隔2秒执行一次
  */
@@ -33,13 +33,12 @@ export class JobCollectStartJob extends BaseService implements IJob {
   collectionService: CollectionService;
 
   // 定义固定的任务ID，避免硬编码
-  private readonly COLLECTION_TASK_ID = 18;
+  private readonly COLLECTION_TASK_ID = 1;
 
   // 标识是否正在执行采集任务，防止任务重叠
   private isExecuting = false;
 
   async onTick() {
-    return
     // 检查是否已有任务在执行，如果有则跳过本次执行
     if (this.isExecuting) {
       this.logger.info(TAG, "视频采集任务正在执行中，跳过本次执行");
