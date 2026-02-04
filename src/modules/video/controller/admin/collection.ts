@@ -1,22 +1,20 @@
-import {
-  BaseController,
-  CoolController,
-  CoolTag,
-  TagTypes,
-} from '@cool-midway/core';
-import { CollectionEntity } from '../../entity/collection';
-import { CollectionService } from '../../service/collection';
-import { Body, Inject, Post } from '@midwayjs/core';
+import {BaseController, CoolController, CoolTag, TagTypes,} from '@cool-midway/core';
+import {CollectionEntity} from '../../entity/collection';
+import {CollectionService} from '../../service/collection';
+import {Body, Inject, Post} from '@midwayjs/core';
 
 @CoolController({
   api: ['add', 'delete', 'update', 'info', 'list', 'page'],
   entity: CollectionEntity,
-  service:CollectionService,
+  service: CollectionService,
   insertParam: ctx => {
     return {
       // 获得当前登录的后台用户ID，需要请求头传Authorization参数
       createUserId: ctx.admin.userId,
     };
+  },
+  pageQueryOp: {
+    keyWordLikeFields: ['name'],
   },
 })
 export class AdminCollectionController extends BaseController {
@@ -24,7 +22,7 @@ export class AdminCollectionController extends BaseController {
   collectionService: CollectionService;
 
   @CoolTag(TagTypes.IGNORE_TOKEN)
-  @Post('/collection_day', { summary: '日更新' })
+  @Post('/collection_day', {summary: '日更新'})
   async collection(
     @Body('params') params: any,
     @Body('collection') collection: any
@@ -39,7 +37,7 @@ export class AdminCollectionController extends BaseController {
   }
 
   @CoolTag(TagTypes.IGNORE_TOKEN)
-  @Post('/collection_keyword', { summary: '根据关键字采集' })
+  @Post('/collection_keyword', {summary: '根据关键字采集'})
   async keyWord(
     @Body('keyWord') keyWord: string[]
   ): Promise<unknown> {

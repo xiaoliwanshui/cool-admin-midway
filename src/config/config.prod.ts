@@ -33,7 +33,6 @@ export default {
         poolSize: 20,
         maxQueryExecutionTime: 5000,
         connectTimeout: 15000,
-        acquireTimeout: 15000,
         waitForConnections: true,
         queueLimit: 0,
         extra: {

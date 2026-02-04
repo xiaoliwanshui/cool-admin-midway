@@ -70,17 +70,11 @@ export class JobPlayLine extends BaseService implements IJob {
      * 执行播放线路任务（在后台运行）
      */
     private async executePlayLineTask(): Promise<void> {
-        return new Promise((resolve, reject) => {
-            // 使用 setImmediate 将任务放入事件循环的下一个阶段执行，避免阻塞
-            setImmediate(async () => {
-                try {
-                    await this.playLineService.merge();
-                    resolve();
-                } catch (error) {
-                    reject(error);
-                }
-            });
-        });
+        try {
+            await this.playLineService.merge();
+        } catch (error) {
+            throw error;
+        }
     }
 
     /**
