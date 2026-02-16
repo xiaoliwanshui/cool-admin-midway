@@ -11,10 +11,10 @@ const _ = require('lodash');
 @Index(['year', 'id'])
 export class VideoEntity extends BaseEntity {
   @Index({unique: true}) // 定义全文索引
-  @Column({comment: '影片标题', length: 191, nullable: true})
+  @Column({comment: '影片标题', length: 512, nullable: true})
   title: string;
 
-  @Column({comment: '影片副标题', length: 191, nullable: true})
+  @Column({comment: '影片副标题', length: 512, nullable: true})
   sub_title: string;
 
   @Column({comment: '是否vip', nullable: true, default: 0})
