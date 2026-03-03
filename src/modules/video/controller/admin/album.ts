@@ -16,6 +16,9 @@ import { VideoAlbumEntity } from '../../entity/album';
   pageQueryOp: {
     fieldEq: ['category_id', 'status'],
     keyWordLikeFields: ['title'],
+    addOrderBy: {
+      sort: 'desc',
+    },
   },
 })
 export class AdminAlbumController extends BaseController {}

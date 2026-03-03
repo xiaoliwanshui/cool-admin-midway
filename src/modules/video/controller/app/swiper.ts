@@ -22,7 +22,7 @@ import { VideoSwiperEntity } from '../../entity/swiper';
     keyWordLikeFields: ['title'],
     fieldEq: ['status', 'category'],
     addOrderBy: {
-      createTime: 'desc',
+      sort: 'desc',
     },
   },
 })

@@ -18,6 +18,16 @@ export class CollectionEntity extends BaseEntity {
   @Column({ comment: '参数', type: 'text', nullable: true })
   param: string;
 
+  @Column({comment: '解析地址', type: 'text', nullable: true})
+  parseAddress: string;
+
+  @Column({comment: 'apiKey', type: 'text', nullable: true})
+  apiKey: string;
+
+  @Column({comment: 'isVip', default: 0})
+  isVip: number;
+
+
   @Column({ comment: '说明', length: 191, nullable: true })
   desc: string;
 

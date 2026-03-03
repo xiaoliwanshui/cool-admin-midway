@@ -67,7 +67,7 @@ export class AlbumVideoServer {
         category_id: query.category_id,
       },
       order: {
-        sort: 'ASC',
+        sort: 'DESC',
       },
       skip: query.page * (query.page - 1),
       take: query.size,

@@ -1,6 +1,6 @@
-import { BaseController, CoolController, CoolUrlTag, TagTypes } from '@cool-midway/core';
-import { WeekEntity } from '../../entity/week';
-import { VideoEntity } from '../../entity/videos';
+import {BaseController, CoolController, CoolUrlTag, TagTypes} from '@cool-midway/core';
+import {WeekEntity} from '../../entity/week';
+import {VideoEntity} from '../../entity/videos';
 
 /**
  *
@@ -64,7 +64,10 @@ import { VideoEntity } from '../../entity/videos';
         condition: 'a.videoId = b.id',
         type: 'innerJoin'
       }
-    ]
+    ],
+    addOrderBy: {
+      sort: 'desc'
+    }
   }
 })
 @CoolUrlTag({

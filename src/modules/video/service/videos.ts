@@ -240,7 +240,7 @@ export class VideosService extends BaseService {
 
     try {
       const cacheKey = `batchInsert:${collectionEntity.id}`;
-      
+
       // 检查是否有正在进行的批量插入任务
       const isProcessing = await this.midwayCache.get(cacheKey);
       if (isProcessing) {
@@ -284,16 +284,16 @@ export class VideosService extends BaseService {
         // 使用批量插入
         try {
           const insertedVideos = await this.videoEntity.insert(validVideos);
-          
+
           if (insertedVideos && insertedVideos.identifiers && insertedVideos.identifiers.length > 0) {
             successCount = insertedVideos.identifiers.length;
-            
+
             // 批量保存视频线路信息
             const videosWithIds: VideoEntity[] = [];
             for (let i = 0; i < validVideos.length && i < insertedVideos.identifiers.length; i++) {
               const videoEntity = validVideos[i];
               const insertedId = insertedVideos.identifiers[i].id;
-              
+
               if (insertedId) {
                 videoEntity.id = insertedId;
                 videosWithIds.push(videoEntity);
@@ -304,16 +304,16 @@ export class VideosService extends BaseService {
             if (videosWithIds.length > 0) {
               await this.VideoLineService.batchInsert(videosWithIds, collectionEntity);
             }
-            
+
             this.logger.info(TAG, `批量插入视频完成，成功${successCount}条，跳过${skipCount}条`);
           }
         } catch (insertError) {
           // 如果批量插入失败（如重复键错误），回退到逐个插入
-          if (this.duplicateKeyHandler.isDuplicateKeyError(insertError) || 
-              insertError.code === 'ER_DUP_ENTRY' || 
+          if (this.duplicateKeyHandler.isDuplicateKeyError(insertError) ||
+            insertError.code === 'ER_DUP_ENTRY' ||
               insertError.errno === 1062) {
             this.logger.warn(TAG, '批量插入遇到重复键，回退到逐个插入');
-            
+
             for (const videoEntity of validVideos) {
               try {
                 const savedVideo = await this.duplicateKeyHandler.safeVideoInsert(videoEntity);
@@ -353,21 +353,27 @@ export class VideosService extends BaseService {
    * @param id 视频ID
    */
   async getVideoDetail(id: number, createUserId?: number): Promise<any> {
-    // 获取视频基本信息
-    const video = await this.videoEntity.findOne({
-      where: {id},
-    });
-
+    const [video, shouldReturnLines, videoLines] = await Promise.all([
+      this.videoEntity.findOne({
+        where: {id},
+      }),
+      // 检查会员权限
+      createUserId
+        ? await this.memberService.isValidMember(createUserId)
+        : false,
+      // 获取视频线路信息
+      this.VideoLineService.videoLineEntity.find({
+        where: {video_id: id},
+        order: {sort: 'DESC'},
+      })
+    ]);
     if (!video) {
       throw new Error('视频不存在');
     }
 
-    // 获取视频线路信息
-    const videoLines = await this.VideoLineService.videoLineEntity.find({
-      where: {video_id: id},
-      order: {sort: 'DESC'},
-    });
-
+    if (videoLines.length === 0) {
+      return {video, lines: []};
+    }
     // 获取每个线路下的播放资源
     const linesWithSources = [];
     for (const line of videoLines) {
@@ -375,6 +381,12 @@ export class VideosService extends BaseService {
         where: {video_line_id: line.id},
         order: {sort: 'ASC'},
       });
+      //寻找playLines中vip字段为1的数据并将其file设置成 空
+      playLines.forEach(item => {
+        if (item.vip && !shouldReturnLines) {
+          item.file = '';
+        }
+      })
 
       linesWithSources.push({
         ...line,
@@ -382,11 +394,7 @@ export class VideosService extends BaseService {
       });
     }
     if (video.vip) {
-      const shouldReturnLines = await this.memberService.isValidMember(
-        createUserId
-      );
-      this.logger.warn(TAG, `shouldReturnLines: ${shouldReturnLines}`);
-      if (!createUserId || !shouldReturnLines) {
+      if (!shouldReturnLines) {
         linesWithSources.forEach(item => {
           item.playLines.forEach(items => {
             items.file = '';
@@ -433,7 +441,7 @@ export class VideosService extends BaseService {
   async getVideoRank(): Promise<any> {
     try {
       const cacheKey = 'video:rank:all';
-      
+
       // 尝试从缓存获取数据
       const cachedData = await this.midwayCache.get(cacheKey);
       if (cachedData) {
@@ -486,7 +494,7 @@ export class VideosService extends BaseService {
       }
 
       const result = {list: videoRankList};
-      
+
       // 缓存结果，缓存时间10分钟
       await this.midwayCache.set(cacheKey, result, 600);
       this.logger.debug(TAG, '视频排行信息已缓存');
