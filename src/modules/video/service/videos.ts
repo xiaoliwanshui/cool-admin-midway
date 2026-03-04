@@ -351,6 +351,7 @@ export class VideosService extends BaseService {
   /**
    * 根据视频ID获取视频信息和线路资源
    * @param id 视频ID
+   * @param createUserId
    */
   async getVideoDetail(id: number, createUserId?: number): Promise<any> {
     const [video, shouldReturnLines, videoLines] = await Promise.all([
