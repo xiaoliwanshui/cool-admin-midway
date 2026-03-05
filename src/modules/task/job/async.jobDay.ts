@@ -2,7 +2,7 @@
  * @Author: 17691002584 17691002584@163.com
  * @Date: 2026-02-02 16:40:57
  * @LastEditors: 17691002584 17691002584@163.com
- * @LastEditTime: 2026-02-05 01:11:21
+ * @LastEditTime: 2026-03-05 23:58:34
  * @FilePath: src/modules/task/job/async.jobDay.ts
  * @Description: 这是默认设置,可以在设置》工具》File Description中进行配置
  */
@@ -10,7 +10,7 @@
  * @Author: 17691002584 17691002584@163.com
  * @Date: 2026-02-02 15:55:14
  * @LastEditors: 17691002584 17691002584@163.com
- * @LastEditTime: 2026-02-05 01:11:21
+ * @LastEditTime: 2026-03-05 23:58:34
  * @FilePath: src/modules/task/job/async.jobDay.ts
  * @Description: 日更新采集定时任务，每隔2秒执行一次，遍历所有采集源并分批处理
  */
@@ -24,6 +24,7 @@ import {InjectEntityModel} from "@midwayjs/typeorm";
 import {TaskLogEntity} from "../entity/log";
 import {Repository} from "typeorm";
 import {CollectionEntity} from "../../video/entity/collection";
+import {RedisService} from "@midwayjs/redis";
 
 const TAG = 'JobDayCollectJob';
 
@@ -44,6 +45,10 @@ export class JobDayCollectJob extends BaseService implements IJob {
   @Inject()
   collectionService: CollectionService;
 
+
+  @Inject()
+  redisService: RedisService;
+
   // 定义固定的任务ID，避免硬编码
   private readonly COLLECTION_TASK_ID = 2;
 
@@ -54,13 +59,40 @@ export class JobDayCollectJob extends BaseService implements IJob {
   private readonly BATCH_SIZE = 5; // 每批处理的采集源数量
   private readonly BATCH_DELAY = 1000; // 批次之间的延迟（毫秒）
 
+  private async safeCacheSet(key: string, value: any, ttl?: number) {
+    try {
+      // 使用 redisService 直接设置，并正确使用传入的 TTL 参数（单位：秒）
+      const expireSeconds = ttl ? Math.floor(ttl / 1000) : 30;
+      await this.redisService.set(
+        key,
+        value,
+        'EX',
+        expireSeconds
+      );
+      return true;
+    } catch (error) {
+      // 如果 Redis 是只读副本，记录错误但不抛出
+      if (error.message && (error.message.includes('READONLY') || error.message.includes('read only'))) {
+        this.logger.warn(`Redis is in read-only mode, skipping cache set for key: ${key}`, error.message);
+        return false;
+      } else {
+        this.logger.error(`Failed to set cache for key: ${key}`, error);
+        throw error;
+      }
+    }
+  }
+
   async onTick() {
     this.logger.info(TAG, "日更新采集任务开始执行");
+    const isRunning = await this.redisService.get("videoJob:job_day_running",)
+    this.isExecuting = !!isRunning;
     // 检查是否已有任务在执行，如果有则跳过本次执行
     if (this.isExecuting) {
       this.logger.info(TAG, "日更新采集任务正在执行中，跳过本次执行");
       return;
     }
+
+    await this.safeCacheSet("videoJob:job_day_running", 1, 30 * 1000);
 
     // 设置执行标志
     this.isExecuting = true;

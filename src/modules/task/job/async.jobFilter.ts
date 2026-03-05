@@ -2,7 +2,7 @@
  * @Author: 17691002584 17691002584@163.com
  * @Date: 2026-02-02 15:55:14
  * @LastEditors: 17691002584 17691002584@163.com
- * @LastEditTime: 2026-02-05 01:10:26
+ * @LastEditTime: 2026-03-05 23:58:34
  * @FilePath: src/modules/task/job/async.jobFilter.ts
  * @Description: 视频播放地址更新定时任务，每6小时执行一次
  */
@@ -15,6 +15,7 @@ import {CollectionService} from "../../video/service/collection";
 import {InjectEntityModel} from "@midwayjs/typeorm";
 import {TaskLogEntity} from "../entity/log";
 import {Repository} from "typeorm";
+import {RedisService} from "@midwayjs/redis";
 
 const TAG = 'JobFilter';
 
@@ -29,6 +30,9 @@ export class JobFilter extends BaseService implements IJob {
   @Inject()
   collectionService: CollectionService;
 
+  @Inject()
+  redisService: RedisService;
+
   @InjectEntityModel(TaskLogEntity)
   taskLogEntity: Repository<TaskLogEntity>;
 
@@ -38,12 +42,38 @@ export class JobFilter extends BaseService implements IJob {
   // 标识是否正在执行过滤任务，防止任务重叠
   private isExecuting = false;
 
+  private async safeCacheSet(key: string, value: any, ttl?: number) {
+    try {
+      // 使用 redisService 直接设置，并正确使用传入的 TTL 参数（单位：秒）
+      const expireSeconds = ttl ? Math.floor(ttl / 1000) : 30;
+      await this.redisService.set(
+        key,
+        value,
+        'EX',
+        expireSeconds
+      );
+      return true;
+    } catch (error) {
+      // 如果 Redis 是只读副本，记录错误但不抛出
+      if (error.message && (error.message.includes('READONLY') || error.message.includes('read only'))) {
+        this.logger.warn(`Redis is in read-only mode, skipping cache set for key: ${key}`, error.message);
+        return false;
+      } else {
+        this.logger.error(`Failed to set cache for key: ${key}`, error);
+        throw error;
+      }
+    }
+  }
+
   async onTick() {
     // 检查是否已有任务在执行，如果有则跳过本次执行
+    const isRunning = await this.redisService.get("videoJob:job_filter_running",)
+    this.isExecuting = !!isRunning;
     if (this.isExecuting) {
       this.logger.info(TAG, "视频播放地址更新任务正在执行中，跳过本次执行");
       return;
     }
+    await this.safeCacheSet("videoJob:job_filter_running", true, 300000);
 
     this.logger.info(TAG, "视频播放地址更新任务开始执行");
 
