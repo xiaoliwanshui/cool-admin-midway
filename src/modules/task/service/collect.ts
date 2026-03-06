@@ -1,11 +1,12 @@
 import {Inject, Logger, Provide} from '@midwayjs/core';
 import {BaseService} from '@cool-midway/core';
 import {ILogger} from '@midwayjs/logger';
-import {CollectionService} from '../../video/service/collection';
-import {tagSQLQuery} from '../../video/service/tagGet';
-import {DictInfoService} from '../../dict/service/info';
-import {RedisService} from '@midwayjs/redis';
-import {VideosService} from '../../video/service/videos';
+import {CollectionService} from "../../video/service/collection";
+import {InjectEntityModel} from "@midwayjs/typeorm";
+import {CollectionEntity} from "../../video/entity/collection";
+import {Repository} from "typeorm";
+import {PlayLineService} from "../../video/service/play_line";
+import {TaskLogEntity} from "../entity/log";
 
 /**
  * TaskCollectService
@@ -18,213 +19,152 @@ export class TaskCollectService extends BaseService {
   logger: ILogger;
 
   @Inject()
+  playLineService: PlayLineService;
+
+  @Inject()
   collectionService: CollectionService;
 
-  @Inject()
-  dictInfoService: DictInfoService;
 
-  @Inject()
-  redisService: RedisService;
+  @InjectEntityModel(CollectionEntity)
+  collectionEntity: Repository<CollectionEntity>;
 
-  @Inject()
-  videosService: VideosService;
 
-  /**
-   * 执行每日采集任务
-   * @param id 视频ID
-   * @returns 返回任务执行结果
-   * @throws 采集任务异常时抛出错误
-   */
-  async day(id: number) {
+  @InjectEntityModel(TaskLogEntity)
+  taskLogEntity: Repository<TaskLogEntity>;
+
+
+  // 分批处理配置
+  private readonly BATCH_SIZE = 5; // 每批处理的采集源数量
+  private readonly BATCH_DELAY = 1000; // 批次之间的延迟（毫秒）
+
+  async startCollection(): Promise<void> {
     try {
-      this.logger.info(TAG, '日采集调用了');
-      await this.collectionService.day(id);
-      return '任务执行成功';
-    } catch (error) {
-      this.logger.error(TAG, '日采集任务异常', error);
-      throw error;
-    }
-  }
-
-  async startCollection() {
-    try {
-      // this.logger.info(TAG, '采集调用了');
       await this.collectionService.startCollection();
-      return '任务执行成功';
+      await this.taskLogEntity.insert({
+        detail: "success",
+        status: 1,
+        taskId: 1,
+      });
     } catch (error) {
-      this.logger.error(TAG, '采集任务异常', error);
+      await this.taskLogEntity.insert({
+        detail: error.message || "error",
+        status: 0,
+        taskId: 1,
+      });
       throw error;
     }
   }
 
   /**
-   * 执行每周采集任务
-   * @param id 视频ID
-   * @returns 返回任务执行结果
-   * @throws 采集任务异常时抛出错误
+   * 处理单个采集源
    */
-  async week(id: number) {
+  private async processSingleCollection(id: number, name: string): Promise<void> {
     try {
-      this.logger.info(TAG, '周采集调用了');
-      await this.collectionService.week(id);
-      return '任务执行成功';
+      // 调用采集服务的day方法
+      await this.collectionService.day(id);
     } catch (error) {
-      this.logger.error(TAG, '周采集任务异常', error);
-      throw error;
+      this.logger.error(TAG, `处理采集源 [${id}] ${name} 时发生错误:`, error);
+      // 不抛出错误，让其他采集源继续处理
     }
   }
 
   /**
-   * 过滤视频数据并更新数据库
-   * @returns 返回任务执行结果
-   * @throws 数据分类异常时抛出错误
+   * 执行采集任务（在后台运行）
    */
-  async videoFilter() {
-    this.logger.info(TAG, '数据分类调用了');
-    const SQLQuery =
-      'UPDATE video v SET play_url_put_in = CASE WHEN EXISTS (SELECT 1 FROM video_line vl WHERE vl.video_id = v.id) THEN 1 ELSE 0 END;';
+  async dayCollectionTask(): Promise<void> {
     try {
-      await this.nativeQuery(SQLQuery);
-      return '任务执行成功';
-    } catch (error) {
-      this.logger.error(TAG, '数据分类异常', error);
-      await this.nativeQuery('ROLLBACK;');
-      throw error;
-    }
-  }
-
-  /**
-   * 检查视频线路是否正常
-   * @returns 返回任务执行结果
-   * @throws 检查视频线路异常时抛出错误
-   */
-  async checkVideoLine() {
-    try {
-      this.logger.info(TAG, '检查视频线路调用了');
-      await this.collectionService.checkVideoLine();
-      return '任务执行成功';
-    } catch (error) {
-      this.logger.error(TAG, '检查视频线路异常', error);
-      throw error;
-    }
-  }
-
-  /**
-   * 诊断视频采集问题
-   * @returns 返回诊断结果
-   */
-  async diagnosisCollection() {
-    try {
-      this.logger.info(TAG, '开始诊断视频采集问题');
-
-      const diagnosis = {
-        redisStatus: null,
-        collectionSources: [],
-        categoryMappings: [],
-        systemHealth: {}
-      };
-
-      // 1. 检查Redis状态
-      try {
-        const redisExists = await this.redisService.exists('video:collection');
-        const redisLength = redisExists ? await this.redisService.llen('video:collection') : 0;
-        diagnosis.redisStatus = {
-          connected: true,
-          queueExists: !!redisExists,
-          queueLength: redisLength
-        };
-        this.logger.info(TAG, `Redis状态: 连接正常，队列长度: ${redisLength}`);
-      } catch (error) {
-        diagnosis.redisStatus = {connected: false, error: error.message};
-        this.logger.error(TAG, 'Redis连接失败', error);
-      }
-
-      // 2. 检查采集源和分类映射
-      const sql = `
-        SELECT
-          c.id as collection_id,
-          c.name as collection_name,
-          c.address,
-          c.status,
-          COUNT(cc.id) as category_count
-        FROM collection c
-        LEFT JOIN collection_category cc ON c.id = cc.collection_id
-        GROUP BY c.id
-        ORDER BY c.id
-      `;
-
-      const collections = await this.nativeQuery(sql);
-      diagnosis.collectionSources = collections;
-
-      this.logger.info(TAG, `找到 ${collections.length} 个采集源`);
-      collections.forEach(col => {
-        if (col.category_count === 0) {
-          this.logger.warn(TAG, `采集源 "${col.collection_name}" (ID: ${col.collection_id}) 未配置分类映射`);
-        }
+      const allCollections = await this.collectionEntity.find({
+        select: ['id', 'name']
       });
 
-      // 3. 系统健康检查
-      const memoryUsage = process.memoryUsage();
-      diagnosis.systemHealth = {
-        memory: {
-          heapUsed: Math.round(memoryUsage.heapUsed / 1024 / 1024) + 'MB',
-          heapTotal: Math.round(memoryUsage.heapTotal / 1024 / 1024) + 'MB'
-        },
-        uptime: Math.round(process.uptime()) + 's'
-      };
+      if (!allCollections || allCollections.length === 0) {
+        this.logger.info(TAG, "没有找到任何采集源");
+        return;
+      }
 
-      this.logger.info(TAG, '诊断完成', diagnosis);
-      return diagnosis;
+      this.logger.info(TAG, `找到 ${allCollections.length} 个采集源，开始分批处理`);
 
+      for (let i = 0; i < allCollections.length; i += this.BATCH_SIZE) {
+        const batch = allCollections.slice(i, i + this.BATCH_SIZE);
+
+        this.logger.info(TAG, `处理第 ${Math.floor(i / this.BATCH_SIZE) + 1} 批次，包含 ${batch.length} 个采集源`);
+
+        const promises = batch.map(collection =>
+          this.processSingleCollection(collection.id, collection.name)
+        );
+
+        await Promise.all(promises);
+
+        if (i + this.BATCH_SIZE < allCollections.length) {
+          this.logger.info(TAG, `批次处理完成，等待 ${this.BATCH_DELAY}ms 后继续下一批`);
+          await this.delay(this.BATCH_DELAY);
+        }
+      }
+
+      this.logger.info(TAG, `所有 ${allCollections.length} 个采集源处理完成`);
+      await this.taskLogEntity.insert({
+        detail: "success",
+        status: 1,
+        taskId: 2,
+      });
     } catch (error) {
-      this.logger.error(TAG, '诊断过程失败', error);
+      await this.taskLogEntity.insert({
+        detail: error.message || "error",
+        status: 0,
+        taskId: 2,
+      });
       throw error;
     }
   }
 
-  async getVideoTag() {
+  /**
+   * 延迟函数
+   */
+  private delay(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  /**
+   * 执行过滤任务（在后台运行）
+   */
+  async filterTask(): Promise<void> {
     try {
-      const tags: any[] = await this.nativeQuery(tagSQLQuery);
-      // this.logger.info(TAG, '获取视频tag成功', tags);
-      for (const tag of tags) {
-        const tagValues = await this.dictInfoService.findByName(tag.tag);
-        if (!tagValues) {
-          await this.dictInfoService.insertData(
-            {
-              name:
-              tag.tag,
-              orderNum:
-                1,
-              status:
-                1,
-              typeId:
-                54
-            }
-          );
-          // this.logger.info(TAG, '添加视频tag成功', tag.tag);
-        } else {
-          // this.logger.info(TAG, '视频tag已存在', tag.tag);
-        }
-      }
-      return '任务执行成功';
+      const SQLQuery =
+        'UPDATE video v SET play_url_put_in = CASE WHEN EXISTS (SELECT 1 FROM video_line vl WHERE vl.video_id = v.id) THEN 1 ELSE 0 END;';
+      await this.nativeQuery(SQLQuery);
+      await this.taskLogEntity.insert({
+        detail: "success",
+        status: 1,
+        taskId: 3,
+      });
     } catch (error) {
-      this.logger.error(TAG, '获取视频tag异常', error);
+      await this.taskLogEntity.insert({
+        detail: error.message || "error",
+        status: 0,
+        taskId: 3,
+      });
       throw error;
     }
   }
 
 
   /**
-   * 视频重新匹配分类
+   * 执行播放线路任务（在后台运行）
    */
-
-  async rematchCategory() {
+  async playLineTask(): Promise<void> {
     try {
-      this.logger.info(TAG, '视频重新匹配分类调用了');
-      await this.videosService.rematchCategory();
-      return '任务执行成功';
+      await this.playLineService.merge();
+      await this.taskLogEntity.insert({
+        detail: "success",
+        status: 1,
+        taskId: 4,
+      });
     } catch (error) {
-      this.logger.error(TAG, '视频重新匹配分类异常', error);
+      await this.taskLogEntity.insert({
+        detail: error.message || "error",
+        status: 0,
+        taskId: 4,
+      });
       throw error;
     }
   }
