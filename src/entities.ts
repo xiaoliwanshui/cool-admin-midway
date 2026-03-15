@@ -23,6 +23,8 @@ import * as entity20 from './modules/user/entity/info';
 import * as entity21 from './modules/user/entity/contacts';
 import * as entity22 from './modules/user/entity/collect';
 import * as entity23 from './modules/user/entity/address';
+import * as entity51 from './modules/user/entity/inviteCode';
+import * as entity52 from './modules/user/entity/inviteRecord';
 import * as entity24 from './modules/task/entity/log';
 import * as entity25 from './modules/task/entity/info';
 import * as entity26 from './modules/space/entity/type';
@@ -33,6 +35,7 @@ import * as entity30 from './modules/member/entity/score';
 import * as entity31 from './modules/member/entity/monthlyCheckinConfig';
 import * as entity32 from './modules/member/entity/memberExchangeConfig';
 import * as entity33 from './modules/member/entity/member';
+import * as entity53 from './modules/member/entity/scoreWithdrawal';
 import * as entity34 from './modules/dict/entity/type';
 import * as entity35 from './modules/dict/entity/info';
 import * as entity36 from './modules/demo/entity/goods';
@@ -102,4 +105,7 @@ export const entities = [
   ...Object.values(entity48),
   ...Object.values(entity49),
   ...Object.values(entity50),
+  ...Object.values(entity51),
+  ...Object.values(entity52),
+  ...Object.values(entity53),
 ];

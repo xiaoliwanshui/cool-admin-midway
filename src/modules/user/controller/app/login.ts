@@ -104,8 +104,9 @@ export class AppUserLoginController extends BaseController {
     @Body('phone') phone: string,
     @Body('password') password: string,
     @Body('captchaId') captchaId: string,
-    @Body('code') code: string
+    @Body('code') code: string,
+    @Body('inviteCode') inviteCode?: string
   ) {
-    return this.ok(await this.userLoginService.appLogin(phone, password, code, captchaId));
+    return this.ok(await this.userLoginService.appLogin(phone, password, code, captchaId, inviteCode));
   }
 }

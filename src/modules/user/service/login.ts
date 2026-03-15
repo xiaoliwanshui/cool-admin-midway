@@ -11,6 +11,8 @@ import { UserSmsService } from './sms';
 import { v1 as uuid } from 'uuid';
 import * as md5 from 'md5';
 import { PluginService } from '../../plugin/service/info';
+import {InviteCodeService} from "./inviteCode";
+import {Utils} from "../../../comm/utils";
 
 const TAG = 'UserLoginService';
 
@@ -19,6 +21,12 @@ const TAG = 'UserLoginService';
  */
 @Provide()
 export class UserLoginService extends BaseService {
+  @Inject()
+  ctx;
+
+  @Inject()
+  utils: Utils;
+
   @InjectEntityModel(UserInfoEntity)
   userInfoEntity: Repository<UserInfoEntity>;
 
@@ -39,6 +47,9 @@ export class UserLoginService extends BaseService {
 
   @Inject()
   userSmsService: UserSmsService;
+
+  @Inject()
+  inviteCodeService: InviteCodeService
 
   @Inject()
   logger: ILogger;
@@ -318,14 +329,15 @@ export class UserLoginService extends BaseService {
    * @param captchaId
    * @param password
    * @param code
+   * @param inviteCode
    */
-  async appLogin(phone: string, password: string, code: string, captchaId: string) {
+  async appLogin(phone: string, password: string, code: string, captchaId: string, inviteCode?: string) {
     const check = await this.baseSysLoginService.captchaCheck(captchaId, code);
     if (!check) {
       throw new CoolCommException('图片验证码错误');
     }
 
-   
+
 
     const user = await this.userInfoEntity.findOneBy({ phone });
     if (user) {
@@ -338,15 +350,24 @@ export class UserLoginService extends BaseService {
       }
       return this.password(phone, password);
     } else {
-      await this.userInfoEntity.insert({
+      const result = await this.userInfoEntity.insert({
         phone,
         password: md5(password),
         nickName: phone,
         avatarUrl:
           'http://127.0.0.1:8001/upload/20250514/7abeac6e56104ef38f33ac6d648f66a4_1. Police.png',
-        loginType: 2,
+        loginType: 3,
         unionid: phone
       });
+      this.logger.info('开始创建用户使用邀请码' + inviteCode);
+      await this.inviteCodeService.create({
+        loginType: 3,
+        inviteCode: inviteCode,
+        phone: phone,
+        userId: result.identifiers[0].id,
+        ipAddress: await this.utils.getReqIP(this.ctx)
+      })
+
       return this.password(phone, password);
     }
   }

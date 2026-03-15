@@ -22,6 +22,12 @@ export enum BusinessType {
   EXCHANGE = 2,
   //权限
   PERMISSION = 3,
+
+  //邀请用户
+  INVITE = 4,
+
+  //积分提现
+  WITHDRAWAL = 5,
 }
 /**
  * 积分服务类
@@ -62,7 +68,6 @@ export class ScoreService extends BaseService {
     reason?: string
   ): Promise<ScoreEntity | CoolCommException> {
     if (businessType === BusinessType.ADVERTISEMENT) {
-      this.logger.info('增加广告积分');
       const ads = await this.adsEntity.findOneBy({
         id: businessId,
         status: 1,
@@ -104,6 +109,15 @@ export class ScoreService extends BaseService {
         businessId: businessId,
         businessType: BusinessType.SIGN,
       });
+    } else if (businessType === BusinessType.INVITE) {
+      return await this.scoreEntity.save({
+        createUserId,
+        score: 100,
+        reason: reason || '邀请码被使用',
+        type: ScoreType.ADD,
+        businessId: businessId,
+        businessType: BusinessType.INVITE,
+      });
     }
   }
 
@@ -118,7 +132,8 @@ export class ScoreService extends BaseService {
     createUserId: number,
     businessId: number,
     businessType: BusinessType,
-    reason?: string
+    reason?: string,
+    score?: number
   ) {
     if (businessType === BusinessType.EXCHANGE) {
       const memberExchangeConfigEntity =
@@ -135,6 +150,17 @@ export class ScoreService extends BaseService {
           type: ScoreType.REDUCE,
         });
       }
+    }
+
+    if (businessType === BusinessType.WITHDRAWAL) {
+      return await this.scoreEntity.save({
+        createUserId,
+        businessId,
+        businessType,
+        reason,
+        score: -score,
+        type: ScoreType.REDUCE,
+      });
     }
   }
 

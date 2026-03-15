@@ -193,6 +193,6 @@ export class VideoParams {
    * @returns 返回查询字符串
    */
   getQueryString(): string {
-    return `Srid=${this.srid}&ac=${this.ac}&h=${this.h}&ids=${this.ids}&limit=${this.limit}&op=${this.op}&page=${this.page}&pagesize=${this.pagesize}&pg=${this.pg}&ps=${this.ps}&t=${this.t}&wd=${this.wd}`;
+    return `&rid=${this.srid}&ac=${this.ac}&h=${this.h}&ids=${this.ids}&limit=${this.limit}&op=${this.op}&page=${this.page}&pagesize=${this.pagesize}&pg=${this.pg}&ps=${this.ps}&t=${this.t}&wd=${this.wd}`;
   }
 }
