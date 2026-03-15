@@ -41,17 +41,12 @@ export class AppScoreWithdrawalController extends BaseController {
     @Body('type') type: number,
     @Body('remark') remark?: string
   ) {
-    try {
       const userId = this.ctx.user.id;
-      const result = await this.scoreWithdrawalService.createWithdrawal(
+    return this.ok(await this.scoreWithdrawalService.createWithdrawal(
         userId,
         type,
         remark
-      );
-      return this.ok(result);
-    } catch (e) {
-      return this.fail(e);
-    }
+    ));
   }
   /**
    * 创建提现申请

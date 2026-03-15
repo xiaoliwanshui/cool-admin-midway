@@ -6,7 +6,7 @@ import {UserInfoEntity} from "../../entity/info";
  * 邀请记录管理
  */
 @CoolController({
-  api: ['info', 'list', 'page'],
+  api: ['add', 'delete', 'update', 'info', 'list', 'page'],
   entity: InviteRecordEntity,
   pageQueryOp: {
     fieldEq: ['code'],

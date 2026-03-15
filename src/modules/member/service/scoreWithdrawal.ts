@@ -1,12 +1,15 @@
 import {Provide, Inject, ILogger} from '@midwayjs/core';
 import { InjectEntityModel } from '@midwayjs/typeorm';
-import { Repository } from 'typeorm';
+import {Repository, Between} from 'typeorm';
 import { BaseService, CoolCommException } from '@cool-midway/core';
 import { ScoreWithdrawalEntity } from '../entity/scoreWithdrawal';
 import { MemberEntity } from '../entity/member';
 import { ScoreService } from './score';
 import {UserInfoEntity} from "../../user/entity/info";
 import {Utils} from "../../../comm/utils";
+import {InviteCodeEntity} from "../../user/entity/inviteCode";
+import {InviteRecordEntity} from "../../user/entity/inviteRecord";
+
 
 /**
  * 积分提现状态枚举
@@ -38,6 +41,12 @@ export class ScoreWithdrawalService extends BaseService {
   @InjectEntityModel(MemberEntity)
   memberEntity: Repository<MemberEntity>;
 
+  @InjectEntityModel(InviteCodeEntity)
+  inviteCodeEntity: Repository<InviteCodeEntity>;
+
+  @InjectEntityModel(InviteRecordEntity)
+  inviteRecordEntity: Repository<InviteRecordEntity>;
+
 
   @InjectEntityModel(UserInfoEntity)
   userInfoEntity: Repository<UserInfoEntity>;
@@ -54,21 +63,25 @@ export class ScoreWithdrawalService extends BaseService {
       id:0,
       score: 1000,
       amount: 1,
+      member: 3
     },
     {
       id:1,
       score: 5000,
       amount: 5,
+      member: 8
     },
     {
       id:2,
       score: 20000,
       amount: 20,
+      member: 25
     },
     {
       id:3,
       score: 50000,
       amount: 50,
+      member: 80
     },
 
   ]
@@ -94,7 +107,7 @@ export class ScoreWithdrawalService extends BaseService {
     const scoreWithdrawalConfig =this.scoreWithdrawalConfigList.find(item=>item.id===type)
 
     if(scoreWithdrawalConfig===undefined){
-     throw new CoolCommException('无效的提现方式');
+      throw new CoolCommException('无效的提现方式');
    }
     this.logger.info('用户积分', currentScore);
     if (currentScore < scoreWithdrawalConfig.score) {
@@ -102,6 +115,17 @@ export class ScoreWithdrawalService extends BaseService {
     }
 
     const user = await this.userInfoEntity.findOneBy({id:userId });
+    const inviteCodeEntity = await this.inviteCodeEntity.findOneBy({createUserId: userId});
+    const inviteRecordCount = await this.inviteRecordEntity.countBy({
+      createTime: Between(
+        new Date(new Date().getTime() - 24 * 60 * 60 * 1000),
+        new Date()
+      ),
+      code: inviteCodeEntity.code
+    })
+    if (inviteRecordCount < scoreWithdrawalConfig.member) {
+      throw new CoolCommException(`今天邀请${scoreWithdrawalConfig.member - inviteRecordCount}人即可提现`);
+    }
     // 扣除用户积分
     await this.scoreService.reduceScore(
       userId,
