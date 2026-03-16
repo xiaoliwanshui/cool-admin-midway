@@ -39,4 +39,7 @@ export class CollectionEntity extends BaseEntity {
 
   @Column({ comment: '排序', nullable: true, default: 0 })
   sort: number;
+
+  @Column({comment: '是否支持模糊查询', nullable: true, default: 0})
+  isKeyWord: number;
 }

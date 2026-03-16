@@ -97,7 +97,7 @@ export class CollectionService extends BaseService {
   }
 
   async asyncKeyWord(keyWord: string[]) {
-    const collectionEntityList = await this.collectionEntity.find();
+    const collectionEntityList = await this.collectionEntity.findBy({isKeyWord: 1});
     keyWord.forEach(item => {
       collectionEntityList.forEach(collectionEntity => {
         this.syncVideo(collectionEntity, {
