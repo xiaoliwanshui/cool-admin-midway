@@ -86,8 +86,7 @@ export class ScoreService extends BaseService {
       }
     } else if (businessType === BusinessType.SIGN) {
       this.logger.info('增加签到积分');
-      const UserSignScore = await this.getUserSignScore(businessId);
-      this.logger.info('用户签到积分信息', UserSignScore);
+      const UserSignScore = await this.getUserSignScore(businessId, createUserId);
       if (UserSignScore) {
         return await this.scoreEntity.save({
           createUserId,
@@ -127,6 +126,7 @@ export class ScoreService extends BaseService {
    * @param reason 原因
    * @param businessId 业务ID
    * @param businessType 业务类型
+   * @param score
    */
   async reduceScore(
     createUserId: number,
@@ -187,7 +187,6 @@ export class ScoreService extends BaseService {
 
     const addTotal = addResult?.total ? parseInt(addResult.total) : 0;
     const reduceTotal = reduceResult?.total ? parseInt(reduceResult.total) : 0;
-    this.logger.info('用户签到积分信息', addTotal,reduceTotal);
     return addTotal + reduceTotal;
   }
 
@@ -200,7 +199,8 @@ export class ScoreService extends BaseService {
    * businessId 作为入参
    */
   async getUserSignScore(
-    businessId: number
+    businessId: number,
+    createUserId: number
   ): Promise<MonthlyCheckinConfigEntity | null> {
     //获取今天的开始时间
     const startTime = moment().startOf('day').toDate();
@@ -211,7 +211,9 @@ export class ScoreService extends BaseService {
       businessType: BusinessType.SIGN,
       type: ScoreType.ADD,
       createTime: Between(startTime, endTime),
+      createUserId: createUserId
     });
+    this.logger.info('获取用户签到积分记录', result);
     if (result === null) {
       return this.monthlyCheckinConfigEntity.findOneBy({
         id: businessId,
