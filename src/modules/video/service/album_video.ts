@@ -1,11 +1,11 @@
-import {ILogger, Inject, Provide} from '@midwayjs/core';
-import {InjectEntityModel} from '@midwayjs/typeorm';
-import {VideoEntity} from '../entity/videos';
-import {In, Repository} from 'typeorm';
-import {VideoAlbumRelationship} from '../entity/video_album_relationship';
-import {VideoAlbumEntity} from '../entity/album';
-import {AlbumQueryDTO} from '../dto/album';
-import {AlbumResponse, AlbumVideoInfo} from '../dto/album_response';
+import { ILogger, Inject, Provide } from '@midwayjs/core';
+import { InjectEntityModel } from '@midwayjs/typeorm';
+import { VideoEntity } from '../entity/videos';
+import { In, Repository } from 'typeorm';
+import { VideoAlbumRelationship } from '../entity/video_album_relationship';
+import { VideoAlbumEntity } from '../entity/album';
+import { AlbumQueryDTO } from '../dto/album';
+import { AlbumResponse, AlbumVideoInfo } from '../dto/album_response';
 
 const TAG = 'AlbumVideoServer';
 
@@ -25,7 +25,7 @@ export class AlbumVideoServer {
 
   //批量添加专辑内容
   async insertAlbumVideo(id: number, title: [string]): Promise<any> {
-    const list = await this.videoEntity.findBy({title: In(title)});
+    const list = await this.videoEntity.findBy({ title: In(title) });
     return await this.videoAlbumRelationship.save(
       list.map(item => {
         return {
@@ -37,7 +37,7 @@ export class AlbumVideoServer {
   }
 
   async album(query: AlbumQueryDTO): Promise<AlbumResponse> {
-    let {list} = await this.videoAlbumEntityPage(query);
+    let { list } = await this.videoAlbumEntityPage(query);
     const pagination = this.setPageDefault(query);
     return {
       list,
@@ -59,7 +59,9 @@ export class AlbumVideoServer {
   }
 
   //查询albumEntity分页
-  async videoAlbumEntityPage(query: AlbumQueryDTO): Promise<{ list: AlbumVideoInfo[] }> {
+  async videoAlbumEntityPage(
+    query: AlbumQueryDTO
+  ): Promise<{ list: AlbumVideoInfo[] }> {
     //给分页设置默认值
     query = this.setPageDefault(query);
     const data: VideoAlbumEntity[] = await this.albumEntity.find({
@@ -69,42 +71,77 @@ export class AlbumVideoServer {
       order: {
         sort: 'DESC',
       },
-      skip: query.page * (query.page - 1),
+      skip: (query.page - 1) * query.size,
       take: query.size,
     });
     if (!data.length) {
-      return {list: data as AlbumVideoInfo[]};
+      return { list: [] };
     }
     return this.videoAlbumRelationshipPage(data, query);
   }
 
-  async videoAlbumRelationshipPage(data: VideoAlbumEntity[], query: AlbumQueryDTO): Promise<{
-    list: AlbumVideoInfo[]
+  async videoAlbumRelationshipPage(
+    data: VideoAlbumEntity[],
+    query: AlbumQueryDTO
+  ): Promise<{
+    list: AlbumVideoInfo[];
   }> {
-    if (data.length) {
-      for (const item of data) {
-        let video: VideoEntity[] = [];
-        let relationshipData = await this.videoAlbumRelationship.find({
-          where: {album_id: item.id},
-          skip: query.videoPage * (query.videoPage - 1),
-          take: query.videoSize,
-          order: {
-            sort: 'DESC',
-          },
-        });
-        for (const dataItem of relationshipData) {
-          const videoItem = await this.videoEntity.findOneBy({
-            id: dataItem.videos_id,
-          });
-          if (videoItem) {
-            video.push(videoItem);
-          }
-        }
-        (item as AlbumVideoInfo)['list'] = video;
-      }
-    } else {
-      data = [];
+    if (!data.length) {
+      return { list: [] };
     }
-    return {list: data as AlbumVideoInfo[]};
+
+    // 提取所有专辑ID
+    const albumIds = data.map(item => item.id);
+
+    // 一次性查询所有专辑的视频关系
+    const allRelationships = await this.videoAlbumRelationship.find({
+      where: { album_id: In(albumIds) },
+      order: { sort: 'DESC' },
+    });
+
+    // 按专辑ID分组
+    const relationshipsByAlbum: Record<number, typeof allRelationships> = {};
+    for (const rel of allRelationships) {
+      if (!relationshipsByAlbum[rel.album_id]) {
+        relationshipsByAlbum[rel.album_id] = [];
+      }
+      relationshipsByAlbum[rel.album_id].push(rel);
+    }
+
+    // 提取分页后的视频ID
+    const videoIds: number[] = [];
+    const videoSkip = (query.videoPage - 1) * query.videoSize;
+    for (const item of data) {
+      const relationships = relationshipsByAlbum[item.id] || [];
+      const paginated = relationships.slice(
+        videoSkip,
+        videoSkip + query.videoSize
+      );
+      // 将 bigint 转换为 number
+      videoIds.push(...paginated.map(rel => Number(rel.videos_id)));
+    }
+
+    // 一次性查询所有视频
+    const videoMap = new Map<number, VideoEntity>();
+    if (videoIds.length) {
+      const videos = await this.videoEntity.findBy({ id: In(videoIds) });
+      for (const video of videos) {
+        videoMap.set(video.id, video);
+      }
+    }
+
+    // 组装数据
+    for (const item of data) {
+      const relationships = relationshipsByAlbum[item.id] || [];
+      const paginated = relationships.slice(
+        videoSkip,
+        videoSkip + query.videoSize
+      );
+      (item as AlbumVideoInfo)['list'] = paginated
+        .map(rel => videoMap.get(Number(rel.videos_id)))
+        .filter((v): v is VideoEntity => !!v);
+    }
+
+    return { list: data as AlbumVideoInfo[] };
   }
 }
