@@ -36,26 +36,30 @@ import {VideosService} from '../../service/videos';
       'searchRecommendType',
     ],
     where: ctx => {
-      const {directors, actors, video_tag} = ctx.request.body;
+      const {directors, actors, video_tag, lastYear, lastId} = ctx.request.body;
       const {aldult} = ctx.request.headers;
       const where = [];
 
       if (directors) {
         where.push([
-          'directors like :directors',
-          {directors: `%${directors}%`},
+          'MATCH(directors) AGAINST(:directors IN BOOLEAN MODE)',
+          {directors: `+${directors}*`},
           directors,
         ]);
       }
 
       if (actors) {
-        where.push(['actors like :actors', {actors: `%${actors}%`}, actors]);
+        where.push([
+          'MATCH(actors) AGAINST(:actors IN BOOLEAN MODE)',
+          {actors: `+${actors}*`},
+          actors,
+        ]);
       }
 
       if (video_tag) {
         where.push([
-          'video_tag like :video_tag',
-          {video_tag: `%${video_tag}%`},
+          'MATCH(video_tag) AGAINST(:video_tag IN BOOLEAN MODE)',
+          {video_tag: `+${video_tag}*`},
           video_tag,
         ]);
       }
@@ -65,11 +69,16 @@ import {VideosService} from '../../service/videos';
         }
       }
 
+      // Keyset 分页条件
+      if (lastYear && lastId) {
+        where.push(['(year < :lastYear OR (year = :lastYear AND id < :lastId))', {lastYear, lastId}]);
+      }
 
       return where;
     },
     addOrderBy: {
       year: 'desc',
+      id: 'desc',
     },
   },
 })

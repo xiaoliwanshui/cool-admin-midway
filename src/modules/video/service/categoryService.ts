@@ -6,6 +6,7 @@ import axios from 'axios';
 import { DictInfoService } from '../../dict/service/info';
 import { DictInfoEntity } from '../../dict/entity/info';
 import { NetworkErrorHandler } from './networkErrorHandler';
+import { CollectionEntity } from '../entity/collection';
 
 const TAG = 'CategoryService';
 
@@ -34,7 +35,7 @@ export class CategoryService {
    *
    * @returns 返回同步后的分类列表
    */
-  async syncCategory(query: any): Promise<any> {
+  async syncCategory(query: CollectionEntity): Promise<any> {
     try {
       let list = [];
       

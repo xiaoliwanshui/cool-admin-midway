@@ -2,6 +2,7 @@ import { BaseController, CoolController } from '@cool-midway/core';
 import { CollectionCategoryEntity } from '../../entity/collection_category';
 import { Body, Inject, Post } from '@midwayjs/core';
 import { CategoryService } from '../../service/categoryService';
+import { CollectionEntity } from '../../entity/collection';
 
 @CoolController({
   api: ['add', 'delete', 'update', 'info', 'list', 'page'],
@@ -39,7 +40,7 @@ export class AdminCollectionCategoryController extends BaseController {
   }
 
   @Post('/sync_category', { summary: '同步分类' })
-  async sort(@Body() body): Promise<unknown> {
+  async syncCategory(@Body() body: CollectionEntity): Promise<unknown> {
     try {
       return this.ok(await this.categoryService.syncCategory(body));
     } catch (error) {

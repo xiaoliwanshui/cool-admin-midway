@@ -22,5 +22,5 @@ export class AlbumQueryDTO {
 
   // 分类ID
   @Rule(RuleType.number().integer().optional())
-  category_id?: number;
+  category_id?: number[] | number;
 }
