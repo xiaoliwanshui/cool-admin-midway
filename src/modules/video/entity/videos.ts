@@ -65,6 +65,7 @@ export class VideoEntity extends BaseEntity {
     default: 0,
   })
   imdb_score_id: string;
+   @Index()
   @Column({
     comment: '豆瓣评分.百分制',
     nullable: true,
