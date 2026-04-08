@@ -19,9 +19,11 @@ export class VideoEntity extends BaseEntity {
 
   @Column({comment: '是否vip', nullable: true, default: 0})
   vip: number;
-
+  
+  @Index({fulltext: true}) // 定义全文索引
   @Column({comment: '影片标签', length: 191, nullable: true})
   video_tag: string;
+
   @Column({comment: '影片类型', length: 191, nullable: true})
   video_class: string;
   //添加索引
@@ -81,31 +83,35 @@ export class VideoEntity extends BaseEntity {
     nullable: true,
   })
   introduce: string;
+   @Index()
   @Column({
     comment: '总人气',
     type: 'bigint',
     default: _.random(10000, 999999),
   })
   popularity: number;
+   @Index()
   @Column({
     comment: '日人气',
     type: 'bigint',
     default: _.random(10000, 999999),
   })
   popularity_day: number;
-
+   @Index()
   @Column({
     comment: '周人气',
     type: 'bigint',
     default: _.random(10000, 999999),
   })
   popularity_week: number;
+   @Index()
   @Column({
     comment: '月人气',
     type: 'bigint',
     default: _.random(10000, 999999),
   })
   popularity_month: number;
+   @Index()
   @Column({
     comment: '总人气',
     type: 'bigint',
@@ -118,6 +124,7 @@ export class VideoEntity extends BaseEntity {
     nullable: true,
   })
   note: string;
+   @Index()
   @Column({
     comment: '年份',
     default: 2000,
