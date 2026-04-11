@@ -1,5 +1,5 @@
 import { App, ILogger, Inject, IMidwayApplication, Provide } from '@midwayjs/core';
-import axios, { AxiosError, AxiosInstance, AxiosRequestConfig } from 'axios';
+import axios, { AxiosError, AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
 
 const TAG = 'NetworkErrorHandler';
 
@@ -69,7 +69,15 @@ export class NetworkErrorHandler {
     config: AxiosRequestConfig,
     maxRetries: number = 3,
     retryDelay: number = 1000
-  ): Promise<any> {
+  ): Promise<AxiosResponse> {
+    if (!config) {
+      throw new Error('请求配置不能为空');
+    }
+
+    if (!config.url) {
+      throw new Error('请求URL不能为空');
+    }
+
     return new Promise((resolve, reject) => {
       const task = () => {
         this.runInBackground(async () => {
@@ -101,6 +109,16 @@ export class NetworkErrorHandler {
    * 检查URL是否可访问
    */
   async checkUrlAvailability(url: string): Promise<boolean> {
+    if (!url || typeof url !== 'string') {
+      this.logger.warn(TAG, 'URL不能为空且必须是字符串');
+      return false;
+    }
+
+    if (!url.startsWith('http')) {
+      this.logger.warn(TAG, `URL必须以http开头: ${url}`);
+      return false;
+    }
+
     return new Promise(resolve => {
       const task = () => {
         this.runInBackground(async () => {
@@ -133,8 +151,12 @@ export class NetworkErrorHandler {
    * 获取网络错误的详细信息
    */
   getNetworkErrorDetails(error: any): string {
-    if (!error.isAxiosError) {
+    if (!error) {
       return '未知错误';
+    }
+
+    if (!error.isAxiosError) {
+      return `未知错误: ${error.message || String(error)}`;
     }
 
     const axiosError = error as AxiosError;
@@ -186,7 +208,7 @@ export class NetworkErrorHandler {
     config: AxiosRequestConfig,
     maxRetries: number,
     retryDelay: number
-  ) {
+  ): Promise<AxiosResponse> {
     let lastError: any;
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {

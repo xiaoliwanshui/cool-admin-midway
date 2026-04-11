@@ -65,11 +65,16 @@ export class VideosService extends BaseService {
   private readonly CACHE_TTL = 300; // 缓存时间5分钟
 
   /**
-   * 修改之前
-   * @param data
-   * @param type
+   * 修改后处理
+   * @param data 数据
+   * @param type 操作类型
    */
-  async modifyAfter(data: any, type: 'delete' | 'update' | 'add') {
+  async modifyAfter(data: any, type: 'delete' | 'update' | 'add'): Promise<void> {
+    if (!data) {
+      this.logger.warn(TAG, '操作数据不能为空');
+      return;
+    }
+
     if (type === 'update') {
       if (data.vip && data.vipNumber) {
         this.playLineService.startVip(data.id, data.vipNumber - 1);
@@ -79,15 +84,18 @@ export class VideosService extends BaseService {
       }
     } else if (type === 'delete') {
       this.logger.warn(TAG, `modifyAfter: ${JSON.stringify(data)}`);
-      this.VideoLineService.idsDelete(data)
-      this.playLineService.idsDelete(data)
+      this.VideoLineService.idsDelete(data);
+      this.playLineService.idsDelete(data);
     }
   }
 
   /**
    * 排序查询
    */
-  async sort(query: any): Promise<any> {
+  async sort(query: any): Promise<{ list: VideoEntity[]; pagination: { page: number; size: number } }> {
+    if (!query) {
+      query = {};
+    }
     query.page = query.page ? query.page : 1;
     query.size = query.size ? query.size : 10;
     let order = {};
@@ -98,19 +106,30 @@ export class VideosService extends BaseService {
       order: {
         ...order,
       },
-      //且video_class字段有值
       skip: query.page * (query.page - 1),
       take: query.size,
     });
-    return {list: data, pagination: {page: query.page, size: query.size}};
+    return { list: data, pagination: { page: query.page, size: query.size } };
   }
 
+  /**
+   * 周榜查询
+   */
   async week(query: any): Promise<any> {
-    let {list} = await this.videoWeekPage(query);
+    if (!query) {
+      query = {};
+    }
+    let { list } = await this.videoWeekPage(query);
     return await this.videoWeekVideoPage(list, query);
   }
 
+  /**
+   * 周榜分页查询
+   */
   async videoWeekPage(query: any): Promise<any> {
+    if (!query) {
+      query = {};
+    }
     const find = this.weekEntity.createQueryBuilder();
     if (query.week) {
       find.where('week= :week', query).orderBy('sort', 'ASC');
@@ -120,11 +139,22 @@ export class VideosService extends BaseService {
     return this.entityRenderPage(find, query);
   }
 
+  /**
+   * 周榜视频查询
+   */
   async videoWeekVideoPage(list: Array<any>, query: any): Promise<any> {
+    if (!list || !Array.isArray(list)) {
+      return { list: [] };
+    }
+
+    if (!query) {
+      query = {};
+    }
+
     for (const item of list) {
       let video = [];
       let data = await this.videoWeekEntity.find({
-        where: {week_id: item.id},
+        where: { week_id: item.id },
         take: query.videoSize || 4,
       });
       for (const dataItem of data) {
@@ -136,14 +166,21 @@ export class VideosService extends BaseService {
       }
       item['list'] = video;
     }
-    return {list: list};
+    return { list: list };
   }
 
-  //批量插入
+  /**
+   * 插入单条视频
+   */
   async insert(
     videoEntity: VideoEntity,
     collectionEntity: CollectionEntity
   ): Promise<void> {
+    if (!videoEntity || !collectionEntity) {
+      this.logger.warn(TAG, '插入视频参数无效');
+      return;
+    }
+
     try {
       this.logger.debug(TAG, `开始保存视频: ${videoEntity.title}`);
 
@@ -198,10 +235,6 @@ export class VideosService extends BaseService {
       if (this.duplicateKeyHandler.isDuplicateKeyError(error)) {
         this.logger.warn(TAG, `重复视频跳过: ${videoEntity?.title}`);
       }
-    } finally {
-      // 显式释放对象引用
-      collectionEntity = null;
-      videoEntity = null;
     }
   }
 
@@ -214,10 +247,13 @@ export class VideosService extends BaseService {
     ids: number[],
     searchRecommendType: number
   ): Promise<void> {
-    if (!ids || ids.length === 0) {
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
       throw new Error('ids 不能为空');
     }
-    await this.videoEntity.update({id: In(ids)}, {searchRecommendType});
+    if (typeof searchRecommendType !== 'number') {
+      throw new Error('searchRecommendType 必须是数字');
+    }
+    await this.videoEntity.update({ id: In(ids) }, { searchRecommendType });
   }
 
   /**
@@ -230,8 +266,13 @@ export class VideosService extends BaseService {
     videoEntities: VideoEntity[],
     collectionEntity: CollectionEntity
   ): Promise<{ successCount: number; skipCount: number; errorCount: number }> {
-    if (!videoEntities || videoEntities.length === 0) {
+    if (!videoEntities || !Array.isArray(videoEntities) || videoEntities.length === 0) {
       return { successCount: 0, skipCount: 0, errorCount: 0 };
+    }
+
+    if (!collectionEntity || !collectionEntity.id) {
+      this.logger.warn(TAG, '集合实体无效');
+      return { successCount: 0, skipCount: videoEntities.length, errorCount: 0 };
     }
 
     let successCount = 0;
@@ -351,12 +392,16 @@ export class VideosService extends BaseService {
   /**
    * 根据视频ID获取视频信息和线路资源
    * @param id 视频ID
-   * @param createUserId
+   * @param createUserId 用户ID
    */
-  async getVideoDetail(id: number, createUserId?: number): Promise<any> {
+  async getVideoDetail(id: number, createUserId?: number): Promise<{ video: VideoEntity; lines: any[] }> {
+    if (!id || typeof id !== 'number') {
+      throw new Error('视频ID无效');
+    }
+
     const [video, shouldReturnLines, videoLines] = await Promise.all([
       this.videoEntity.findOne({
-        where: {id},
+        where: { id },
       }),
       // 检查会员权限
       createUserId
@@ -364,8 +409,8 @@ export class VideosService extends BaseService {
         : false,
       // 获取视频线路信息
       this.VideoLineService.videoLineEntity.find({
-        where: {video_id: id},
-        order: {sort: 'DESC'},
+        where: { video_id: id },
+        order: { sort: 'DESC' },
       })
     ]);
     if (!video) {
@@ -373,21 +418,21 @@ export class VideosService extends BaseService {
     }
 
     if (videoLines.length === 0) {
-      return {video, lines: []};
+      return { video, lines: [] };
     }
     // 获取每个线路下的播放资源
     const linesWithSources = [];
     for (const line of videoLines) {
       const playLines = await this.playLineService.playLineEntity.find({
-        where: {video_line_id: line.id},
-        order: {sort: 'ASC'},
+        where: { video_line_id: line.id },
+        order: { sort: 'ASC' },
       });
-      //寻找playLines中vip字段为1的数据并将其file设置成 空
+      // 寻找playLines中vip字段为1的数据并将其file设置成空
       playLines.forEach(item => {
         if (item.vip && !shouldReturnLines) {
           item.file = '';
         }
-      })
+      });
 
       linesWithSources.push({
         ...line,
@@ -410,12 +455,14 @@ export class VideosService extends BaseService {
     };
   }
 
-  //获取视频VideoEntity字段信息
+  /**
+   * 获取视频VideoEntity字段信息
+   */
   async getVideoEntityFields(): Promise<{ label: string; value: string }[]> {
     const metadata = this.videoEntity.metadata;
     return metadata.columns
       .map(column => {
-        //设置白名单不返回指定字段
+        // 设置白名单不返回指定字段
         if (
           !(
             column.propertyName === 'id' ||
@@ -439,7 +486,10 @@ export class VideosService extends BaseService {
       });
   }
 
-  async getVideoRank(): Promise<any> {
+  /**
+   * 获取视频排行
+   */
+  async getVideoRank(): Promise<{ list: any[] }> {
     try {
       const cacheKey = 'video:rank:all';
 
@@ -450,13 +500,13 @@ export class VideosService extends BaseService {
         return cachedData;
       }
 
-      //获取字典数据
+      // 获取字典数据
       let videoCategoryEntityList: DictInfoEntity[] = (
         await this.dictInfoService.data(['search_type'])
       )['search_type'];
 
       if (!videoCategoryEntityList || videoCategoryEntityList.length === 0) {
-        return {list: []};
+        return { list: [] };
       }
 
       // 优化：使用单个查询获取所有排行视频，避免循环查询
@@ -494,7 +544,7 @@ export class VideosService extends BaseService {
         }
       }
 
-      const result = {list: videoRankList};
+      const result = { list: videoRankList };
 
       // 缓存结果，缓存时间10分钟
       await this.midwayCache.set(cacheKey, result, 600);
@@ -692,6 +742,9 @@ export class VideosService extends BaseService {
    * 生成缓存键
    */
   private generateCacheKey(prefix: string, params: any): string {
+    if (!prefix) {
+      throw new Error('缓存键前缀不能为空');
+    }
     const paramsStr = JSON.stringify(params);
     const hash = crypto.createHash('md5').update(paramsStr).digest('hex');
     return `${prefix}:${hash}`;
@@ -701,6 +754,10 @@ export class VideosService extends BaseService {
    * 清理视频数据
    */
   private cleanVideoData(videoEntity: VideoEntity): void {
+    if (!videoEntity) {
+      return;
+    }
+
     // 确保sort字段有默认值
     if (videoEntity.sort === undefined || videoEntity.sort === null) {
       videoEntity.sort = 0;
@@ -726,6 +783,10 @@ export class VideosService extends BaseService {
    * 截断过长的数据
    */
   private truncateVideoData(videoEntity: VideoEntity): void {
+    if (!videoEntity) {
+      return;
+    }
+
     // 字段长度限制映射
     const fieldLimits = {
       title: 191,
@@ -739,7 +800,7 @@ export class VideosService extends BaseService {
       if (videoEntity[field] && typeof videoEntity[field] === 'string') {
         const limit = fieldLimits[field];
         if (videoEntity[field].length > limit) {
-          videoEntity[field] =
+          videoEntity[field] = 
             videoEntity[field].substring(0, limit - 3) + '...';
           this.logger.warn(TAG, `字段 ${field} 已截断至 ${limit} 字符`);
         }
@@ -753,7 +814,10 @@ export class VideosService extends BaseService {
   private prepareVideoForInsert(
     videoEntity: VideoEntity
   ): Partial<VideoEntity> {
-    const {id, ...insertData} = videoEntity;
+    if (!videoEntity) {
+      return {};
+    }
+    const { id, ...insertData } = videoEntity;
     return insertData;
   }
 
@@ -763,7 +827,10 @@ export class VideosService extends BaseService {
   private prepareVideoForUpdate(
     videoEntity: VideoEntity
   ): Partial<VideoEntity> {
-    const {id, createTime, updateTime, createUserId, ...updateData} =
+    if (!videoEntity) {
+      return {};
+    }
+    const { id, createTime, updateTime, createUserId, ...updateData } = 
       videoEntity;
     return updateData;
   }

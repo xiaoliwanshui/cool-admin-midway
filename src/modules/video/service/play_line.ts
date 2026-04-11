@@ -45,7 +45,7 @@ export class PlayLineService extends BaseService {
 
     try {
       if (!this.playLineEntity) {
-        this.logger.error(TAG, `PlayLineEntity 数据源未正确初始化`);
+        this.logger.error(TAG, 'PlayLineEntity 数据源未正确初始化');
         throw new Error('PlayLineEntity 数据源未正确初始化');
       }
 
@@ -87,7 +87,7 @@ export class PlayLineService extends BaseService {
 
       const checkResults = await Promise.allSettled(
         checkBatch.map(async (data) => {
-          if (!data.video_line_id || data.video_line_id === null || data.video_line_id === undefined) {
+          if (!data || !data.video_line_id || data.video_line_id === null || data.video_line_id === undefined) {
             return { valid: false, reason: 'invalid_video_line_id' };
           }
 
@@ -188,7 +188,15 @@ export class PlayLineService extends BaseService {
            (error.message && error.message.includes('Duplicate entry'));
   }
 
+  /**
+   * 插入单条播放线路
+   */
   async insert(data: Line): Promise<void> {
+    if (!data) {
+      this.logger.warn(TAG, '播放线路数据为空');
+      return;
+    }
+
     // 如果 data.video_line_id 不存在或无效，就不执行以下逻辑
     // 使用严格检查：null、undefined、0 都视为无效
     if (!data.video_line_id || data.video_line_id === null || data.video_line_id === undefined) {
@@ -197,7 +205,7 @@ export class PlayLineService extends BaseService {
 
     // 检查数据源是否可用
     if (!this.playLineEntity) {
-      this.logger.error(TAG, `PlayLineEntity 数据源未正确初始化`);
+      this.logger.error(TAG, 'PlayLineEntity 数据源未正确初始化');
       throw new Error('PlayLineEntity 数据源未正确初始化');
     }
 
@@ -313,25 +321,31 @@ export class PlayLineService extends BaseService {
    * @returns 如果链接可访问返回true，否则返回false
    */
   async isUrlAccessible(url: string): Promise<boolean> {
-    try {
-      // 如果URL为空或不以http开头，则认为不可访问
-      if (!url || !url.startsWith('http')) {
-        return false;
-      }
+    if (!url || typeof url !== 'string' || !url.startsWith('http')) {
+      return false;
+    }
 
+    try {
       // 发送HEAD请求检查链接是否可访问
       await axios.head(url, {
         timeout: 5000, // 5秒超时
       });
       return true;
     } catch (error) {
-      // this.logger.error(TAG, `链接 ${url} 无法访问:`, error.message);
+      this.logger.debug(TAG, `链接 ${url} 无法访问:`, error.message);
       return false;
     }
   }
 
-  //根据 传入的  video_id 查询出所有的播放线路  并按照 sort 排序 按照collection_id 进行分组
+  /**
+   * 根据视频ID查询所有播放线路并按collection_id分组
+   */
   async startVip(video_id: number, vipNumber: number): Promise<{ [collection_id: number]: PlayLineEntity[] }> {
+    if (!video_id || typeof video_id !== 'number') {
+      this.logger.warn(TAG, '视频ID必须是有效的数字');
+      return {};
+    }
+
     const cacheKey = `playLines:grouped:${video_id}`;
 
     // 尝试从缓存获取分组数据
@@ -374,13 +388,27 @@ export class PlayLineService extends BaseService {
     return groupedPlayLines;
   }
 
-  //取消vip
+  /**
+   * 取消VIP状态
+   */
   async cancelVip(video_id: number): Promise<void> {
+    if (!video_id || typeof video_id !== 'number') {
+      this.logger.warn(TAG, '视频ID必须是有效的数字');
+      return;
+    }
+
     await this.playLineEntity.update({video_id: video_id}, {vip: 0});
   }
 
-  //实现一个删除接口删除异常的播放线路 status: 0 的线路 并且video_id相同的线路都删除
+  /**
+   * 删除异常的播放线路
+   */
   async delete(ids: number[]): Promise<void> {
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      this.logger.warn(TAG, '删除ID数组不能为空');
+      return;
+    }
+
     const playLine = await this.playLineEntity.findBy({id: In(ids)});
     for (const line of playLine) {
       await this.playLineEntity.delete(line.id);
@@ -390,18 +418,28 @@ export class PlayLineService extends BaseService {
     }
   }
 
-  //实现一个合并接口
+  /**
+   * 合并播放线路
+   */
   async merge(): Promise<string> {
     try {
       await this.nativeQuery(playFileMergeSQL);
       return '任务执行成功';
     } catch (error) {
-      this.logger.error(TAG, 'Error occurred during merge operation:', error.message);
+      this.logger.error(TAG, '合并操作失败:', error.message);
       throw error;
     }
   }
 
-  idsDelete(ids: number[] | string[]) {
+  /**
+   * 根据视频ID批量删除播放线路
+   */
+  idsDelete(ids: number[] | string[]): void {
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      this.logger.warn(TAG, '删除ID数组不能为空');
+      return;
+    }
+
     // 将数字转换为字符串以匹配 bigint 类型
     const stringIds = ids.map(id => id.toString());
     this.playLineEntity.delete({
