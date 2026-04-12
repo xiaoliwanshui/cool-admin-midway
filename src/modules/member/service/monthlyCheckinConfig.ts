@@ -242,7 +242,7 @@ export class MonthlyCheckinConfigService extends BaseService {
   async initDefaultConfig(): Promise<InitDefaultConfigResult> {
     try {
       // 检查是否已有配置数据
-      const existingConfig = await this.monthlyCheckinConfigEntity.findOne();
+      const existingConfig = await this.monthlyCheckinConfigEntity.findOne({});
       if (existingConfig) {
         this.logger.info(this.TAG, '已有签到配置数据，跳过初始化');
         return { status: 0 };

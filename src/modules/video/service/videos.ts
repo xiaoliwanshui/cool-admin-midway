@@ -495,9 +495,9 @@ export class VideosService extends BaseService {
 
       // 尝试从缓存获取数据
       const cachedData = await this.midwayCache.get(cacheKey);
-      if (cachedData) {
+      if (cachedData && typeof cachedData === 'object' && Array.isArray((cachedData as any).list)) {
         this.logger.debug(TAG, '从缓存获取视频排行信息');
-        return cachedData;
+        return cachedData as { list: any[] };
       }
 
       // 获取字典数据

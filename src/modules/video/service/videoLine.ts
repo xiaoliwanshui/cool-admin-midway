@@ -39,9 +39,9 @@ export class VideoLineService extends BaseService {
 
     // 尝试从缓存获取数据
     const cachedData = await this.midwayCache.get(cacheKey);
-    if (cachedData) {
+    if (cachedData && typeof cachedData === 'object' && (cachedData as any).video_id) {
       this.logger.debug(TAG, `从缓存获取视频线路: ${cacheKey}`);
-      return cachedData;
+      return cachedData as VideoLineEntity;
     }
 
     //通过query.id查询videoLineEntity的数据

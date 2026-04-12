@@ -82,7 +82,7 @@ export class ScoreService extends BaseService {
     }
 
     try {
-      if (businessType === BusinessType.ADVERTISEMENT) {
+      if (businessType === (BusinessType.ADVERTISEMENT as BusinessType)) {
         const ads = await this.adsEntity.findOneBy({
           id: businessId,
           status: 1,
