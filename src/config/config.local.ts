@@ -17,7 +17,7 @@ export default {
         password: 'admin',
         database: 'cms',
         // 自动建表 注意：线上部署的时候不要使用，有可能导致数据丢失
-        synchronize: false,
+        synchronize: true,
         // 打印日志
         logging: false,
         // 字符集

@@ -53,6 +53,7 @@ import * as entity47 from './modules/base/entity/sys/conf';
 import * as entity48 from './modules/application/entity/noticeInfo';
 import * as entity49 from './modules/application/entity/feedbackInfo';
 import * as entity50 from './modules/application/entity/ads';
+import * as entity54 from './modules/cmsdatabase/entity/cmssqlLog';
 export const entities = [
   ...Object.values(entity0),
   ...Object.values(entity1),
@@ -108,4 +109,5 @@ export const entities = [
   ...Object.values(entity51),
   ...Object.values(entity52),
   ...Object.values(entity53),
+  ...Object.values(entity54),
 ];
