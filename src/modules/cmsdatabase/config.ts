@@ -7,9 +7,9 @@ import { BaseLogMiddleware } from '../base/middleware/log';
 export default () => {
   return {
     // 模块名称
-    name: '视频',
+    name: '数据库SQL',
     // 模块描述
-    description: '视频模块',
+    description: '数据库SQL',
     // 中间件，只对本模块有效
     middlewares: [],
     // 中间件，全局有效
