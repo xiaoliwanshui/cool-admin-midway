@@ -73,26 +73,23 @@ export class MainConfiguration {
   async onReady() {
     // 处理未捕获的 Promise rejection
     process.on('unhandledRejection', (reason: any, promise: Promise<any>) => {
-      this.logger.error(
-        '未处理的 Promise Rejection',
-        {
-          reason: reason?.message || reason,
-          stack: reason?.stack,
-          promise: promise.toString(),
-        }
-      );
+      this.logger.error('未处理的 Promise Rejection', {
+        reason: reason?.message || reason,
+        stack: reason?.stack,
+        promise: promise.toString(),
+      });
 
       // 如果是数据库连接错误，记录详细信息
-      if (reason?.code === 'ER_NET_READ_INTERRUPTED' || reason?.code === 'ETIMEDOUT') {
-        this.logger.error(
-          '数据库连接错误',
-          {
-            code: reason.code,
-            errno: reason.errno,
-            sqlState: reason.sqlState,
-            sqlMessage: reason.sqlMessage,
-          }
-        );
+      if (
+        reason?.code === 'ER_NET_READ_INTERRUPTED' ||
+        reason?.code === 'ETIMEDOUT'
+      ) {
+        this.logger.error('数据库连接错误', {
+          code: reason.code,
+          errno: reason.errno,
+          sqlState: reason.sqlState,
+          sqlMessage: reason.sqlMessage,
+        });
       }
 
       // 不退出进程，让应用继续运行
