@@ -281,6 +281,21 @@ pnpm install
 
 ### 3️⃣ 配置数据库
 
+#### 方式一：使用环境配置收集工具（推荐）
+
+项目提供了可视化的配置生成工具，帮助您快速生成数据库配置：
+
+1. 启动项目后访问：`http://localhost:8001/env-collector.html`
+2. 填写 MySQL、Redis 等配置信息
+3. 点击"生成配置文件"按钮
+4. 复制生成的配置代码到对应的配置文件中：
+   - 本地开发：`src/config/config.local.ts`
+   - 生产环境：`src/config/config.prod.ts`
+
+> ⚠️ **安全提醒**：配置生成完成后，请**立即删除或重命名** `public/env-collector.html` 文件，以免数据库密码等敏感信息泄露！
+
+#### 方式二：手动配置
+
 修改数据库配置文件 `src/config/config.local.ts`：
 
 **MySQL 配置示例**：

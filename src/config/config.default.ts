@@ -1,11 +1,11 @@
-import {CoolConfig} from '@cool-midway/core';
-import {MidwayConfig} from '@midwayjs/core';
+import { CoolConfig } from '@cool-midway/core';
+import { MidwayConfig } from '@midwayjs/core';
 import * as path from 'path';
-import {pUploadPath} from '../comm/path';
-import {availablePort} from '../comm/port';
+import { pUploadPath } from '../comm/path';
+import { availablePort } from '../comm/port';
 
 // redis缓存
-import {redisStore} from 'cache-manager-ioredis-yet';
+import { redisStore } from 'cache-manager-ioredis-yet';
 
 export default {
   cryptoConfig: {
@@ -49,16 +49,16 @@ jPL5FOCs6TUafVP3oTSSHAciF//5zzGwYPsXN74FZpYRVMeVvMFKHmo/LZ7zn4KT
 fwIDAQAB
 -----END PUBLIC KEY-----
 `,
-    defaultSalt: 'a3f8c7d1b2e4a9f0c3d7e8b5a1c2d3e4'
+    defaultSalt: 'a3f8c7d1b2e4a9f0c3d7e8b5a1c2d3e4',
   },
   // 确保每个项目唯一，项目首次启动会自动生成
   keys: '5581defa-0fa7-4cbe-b7b0-89f01b4fcf88',
   koa: {
-    port: availablePort(8001)
+    port: availablePort(8001),
   },
   // 开启异步上下文管理
   asyncContextManager: {
-    enable: true
+    enable: true,
   },
   // 静态文件配置
   staticFile: {
@@ -66,18 +66,18 @@ fwIDAQAB
     dirs: {
       default: {
         prefix: '/',
-        dir: path.join(__dirname, '..', '..', 'public')
+        dir: path.join(__dirname, '..', '..', 'public'),
       },
       static: {
         prefix: '/upload',
-        dir: pUploadPath()
-      }
-    }
+        dir: pUploadPath(),
+      },
+    },
   },
   // 文件上传
   upload: {
     fileSize: '200mb',
-    whitelist: null
+    whitelist: null,
   },
   // 缓存 可切换成其他缓存如：redis http://www.midwayjs.org/docs/extensions/caching
   // cacheManager: {
@@ -96,8 +96,8 @@ fwIDAQAB
       port: 6379, // Redis port
       host: '127.0.0.1', // Redis host
       password: '',
-      db: 1
-    }
+      db: 1,
+    },
   },
   cacheManager: {
     clients: {
@@ -108,10 +108,10 @@ fwIDAQAB
           host: '127.0.0.1',
           password: '',
           ttl: 0,
-          db: 0
-        }
-      }
-    }
+          db: 0,
+        },
+      },
+    },
   },
   cool: {
     // 已经插件化，本地文件上传查看 plugin/config.ts，其他云存储查看对应插件的使用
@@ -121,34 +121,34 @@ fwIDAQAB
       // 是否开启多租户
       enable: false,
       // 需要过滤多租户的url, 支持通配符， 如/admin/**/* 表示admin模块下的所有接口都进行多租户过滤
-      urls: []
+      urls: [],
     },
     // 国际化配置
     i18n: {
       // 是否开启
       enable: false,
       // 语言
-      languages: ['zh-cn', 'zh-tw', 'en']
+      languages: ['zh-cn', 'zh-tw', 'en'],
     },
     // crud配置
     crud: {
       // 插入模式，save不会校验字段(允许传入不存在的字段)，insert会校验字段
       upsert: 'save',
       // 软删除
-      softDelete: true
-    }
+      softDelete: true,
+    },
   } as CoolConfig,
   // 任务配置
   task: {
     // 日志保留天数
     log: {
-      keepDays: 20
+      keepDays: 20,
     },
     // 任务执行超时时间（毫秒）
     execution: {
-      timeout: 300000 // 5分钟
+      timeout: 300000, // 5分钟
     },
     // 健康检查间隔时间（毫秒）
-    healthCheckInterval: 600000 // 10分钟，减少日志频率
-  }
+    healthCheckInterval: 600000, // 10分钟，减少日志频率
+  },
 } as MidwayConfig;

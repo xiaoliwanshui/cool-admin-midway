@@ -1,7 +1,7 @@
-import {CoolConfig} from '@cool-midway/core';
-import {MidwayConfig} from '@midwayjs/core';
-import {TenantSubscriber} from '../modules/base/db/tenant';
-import {entities} from "../entities";
+import { CoolConfig } from '@cool-midway/core';
+import { MidwayConfig } from '@midwayjs/core';
+import { TenantSubscriber } from '../modules/base/db/tenant';
+import { entities } from '../entities';
 
 /**
  * 本地开发 npm run dev 读取的配置文件
@@ -37,19 +37,19 @@ export default {
         extra: {
           connectionLimit: 20,
           waitForConnections: true,
-          queueLimit: 0
-        }
+          queueLimit: 0,
+        },
       },
     },
   },
   cool: {
-    // 实体与路径，跟生成代码、前端请求、swagger文档相关 注意：线上不建议开启，以免暴露敏感信息
-    eps: true,
+    // 实体与路径，跟生成代码、前端请求、swagger 文档相关 注意：线上不建议开启，以免暴露敏感信息
+    eps: false,
     // 是否自动导入模块数据库
-    initDB: true,
+    initDB: false,
     // 判断是否初始化的方式
     initJudge: 'db',
     // 是否自动导入模块菜单
-    initMenu: true,
+    initMenu: false,
   } as CoolConfig,
 } as MidwayConfig;

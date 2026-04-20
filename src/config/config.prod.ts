@@ -1,8 +1,8 @@
-import {CoolConfig} from '@cool-midway/core';
-import {MidwayConfig} from '@midwayjs/core';
-import {entities} from '../entities';
-import {TenantSubscriber} from '../modules/base/db/tenant';
-import {redisStore} from 'cache-manager-ioredis-yet';
+import { CoolConfig } from '@cool-midway/core';
+import { MidwayConfig } from '@midwayjs/core';
+import { entities } from '../entities';
+import { TenantSubscriber } from '../modules/base/db/tenant';
+import { redisStore } from 'cache-manager-ioredis-yet';
 
 /**
  * 本地开发 npm run prod 读取的配置文件
@@ -38,8 +38,8 @@ export default {
         extra: {
           connectionLimit: 20,
           waitForConnections: true,
-          queueLimit: 0
-        }
+          queueLimit: 0,
+        },
       },
     },
   },
@@ -48,8 +48,8 @@ export default {
       port: 6379, // Redis port
       host: '127.0.0.1', // Redis host
       password: '',
-      db: 1
-    }
+      db: 0,
+    },
   },
   cacheManager: {
     clients: {
@@ -66,7 +66,7 @@ export default {
     },
   },
   cool: {
-    // 实体与路径，跟生成代码、前端请求、swagger文档相关 注意：线上不建议开启，以免暴露敏感信息
+    // 实体与路径，跟生成代码、前端请求、swagger 文档相关 注意：线上不建议开启，以免暴露敏感信息
     eps: false,
     // 是否自动导入模块数据库
     initDB: false,
