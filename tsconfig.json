@@ -26,5 +26,6 @@
     "dist",
     "node_modules",
     "test",
+    "public",
   ],
 }
